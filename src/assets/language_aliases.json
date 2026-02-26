@@ -1,0 +1,26 @@
+{
+  "c": {
+    "devenv": "c",
+    "dev-templates": "c-cpp"
+  },
+  "cpp": {
+    "devenv": "cplusplus",
+    "dev-templates": "c-cpp"
+  },
+  "c++": {
+    "devenv": "cplusplus",
+    "dev-templates": "c-cpp"
+  },
+  "javascript": {
+    "devenv": "javascript",
+    "dev-templates": "node"
+  },
+  "typescript": {
+    "devenv": "typescript",
+    "dev-templates": "node"
+  },
+  "python3": {
+    "devenv": "python",
+    "dev-templates": "python"
+  }
+}

@@ -74,6 +74,7 @@
                 nixfmt
                 statix
                 rust-bin.stable.latest.default
+                rust-analyzer
                 rustfmt
               ];
             };
