@@ -57,7 +57,15 @@
             version = cargoToml.package.version;
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
-            AHSH_PROVIDERS_DIR = builtins.toString ./providers;
+
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+
+            postInstall = ''
+              mkdir -p $out/share/ah
+              cp -r providers $out/share/ah/
+              wrapProgram $out/bin/ah \
+                --set AHSH_PROVIDERS_DIR "$out/share/ah/providers"
+            '';
           };
           default = self.packages.${pkgs.stdenv.hostPlatform.system}.ah;
         }

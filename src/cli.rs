@@ -1,17 +1,25 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::Path,
-};
+use std::collections::HashSet;
 
 use clap::{Parser, ValueEnum};
-use serde_json::from_str;
 
-use crate::{command::exec_nix_develop, env};
+use crate::{
+    command::exec_nix_develop,
+    providers::{EnvironmentProvider, dev_templates::DevTemplatesProvider, devenv::DevenvProvider},
+};
 
 #[derive(ValueEnum, Clone)]
 pub enum Provider {
     Devenv,
     DevTemplates,
+}
+
+impl Provider {
+    pub fn to_provider_trait(&self) -> Box<dyn EnvironmentProvider> {
+        match self {
+            Provider::Devenv => Box::new(DevenvProvider),
+            Provider::DevTemplates => Box::new(DevTemplatesProvider),
+        }
+    }
 }
 
 #[derive(Parser)]
@@ -25,70 +33,27 @@ pub struct Cli {
 
 pub fn languages() -> Result<(), String> {
     let cli = Cli::parse();
+    let provider = cli.provider.to_provider_trait();
 
-    let provider_dir = provider_dir(&cli.provider);
+    let provider_dir = provider.get_dir();
+    let provider_dir_str = provider_dir
+        .to_str()
+        .ok_or_else(|| "Invalid provider path".to_owned())?;
 
-    let normalized_langs = normalize_languages(cli.language, &cli.provider);
+    let normalized_langs: Vec<String> = cli
+        .language
+        .iter()
+        .map(|l| provider.normalize_language(l))
+        .collect();
 
-    let ensures = match cli.provider {
-        Provider::Devenv => {
-            let supported = supported_langs_of_devenv();
-            ensure_languages(normalized_langs, supported)?
-        }
-        Provider::DevTemplates => {
-            let supported = supported_langs_of_dev_templates();
-            ensure_languages(normalized_langs, supported)?
-        }
-    };
+    let supported_langs = provider.get_supported_languages();
+    let ensures = ensure_languages(normalized_langs, supported_langs)?;
 
     let env_ahsh_languages =
         serde_json::to_string(&ensures).expect("Failed to serialize languages");
 
-    exec_nix_develop(&provider_dir, env_ahsh_languages);
+    exec_nix_develop(provider_dir_str, env_ahsh_languages);
     Ok(())
-}
-
-fn provider_dir(provider: &Provider) -> String {
-    let base = Path::new(env::AHSH_PROVIDERS_DIR);
-    let subdir = match provider {
-        Provider::Devenv => "devenv",
-        Provider::DevTemplates => "dev-templates",
-    };
-    base.join(subdir)
-        .to_str()
-        .expect("Invalid provider path")
-        .to_owned()
-}
-
-fn normalize_languages(langs: Vec<String>, provider: &Provider) -> Vec<String> {
-    let aliases: HashMap<String, HashMap<String, String>> =
-        from_str(include_str!("./assets/language_aliases.json")).expect("Internal error");
-
-    let provider_key = match provider {
-        Provider::Devenv => "devenv",
-        Provider::DevTemplates => "dev-templates",
-    };
-
-    langs
-        .into_iter()
-        .map(|lang| {
-            aliases
-                .get(&lang)
-                .and_then(|m| m.get(provider_key))
-                .cloned()
-                .unwrap_or(lang)
-        })
-        .collect()
-}
-
-fn supported_langs_of_devenv() -> Vec<String> {
-    let json_str = include_str!("../providers/devenv/supported_langs.json");
-    from_str(json_str).expect("Internal error")
-}
-
-fn supported_langs_of_dev_templates() -> Vec<String> {
-    let json_str = include_str!("../providers/dev-templates/supported_langs.json");
-    from_str(json_str).expect("Internal error")
 }
 
 fn ensure_languages(
