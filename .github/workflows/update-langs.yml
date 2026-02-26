@@ -13,22 +13,22 @@ jobs:
 
       - name: Generate Language Lists
         run: |
-          mkdir -p providers/devenv providers/dev-templates
+          mkdir -p src/assets/providers/devenv src/assets/providers/dev-templates
 
           # Fetch devenv languages
           curl -s "https://api.github.com/repos/cachix/devenv/contents/src/modules/languages" | \
           jq -r '[.[] | select(.type == "file" and (.name | endswith(".nix"))) | .name | sub("\\.nix$"; "")] | sort' \
-          > providers/devenv/supported_langs.json
+          > src/assets/providers/devenv/supported_langs.json
 
           # Fetch dev-templates languages
           curl -s "https://api.github.com/repos/the-nix-way/dev-templates/contents" | \
           jq -r '[.[] | select(.type == "dir" and .name != ".github" and .name != ".git") | .name] | sort' \
-          > providers/dev-templates/supported_langs.json
+          > src/assets/providers/dev-templates/supported_langs.json
 
       - name: Report Changes
         run: |
-          echo "Devenv Languages Size: $(stat -c %s providers/devenv/supported_langs.json) bytes"
-          echo "Dev-templates Languages Size: $(stat -c %s providers/dev-templates/supported_langs.json) bytes"
+          echo "Devenv Languages Size: $(stat -c %s src/assets/providers/devenv/supported_langs.json) bytes"
+          echo "Dev-templates Languages Size: $(stat -c %s src/assets/providers/dev-templates/supported_langs.json) bytes"
           git diff --stat
 
       - name: Create Pull Request
@@ -39,8 +39,8 @@ jobs:
           title: "chore: update supported languages list"
           body: |
             This is an automated PR to update the static language lists for all providers.
-            - `providers/devenv/supported_langs.json`
-            - `providers/dev-templates/supported_langs.json`
+            - `src/assets/providers/devenv/supported_langs.json`
+            - `src/assets/providers/dev-templates/supported_langs.json`
           branch: update-supported-langs
           base: main
           delete-branch: true

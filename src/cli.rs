@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 
 use crate::{
     command::exec_nix_develop,
-    providers::{EnvironmentProvider, dev_templates::DevTemplatesProvider, devenv::DevenvProvider},
+    providers::{ShellProvider, dev_templates::DevTemplatesProvider, devenv::DevenvProvider},
 };
 
 #[derive(ValueEnum, Clone)]
@@ -14,7 +14,7 @@ pub enum Provider {
 }
 
 impl Provider {
-    pub fn to_provider_trait(&self) -> Box<dyn EnvironmentProvider> {
+    pub fn to_provider_trait(&self) -> Box<dyn ShellProvider> {
         match self {
             Provider::Devenv => Box::new(DevenvProvider),
             Provider::DevTemplates => Box::new(DevTemplatesProvider),
@@ -35,11 +35,6 @@ pub fn languages() -> Result<(), String> {
     let cli = Cli::parse();
     let provider = cli.provider.to_provider_trait();
 
-    let provider_dir = provider.get_dir();
-    let provider_dir_str = provider_dir
-        .to_str()
-        .ok_or_else(|| "Invalid provider path".to_owned())?;
-
     let normalized_langs: Vec<String> = cli
         .language
         .iter()
@@ -52,7 +47,12 @@ pub fn languages() -> Result<(), String> {
     let env_ahsh_languages =
         serde_json::to_string(&ensures).expect("Failed to serialize languages");
 
-    exec_nix_develop(provider_dir_str, env_ahsh_languages);
+    let provider_path = provider.ensure_files()?;
+    let provider_path_str = provider_path
+        .to_str()
+        .ok_or_else(|| "Invalid provider path".to_owned())?;
+
+    exec_nix_develop(provider_path_str, env_ahsh_languages);
     Ok(())
 }
 

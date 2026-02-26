@@ -1,21 +1,31 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use crate::providers::ShellProvider;
 use serde_json::from_str;
-use crate::{env, providers::EnvironmentProvider};
+use std::collections::HashMap;
 
 pub struct DevTemplatesProvider;
 
-impl EnvironmentProvider for DevTemplatesProvider {
+impl ShellProvider for DevTemplatesProvider {
     fn name(&self) -> &str {
         "dev-templates"
     }
 
-    fn get_dir(&self) -> PathBuf {
-        Path::new(&env::providers_dir()).join("dev-templates")
+    fn ensure_files(&self) -> Result<std::path::PathBuf, String> {
+        let dir = crate::env::get_ah_data_dir()
+            .join("providers")
+            .join("dev-templates");
+        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create provider dir: {e}"))?;
+
+        let flake_path = dir.join("flake.nix");
+        let flake_content = include_str!("../assets/providers/dev-templates/flake.nix");
+
+        std::fs::write(flake_path, flake_content)
+            .map_err(|e| format!("Failed to write flake.nix: {e}"))?;
+
+        Ok(dir)
     }
 
     fn get_supported_languages(&self) -> Vec<String> {
-        let json_str = include_str!("../../providers/dev-templates/supported_langs.json");
+        let json_str = include_str!("../assets/providers/dev-templates/supported_langs.json");
         from_str(json_str).expect("Internal error")
     }
 
