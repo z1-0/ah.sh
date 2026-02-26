@@ -1,23 +1,22 @@
 use std::collections::HashSet;
-
+use crate::error::{AhError, Result};
 use clap::{Parser, ValueEnum};
+use crate::command::exec_nix_develop;
+use crate::providers::dev_templates::DevTemplatesProvider;
+use crate::providers::devenv::DevenvProvider;
+use crate::providers::ShellProvider;
 
-use crate::{
-    command::exec_nix_develop,
-    providers::{ShellProvider, dev_templates::DevTemplatesProvider, devenv::DevenvProvider},
-};
-
-#[derive(ValueEnum, Clone)]
-pub enum Provider {
+#[derive(ValueEnum, Clone, Debug)]
+pub enum ProviderType {
     Devenv,
     DevTemplates,
 }
 
-impl Provider {
-    pub fn to_provider_trait(&self) -> Box<dyn ShellProvider> {
+impl ProviderType {
+    pub fn into_shell_provider(self) -> Box<dyn ShellProvider> {
         match self {
-            Provider::Devenv => Box::new(DevenvProvider),
-            Provider::DevTemplates => Box::new(DevTemplatesProvider),
+            ProviderType::Devenv => Box::new(DevenvProvider::default()),
+            ProviderType::DevTemplates => Box::new(DevTemplatesProvider::default()),
         }
     }
 }
@@ -28,49 +27,43 @@ pub struct Cli {
     pub language: Vec<String>,
 
     #[arg(long, value_enum, default_value = "devenv")]
-    pub provider: Provider,
+    pub provider: ProviderType,
 }
 
-pub fn languages() -> Result<(), String> {
+pub fn languages() -> Result<()> {
     let cli = Cli::parse();
-    let provider = cli.provider.to_provider_trait();
+    let provider = cli.provider.into_shell_provider();
 
-    let normalized_langs: Vec<String> = cli
-        .language
-        .iter()
+    // 1. Normalize and validate languages
+    let normalized_langs = cli.language.iter()
         .map(|l| provider.normalize_language(l))
-        .collect();
+        .collect::<Vec<_>>();
 
-    let supported_langs = provider.get_supported_languages();
-    let ensures = ensure_languages(normalized_langs, supported_langs)?;
+    let supported_langs = provider.get_supported_languages()?;
+    validate_languages(&normalized_langs, &supported_langs)?;
 
-    let env_ahsh_languages =
-        serde_json::to_string(&ensures).expect("Failed to serialize languages");
-
+    // 2. Prepare environment resources
+    let env_json = serde_json::to_string(&normalized_langs)?;
     let provider_path = provider.ensure_files()?;
-    let provider_path_str = provider_path
-        .to_str()
-        .ok_or_else(|| "Invalid provider path".to_owned())?;
+    let path_str = provider_path.to_str()
+        .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;
 
-    exec_nix_develop(provider_path_str, env_ahsh_languages);
+    // 3. Execute
+    exec_nix_develop(path_str, env_json);
+
     Ok(())
 }
 
-fn ensure_languages(
-    langs: Vec<String>,
-    supported_langs: Vec<String>,
-) -> Result<Vec<String>, String> {
-    let supported: HashSet<String> = supported_langs.into_iter().collect();
-
-    let invalids: Vec<String> = langs
-        .iter()
-        .filter(|&l| !supported.contains(l))
+fn validate_languages(langs: &[String], supported: &[String]) -> Result<()> {
+    let supported_set: HashSet<_> = supported.iter().collect();
+    let invalids: Vec<_> = langs.iter()
+        .filter(|l| !supported_set.contains(l))
         .cloned()
         .collect();
 
     if invalids.is_empty() {
-        Ok(langs)
+        Ok(())
     } else {
-        Err(format!("Languages {:?} are not supported", invalids))
+        Err(AhError::UnsupportedLanguages(invalids))
     }
 }

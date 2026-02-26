@@ -1,42 +1,37 @@
-use crate::providers::ShellProvider;
-use serde_json::from_str;
-use std::collections::HashMap;
+use crate::error::Result;
+use crate::providers::{ProviderAssetManager, ShellProvider};
+use std::path::PathBuf;
 
-pub struct DevTemplatesProvider;
+pub struct DevTemplatesProvider {
+    manager: ProviderAssetManager,
+}
+
+impl Default for DevTemplatesProvider {
+    fn default() -> Self {
+        Self {
+            manager: ProviderAssetManager::new(
+                "dev-templates",
+                include_str!("../assets/providers/dev-templates/flake.nix"),
+                include_str!("../assets/providers/dev-templates/supported_langs.json"),
+            ),
+        }
+    }
+}
 
 impl ShellProvider for DevTemplatesProvider {
     fn name(&self) -> &str {
         "dev-templates"
     }
 
-    fn ensure_files(&self) -> Result<std::path::PathBuf, String> {
-        let dir = crate::env::get_ah_data_dir()
-            .join("providers")
-            .join("dev-templates");
-        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create provider dir: {e}"))?;
-
-        let flake_path = dir.join("flake.nix");
-        let flake_content = include_str!("../assets/providers/dev-templates/flake.nix");
-
-        std::fs::write(flake_path, flake_content)
-            .map_err(|e| format!("Failed to write flake.nix: {e}"))?;
-
-        Ok(dir)
+    fn ensure_files(&self) -> Result<PathBuf> {
+        self.manager.ensure_files()
     }
 
-    fn get_supported_languages(&self) -> Vec<String> {
-        let json_str = include_str!("../assets/providers/dev-templates/supported_langs.json");
-        from_str(json_str).expect("Internal error")
+    fn get_supported_languages(&self) -> Result<Vec<String>> {
+        self.manager.get_supported_languages()
     }
 
     fn normalize_language(&self, lang: &str) -> String {
-        let aliases: HashMap<String, HashMap<String, String>> =
-            from_str(include_str!("../assets/language_aliases.json")).expect("Internal error");
-
-        aliases
-            .get(lang)
-            .and_then(|m| m.get("dev-templates"))
-            .cloned()
-            .unwrap_or_else(|| lang.to_owned())
+        self.manager.normalize_language(lang)
     }
 }
