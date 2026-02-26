@@ -1,10 +1,10 @@
-use std::collections::HashSet;
-use crate::error::{AhError, Result};
-use clap::{Parser, ValueEnum};
 use crate::command::exec_nix_develop;
+use crate::error::{AhError, Result};
+use crate::providers::ShellProvider;
 use crate::providers::dev_templates::DevTemplatesProvider;
 use crate::providers::devenv::DevenvProvider;
-use crate::providers::ShellProvider;
+use clap::{Parser, ValueEnum};
+use std::collections::HashSet;
 
 #[derive(ValueEnum, Clone, Debug)]
 pub enum ProviderType {
@@ -26,7 +26,7 @@ impl ProviderType {
 pub struct Cli {
     pub language: Vec<String>,
 
-    #[arg(long, value_enum, default_value = "devenv")]
+    #[arg(long, value_enum, default_value = "dev-templates")]
     pub provider: ProviderType,
 }
 
@@ -35,7 +35,9 @@ pub fn languages() -> Result<()> {
     let provider = cli.provider.into_shell_provider();
 
     // 1. Normalize and validate languages
-    let normalized_langs = cli.language.iter()
+    let normalized_langs = cli
+        .language
+        .iter()
         .map(|l| provider.normalize_language(l))
         .collect::<Vec<_>>();
 
@@ -45,7 +47,8 @@ pub fn languages() -> Result<()> {
     // 2. Prepare environment resources
     let env_json = serde_json::to_string(&normalized_langs)?;
     let provider_path = provider.ensure_files()?;
-    let path_str = provider_path.to_str()
+    let path_str = provider_path
+        .to_str()
         .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;
 
     // 3. Execute
@@ -56,7 +59,8 @@ pub fn languages() -> Result<()> {
 
 fn validate_languages(langs: &[String], supported: &[String]) -> Result<()> {
     let supported_set: HashSet<_> = supported.iter().collect();
-    let invalids: Vec<_> = langs.iter()
+    let invalids: Vec<_> = langs
+        .iter()
         .filter(|l| !supported_set.contains(l))
         .cloned()
         .collect();
