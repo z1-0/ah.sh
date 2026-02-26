@@ -1,0 +1,46 @@
+name: Update Supported Languages
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Every Monday at 00:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Language Lists
+        run: |
+          mkdir -p providers/devenv providers/dev-templates
+
+          # Fetch devenv languages
+          curl -s "https://api.github.com/repos/cachix/devenv/contents/src/modules/languages" | \
+          jq -r '[.[] | select(.type == "file" and (.name | endswith(".nix"))) | .name | sub("\\.nix$"; "")] | sort' \
+          > providers/devenv/supported_langs.json
+
+          # Fetch dev-templates languages
+          curl -s "https://api.github.com/repos/the-nix-way/dev-templates/contents" | \
+          jq -r '[.[] | select(.type == "dir" and .name != ".github" and .name != ".git") | .name] | sort' \
+          > providers/dev-templates/supported_langs.json
+
+      - name: Report Changes
+        run: |
+          echo "Devenv Languages Size: $(stat -c %s providers/devenv/supported_langs.json) bytes"
+          echo "Dev-templates Languages Size: $(stat -c %s providers/dev-templates/supported_langs.json) bytes"
+          git diff --stat
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update supported languages list"
+          title: "chore: update supported languages list"
+          body: |
+            This is an automated PR to update the static language lists for all providers.
+            - `providers/devenv/supported_langs.json`
+            - `providers/dev-templates/supported_langs.json`
+          branch: update-supported-langs
+          base: main
+          delete-branch: true
