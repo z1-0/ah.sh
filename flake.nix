@@ -1,21 +1,19 @@
 {
   inputs = {
-    nixpkgs.url = "github:cachix/devenv-nixpkgs/rolling";
-    devenv.url = "github:cachix/devenv";
-  };
-
-  nixConfig = {
-    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= cachix.cachix.org-1:eWNHQldwUO7G2VkjpnjDbWwy4KQ/HNxht7H4SSoMckM=";
-    extra-substituters = "https://devenv.cachix.org https://cachix.cachix.org";
+    nixpkgs.url = "https://flakehub.com/f/DeterminateSystems/nixpkgs-weekly/0.1";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     {
       self,
       nixpkgs,
-      devenv,
+      rust-overlay,
       ...
-    }@inputs:
+    }:
     let
       inherit (nixpkgs) lib;
 
@@ -31,13 +29,14 @@
         lib.genAttrs allSystems (
           system:
           f {
-            pkgs = import nixpkgs { inherit system; };
+            pkgs = import nixpkgs {
+              inherit system;
+              overlays = [ rust-overlay.overlays.default ];
+            };
           }
         );
 
-      ahshLanguages = builtins.fromJSON (builtins.getEnv "AHSH_LANGUAGES");
-      ahshPackages = builtins.fromJSON (builtins.getEnv "AHSH_PACKAGES");
-      cargoToml = builtins.fromTOML (builtins.readFile (self + /Cargo.toml));
+      cargoToml = fromTOML (builtins.readFile (self + /Cargo.toml));
     in
     {
       apps = forAllSystems (
@@ -58,8 +57,7 @@
             version = cargoToml.package.version;
             src = ./.;
             cargoLock.lockFile = ./Cargo.lock;
-            AHSH_NIXPKGS_SRC = builtins.toString nixpkgs;
-            AHSH_DEVENV_SRC = builtins.toString devenv;
+            AHSH_PROVIDERS_DIR = builtins.toString ./providers;
           };
           default = self.packages.${pkgs.stdenv.hostPlatform.system}.ah;
         }
@@ -68,34 +66,17 @@
       devShells = forAllSystems (
         { pkgs }:
         {
-          default = devenv.lib.mkShell {
-            inherit inputs pkgs;
-            modules = [
-              {
-                languages.nix.enable = true;
-                languages.rust.enable = true;
-                packages = [
-                  pkgs.nixfmt
-                  pkgs.rustfmt
-                  pkgs.prettier
-                ];
-              }
-            ];
-          };
-
-          ah = devenv.lib.mkShell {
-            inherit inputs pkgs;
-            modules = [
-              (lib.optionalAttrs (ahshLanguages != [ ]) {
-                languages = lib.genAttrs ahshLanguages (_: {
-                  enable = true;
-                });
-              })
-              (lib.optionalAttrs (ahshPackages != [ ]) {
-                packages = builtins.map (package: pkgs.${package}) ahshPackages;
-              })
-            ];
-          };
+          default =
+            with pkgs;
+            mkShellNoCC {
+              packages = [
+                nixd
+                nixfmt
+                statix
+                rust-bin.stable.latest.default
+                rustfmt
+              ];
+            };
         }
       );
     };
