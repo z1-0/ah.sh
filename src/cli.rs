@@ -41,16 +41,10 @@ pub fn languages() -> Result<(), String> {
         }
     };
 
-    let pkgs = match cli.provider {
-        Provider::Devenv => flatten_pkgs(&ensures, query_pkgs_of_supported_langs()),
-        Provider::DevTemplates => vec![],
-    };
-
     let env_ahsh_languages =
         serde_json::to_string(&ensures).expect("Failed to serialize languages");
-    let env_ahsh_packages = serde_json::to_string(&pkgs).expect("Failed to serialize packages");
 
-    exec_nix_develop(&provider_dir, env_ahsh_languages, env_ahsh_packages);
+    exec_nix_develop(&provider_dir, env_ahsh_languages);
     Ok(())
 }
 
@@ -114,18 +108,4 @@ fn ensure_languages(
     } else {
         Err(format!("Languages {:?} are not supported", invalids))
     }
-}
-
-fn query_pkgs_of_supported_langs() -> HashMap<String, Vec<String>> {
-    let json_str = include_str!("./assets/lang_pkgs.json");
-    from_str(json_str).expect("Internal error")
-}
-
-fn flatten_pkgs(ensures: &[String], pkgs: HashMap<String, Vec<String>>) -> Vec<String> {
-    ensures
-        .iter()
-        .filter_map(|x| pkgs.get(x))
-        .flatten()
-        .cloned()
-        .collect()
 }

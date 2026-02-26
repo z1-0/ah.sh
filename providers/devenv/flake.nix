@@ -29,7 +29,6 @@
         f: lib.genAttrs allSystems (system: f { pkgs = import nixpkgs { inherit system; }; });
 
       ahshLanguages = builtins.fromJSON (builtins.getEnv "AHSH_LANGUAGES");
-      ahshPackages = builtins.fromJSON (builtins.getEnv "AHSH_PACKAGES");
     in
     {
       devShells = forAllSystems (
@@ -42,9 +41,6 @@
                 languages = lib.genAttrs ahshLanguages (_: {
                   enable = true;
                 });
-              })
-              (lib.optionalAttrs (ahshPackages != [ ]) {
-                packages = map (package: pkgs.${package}) ahshPackages;
               })
             ];
           };
