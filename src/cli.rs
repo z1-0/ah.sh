@@ -1,4 +1,4 @@
-use crate::command::exec_nix_develop;
+use crate::command::{exec_nix_develop_with_provider, exec_nix_develop_with_session};
 use crate::error::{AhError, Result};
 use crate::providers::ShellProvider;
 use crate::providers::dev_templates::DevTemplatesProvider;
@@ -71,20 +71,9 @@ pub fn run() -> Result<()> {
         } else {
             // Restore session
             let session = sessions::find_session(args)?;
-            let provider_type = match session.provider.as_str() {
-                "devenv" => ProviderType::Devenv,
-                _ => ProviderType::DevTemplates,
-            };
-            let provider = provider_type.into_shell_provider();
-            let provider_path = provider.ensure_files()?;
-            let path_str = provider_path
-                .to_str()
-                .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;
-
-            let env_json = serde_json::to_string(&session.languages)?;
             let profile_path = session.get_profile_path()?;
 
-            exec_nix_develop(path_str, env_json, Some(profile_path));
+            exec_nix_develop_with_session(profile_path);
             return Ok(());
         }
     }
@@ -124,7 +113,7 @@ pub fn run() -> Result<()> {
     let profile_path = session.get_profile_path()?;
 
     // 4. Execute
-    exec_nix_develop(path_str, env_json, Some(profile_path));
+    exec_nix_develop_with_provider(path_str, env_json, profile_path);
 
     Ok(())
 }
