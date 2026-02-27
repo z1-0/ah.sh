@@ -30,7 +30,7 @@ impl ProviderAssetManager {
     }
 
     pub fn ensure_files(&self) -> Result<PathBuf> {
-        let dir = crate::env::get_ah_data_dir()?
+        let dir = crate::paths::get_xdg_data_dir()?
             .join("providers")
             .join(&self.name);
         std::fs::create_dir_all(&dir)?;

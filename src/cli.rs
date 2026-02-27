@@ -30,7 +30,7 @@ pub struct Cli {
     pub provider: ProviderType,
 }
 
-pub fn languages() -> Result<()> {
+pub fn run() -> Result<()> {
     let cli = Cli::parse();
     let provider = cli.provider.into_shell_provider();
 

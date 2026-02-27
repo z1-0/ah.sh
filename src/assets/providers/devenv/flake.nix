@@ -10,11 +10,7 @@
   };
 
   outputs =
-    {
-      nixpkgs,
-      devenv,
-      ...
-    }@inputs:
+    { nixpkgs, devenv, ... }@inputs:
     let
       inherit (nixpkgs) lib;
 
@@ -27,12 +23,13 @@
 
       forAllSystems =
         f: lib.genAttrs allSystems (system: f { pkgs = import nixpkgs { inherit system; }; });
-
-      ahshLanguages = builtins.fromJSON (builtins.getEnv "AHSH_LANGUAGES");
     in
     {
       devShells = forAllSystems (
         { pkgs }:
+        let
+          ahshLanguages = builtins.fromJSON (builtins.getEnv "AHSH_LANGUAGES");
+        in
         {
           default = devenv.lib.mkShell {
             inherit inputs pkgs;

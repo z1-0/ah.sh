@@ -14,8 +14,6 @@
       forAllSystems =
         f: nixpkgs.lib.genAttrs allSystems (system: f { pkgs = import nixpkgs { inherit system; }; });
 
-      ahshLanguages = builtins.fromJSON (builtins.getEnv "AHSH_LANGUAGES");
-
       getTemplateShell =
         system: lang:
         (builtins.getFlake "github:the-nix-way/dev-templates?dir=${lang}").devShells.${system}.default;
@@ -24,13 +22,11 @@
       devShells = forAllSystems (
         { pkgs }:
         let
-          system = pkgs.stdenv.hostPlatform.system;
-          langShells = map (getTemplateShell system) ahshLanguages;
+          ahshLanguages = builtins.fromJSON (builtins.getEnv "AHSH_LANGUAGES");
+          inputsFrom = map (getTemplateShell pkgs.stdenv.hostPlatform.system) ahshLanguages;
         in
         {
-          default = pkgs.mkShell {
-            inputsFrom = langShells;
-          };
+          default = pkgs.mkShellNoCC { inherit inputsFrom; };
         }
       );
     };
