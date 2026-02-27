@@ -3,3 +3,4 @@ pub mod command;
 pub mod error;
 pub mod paths;
 pub mod providers;
+pub mod sessions;

@@ -72,6 +72,7 @@
 
             packages = [
               pkgs.nixd
+              pkgs.cargo-edit
               pkgs.rust-bin.stable.latest.complete
             ]
             ++ (lib.attrValues config.treefmt.build.programs)
@@ -82,10 +83,6 @@
             treefmt = {
               enable = true;
               package = config.treefmt.build.wrapper;
-            };
-            clippy = {
-              enable = true;
-              package = pkgs.rust-bin.stable.latest.clippy;
             };
           }
           //
@@ -100,9 +97,7 @@
                 "flake-checker"
                 "markdownlint"
                 "mixed-line-endings"
-                "statix"
                 "trim-trailing-whitespace"
-                "typos"
               ]
               (_: {
                 enable = true;

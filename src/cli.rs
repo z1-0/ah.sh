@@ -3,7 +3,8 @@ use crate::error::{AhError, Result};
 use crate::providers::ShellProvider;
 use crate::providers::dev_templates::DevTemplatesProvider;
 use crate::providers::devenv::DevenvProvider;
-use clap::{Parser, ValueEnum};
+use crate::sessions::{self, Session};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::collections::HashSet;
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -28,10 +29,66 @@ pub struct Cli {
 
     #[arg(long, value_enum, default_value = "dev-templates")]
     pub provider: ProviderType,
+
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Manage development sessions
+    Session {
+        /// ID or index (1, 2, ...) of the session to restore, or 'list' to show sessions
+        #[arg(default_value = "list")]
+        args: String,
+    },
 }
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
+
+    if let Some(Commands::Session { args }) = &cli.command {
+        if args == "list" {
+            let list = sessions::list_sessions()?;
+            if list.is_empty() {
+                println!("No sessions found.");
+                return Ok(());
+            }
+            println!(
+                "{:<5} {:<10} {:<15} {}",
+                "ID", "Hash", "Provider", "Languages"
+            );
+            for (i, s) in list.iter().enumerate() {
+                println!(
+                    "{:<5} {:<10} {:<15} {}",
+                    i + 1,
+                    s.id,
+                    s.provider,
+                    s.languages.join(", ")
+                );
+            }
+            return Ok(());
+        } else {
+            // Restore session
+            let session = sessions::find_session(args)?;
+            let provider_type = match session.provider.as_str() {
+                "devenv" => ProviderType::Devenv,
+                _ => ProviderType::DevTemplates,
+            };
+            let provider = provider_type.into_shell_provider();
+            let provider_path = provider.ensure_files()?;
+            let path_str = provider_path
+                .to_str()
+                .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;
+
+            let env_json = serde_json::to_string(&session.languages)?;
+            let profile_path = session.get_profile_path()?;
+
+            exec_nix_develop(path_str, env_json, Some(profile_path));
+            return Ok(());
+        }
+    }
+
     let provider = cli.provider.into_shell_provider();
 
     // 1. Normalize and validate languages
@@ -40,6 +97,12 @@ pub fn run() -> Result<()> {
         .iter()
         .map(|l| provider.normalize_language(l))
         .collect::<Vec<_>>();
+
+    if normalized_langs.is_empty() {
+        return Err(AhError::Generic(
+            "No languages specified. Use 'ah <langs>' or 'ah session list'".to_string(),
+        ));
+    }
 
     let supported_langs = provider.get_supported_languages()?;
     validate_languages(&normalized_langs, &supported_langs)?;
@@ -51,8 +114,17 @@ pub fn run() -> Result<()> {
         .to_str()
         .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;
 
-    // 3. Execute
-    exec_nix_develop(path_str, env_json);
+    // 3. Session Management
+    let flake_path = provider_path.join("flake.nix");
+    let flake_content = std::fs::read_to_string(flake_path)?;
+    let session_id = sessions::generate_id(provider.name(), &normalized_langs, &flake_content);
+    let session = Session::new(session_id, normalized_langs, provider.name().to_string());
+    sessions::save_session(&session)?;
+
+    let profile_path = session.get_profile_path()?;
+
+    // 4. Execute
+    exec_nix_develop(path_str, env_json, Some(profile_path));
 
     Ok(())
 }
