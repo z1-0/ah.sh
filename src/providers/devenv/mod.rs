@@ -1,22 +1,14 @@
 pub mod flake_generator;
 
 use crate::error::Result;
-use crate::providers::{ProviderAssetManager, ShellProvider};
+use crate::providers::ShellProvider;
 use std::path::Path;
 
-pub struct DevenvProvider {
-    manager: ProviderAssetManager,
-}
+pub struct DevenvProvider;
 
 impl Default for DevenvProvider {
     fn default() -> Self {
-        Self {
-            manager: ProviderAssetManager::new(
-                "devenv",
-                "", // Now dynamically generated in ensure_files
-                include_str!("../../assets/providers/devenv/supported_langs.json"),
-            ),
-        }
+        Self
     }
 }
 
@@ -35,10 +27,8 @@ impl ShellProvider for DevenvProvider {
     }
 
     fn get_supported_languages(&self) -> Result<Vec<String>> {
-        self.manager.get_supported_languages()
-    }
-
-    fn normalize_language(&self, lang: &str) -> String {
-        self.manager.normalize_language(lang)
+        let langs_json = include_str!("../../assets/providers/devenv/supported_langs.json");
+        let langs = serde_json::from_str(langs_json)?;
+        Ok(langs)
     }
 }
