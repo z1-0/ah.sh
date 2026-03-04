@@ -1,3 +1,5 @@
+pub mod flake_generator;
+
 use crate::error::Result;
 use crate::providers::{ProviderAssetManager, ShellProvider};
 use std::path::PathBuf;
@@ -11,8 +13,8 @@ impl Default for DevenvProvider {
         Self {
             manager: ProviderAssetManager::new(
                 "devenv",
-                include_str!("../assets/providers/devenv/flake.nix"),
-                include_str!("../assets/providers/devenv/supported_langs.json"),
+                "", // Now dynamically generated in ensure_files
+                include_str!("../../assets/providers/devenv/supported_langs.json"),
             ),
         }
     }
@@ -24,7 +26,17 @@ impl ShellProvider for DevenvProvider {
     }
 
     fn ensure_files(&self, languages: &[String]) -> Result<PathBuf> {
-        self.manager.ensure_files(languages)
+        let dir = crate::paths::get_xdg_dir(crate::paths::XdgDir::Data)?
+            .join("providers")
+            .join(self.name());
+        std::fs::create_dir_all(&dir)?;
+
+        let flake_content = self::flake_generator::generate_devenv_flake(languages);
+
+        let flake_path = dir.join("flake.nix");
+        std::fs::write(flake_path, flake_content)?;
+
+        Ok(dir)
     }
 
     fn get_supported_languages(&self) -> Result<Vec<String>> {

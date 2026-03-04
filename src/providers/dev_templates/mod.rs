@@ -15,7 +15,7 @@ impl Default for DevTemplatesProvider {
         Self {
             manager: ProviderAssetManager::new(
                 "dev-templates",
-                include_str!("../../assets/providers/dev-templates/flake.nix"),
+                "", // Now dynamically generated in ensure_files
                 include_str!("../../assets/providers/dev-templates/supported_langs.json"),
             ),
         }
