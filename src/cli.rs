@@ -98,7 +98,7 @@ pub fn run() -> Result<()> {
 
     // 2. Prepare environment resources
     let env_json = serde_json::to_string(&normalized_langs)?;
-    let provider_path = provider.ensure_files()?;
+    let provider_path = provider.ensure_files(&normalized_langs)?;
     let path_str = provider_path
         .to_str()
         .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;

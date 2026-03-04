@@ -23,8 +23,8 @@ impl ShellProvider for DevenvProvider {
         "devenv"
     }
 
-    fn ensure_files(&self) -> Result<PathBuf> {
-        self.manager.ensure_files()
+    fn ensure_files(&self, languages: &[String]) -> Result<PathBuf> {
+        self.manager.ensure_files(languages)
     }
 
     fn get_supported_languages(&self) -> Result<Vec<String>> {

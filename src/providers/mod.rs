@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 pub trait ShellProvider {
     fn name(&self) -> &str;
-    fn ensure_files(&self) -> Result<PathBuf>;
+    fn ensure_files(&self, languages: &[String]) -> Result<PathBuf>;
     fn get_supported_languages(&self) -> Result<Vec<String>>;
     fn normalize_language(&self, lang: &str) -> String;
 }
@@ -29,7 +29,7 @@ impl ProviderAssetManager {
         }
     }
 
-    pub fn ensure_files(&self) -> Result<PathBuf> {
+    pub fn ensure_files(&self, _languages: &[String]) -> Result<PathBuf> {
         let dir = crate::paths::get_xdg_dir(crate::paths::XdgDir::Data)?
             .join("providers")
             .join(&self.name);
