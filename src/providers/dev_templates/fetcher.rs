@@ -1,7 +1,6 @@
 use crate::error::{AhError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
 use std::fs;
-use std::path::PathBuf;
 
 pub fn fetch_flake_source(lang: &str) -> Result<String> {
     // Check cache first

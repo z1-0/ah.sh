@@ -40,11 +40,11 @@ pub fn get_session_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
-pub fn generate_id(provider: &str, languages: &[String], template: &str) -> String {
+pub fn generate_id(provider: &str, languages: &[String]) -> String {
     let mut sorted_langs = languages.to_vec();
     sorted_langs.sort();
 
-    let input = format!("{}:{}:{}", provider, sorted_langs.join(","), template);
+    let input = format!("{}:{}", provider, sorted_langs.join(","));
     let hash = blake3::hash(input.as_bytes());
     hash.to_hex().to_string()[..8].to_string()
 }

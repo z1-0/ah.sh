@@ -4,11 +4,11 @@ pub mod devenv;
 use crate::error::Result;
 use serde_json::from_str;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 
 pub trait ShellProvider {
     fn name(&self) -> &str;
-    fn ensure_files(&self, languages: &[String]) -> Result<PathBuf>;
+    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()>;
     fn get_supported_languages(&self) -> Result<Vec<String>>;
     fn normalize_language(&self, lang: &str) -> String;
 }
@@ -16,29 +16,15 @@ pub trait ShellProvider {
 /// Helper for common provider operations to reduce code duplication
 pub struct ProviderAssetManager {
     name: String,
-    flake_content: &'static str,
     langs_json: &'static str,
 }
 
 impl ProviderAssetManager {
-    pub fn new(name: &str, flake: &'static str, langs: &'static str) -> Self {
+    pub fn new(name: &str, _flake: &'static str, langs: &'static str) -> Self {
         Self {
             name: name.to_string(),
-            flake_content: flake,
             langs_json: langs,
         }
-    }
-
-    pub fn ensure_files(&self, _languages: &[String]) -> Result<PathBuf> {
-        let dir = crate::paths::get_xdg_dir(crate::paths::XdgDir::Data)?
-            .join("providers")
-            .join(&self.name);
-        std::fs::create_dir_all(&dir)?;
-
-        let flake_path = dir.join("flake.nix");
-        std::fs::write(flake_path, self.flake_content)?;
-
-        Ok(dir)
     }
 
     pub fn get_supported_languages(&self) -> Result<Vec<String>> {

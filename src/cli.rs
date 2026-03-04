@@ -96,24 +96,25 @@ pub fn run() -> Result<()> {
     let supported_langs = provider.get_supported_languages()?;
     validate_languages(&normalized_langs, &supported_langs)?;
 
-    // 2. Prepare environment resources
-    let env_json = serde_json::to_string(&normalized_langs)?;
-    let provider_path = provider.ensure_files(&normalized_langs)?;
-    let path_str = provider_path
-        .to_str()
-        .ok_or_else(|| AhError::InvalidPath(provider_path.clone()))?;
+    // 2. Prepare Session and Directory
+    let session_id = sessions::generate_id(provider.name(), &normalized_langs);
+    let session_dir = sessions::get_session_dir()?.join(&session_id);
+    std::fs::create_dir_all(&session_dir)?;
 
-    // 3. Session Management
-    let flake_path = provider_path.join("flake.nix");
-    let flake_content = std::fs::read_to_string(flake_path)?;
-    let session_id = sessions::generate_id(provider.name(), &normalized_langs, &flake_content);
+    // 3. Generate Flake in Session Directory
+    provider.ensure_files(&normalized_langs, &session_dir)?;
+    let path_str = session_dir
+        .to_str()
+        .ok_or_else(|| AhError::InvalidPath(session_dir.clone()))?;
+
+    // 4. Session Metadata Management
     let session = Session::new(session_id, normalized_langs, provider.name().to_string());
     sessions::save_session(&session)?;
 
     let profile_path = session.get_profile_path()?;
 
-    // 4. Execute
-    exec_nix_develop_with_provider(path_str, env_json, profile_path);
+    // 5. Execute
+    exec_nix_develop_with_provider(path_str, profile_path);
 
     Ok(())
 }
