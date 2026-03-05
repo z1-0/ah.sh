@@ -82,7 +82,6 @@ pub fn generate_dev_templates_flake(
           languages = [
             {}
           ];
-          # Pre-evaluate all shells to avoid redundant getFlake calls
           shells = nixpkgs.lib.genAttrs languages (lang: getTemplateShell pkgs.stdenv.hostPlatform.system lang);
           inputsFrom = builtins.attrValues shells;
         in

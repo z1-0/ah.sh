@@ -71,9 +71,9 @@ pub fn run() -> Result<()> {
         } else {
             // Restore session
             let session = sessions::find_session(args)?;
-            let profile_path = session.get_profile_path()?;
+            let session_dir = sessions::get_session_dir()?.join(&session.id);
 
-            exec_nix_develop_with_session(profile_path);
+            exec_nix_develop_with_session(session_dir);
             return Ok(());
         }
     }
@@ -103,18 +103,12 @@ pub fn run() -> Result<()> {
 
     // 3. Generate Flake in Session Directory
     provider.ensure_files(&normalized_langs, &session_dir)?;
-    let path_str = session_dir
-        .to_str()
-        .ok_or_else(|| AhError::InvalidPath(session_dir.clone()))?;
-
     // 4. Session Metadata Management
     let session = Session::new(session_id, normalized_langs, provider.name().to_string());
     sessions::save_session(&session)?;
 
-    let profile_path = session.get_profile_path()?;
-
     // 5. Execute
-    exec_nix_develop_with_provider(path_str, profile_path);
+    exec_nix_develop_with_provider(session_dir);
 
     Ok(())
 }

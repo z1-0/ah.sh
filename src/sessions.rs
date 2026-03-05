@@ -26,10 +26,6 @@ impl Session {
             created_at,
         }
     }
-
-    pub fn get_profile_path(&self) -> Result<PathBuf> {
-        Ok(get_session_dir()?.join(&self.id).join("nix-profile"))
-    }
 }
 
 pub fn get_session_dir() -> Result<PathBuf> {
