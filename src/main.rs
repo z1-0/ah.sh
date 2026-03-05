@@ -1,8 +1,6 @@
-use ah::cli::run;
-
 fn main() {
-    run().unwrap_or_else(|e| {
-        eprintln!("{e}");
+    if let Err(e) = ah::cli::run() {
+        eprintln!("\x1b[1;31merror:\x1b[0m {e}");
         std::process::exit(1);
-    });
+    }
 }
