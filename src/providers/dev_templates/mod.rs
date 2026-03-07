@@ -12,6 +12,7 @@ use std::thread;
 pub struct DevTemplatesProvider;
 
 static SUPPORTED_LANGUAGES: OnceLock<std::result::Result<Vec<String>, String>> = OnceLock::new();
+const MAX_FETCH_CONCURRENCY: usize = 8;
 
 impl ShellProvider for DevTemplatesProvider {
     fn name(&self) -> &str {
@@ -25,37 +26,44 @@ impl ShellProvider for DevTemplatesProvider {
             .filter(|lang| seen.insert((*lang).clone()))
             .cloned()
             .collect();
+        let fetch_languages: Vec<String> = deduped_languages
+            .iter()
+            .filter(|lang| *lang != "empty")
+            .cloned()
+            .collect();
+        let fetch_concurrency = thread::available_parallelism()
+            .map(usize::from)
+            .unwrap_or(4)
+            .clamp(1, MAX_FETCH_CONCURRENCY);
 
         let mut parsed_attrs = Vec::new();
-        let mut fetch_tasks = Vec::new();
 
-        for lang in &deduped_languages {
-            // Check if it's the 'empty' template which basically does nothing
-            if lang == "empty" {
-                continue;
+        for chunk in fetch_languages.chunks(fetch_concurrency) {
+            let mut fetch_tasks = Vec::with_capacity(chunk.len());
+
+            for lang in chunk {
+                let lang = lang.clone();
+                let task = thread::spawn(move || {
+                    let result = self::fetcher::fetch_flake_source(&lang)
+                        .map(|source| self::nix_parser::parse_flake_shell(&source));
+                    (lang, result)
+                });
+                fetch_tasks.push(task);
             }
 
-            let lang = lang.clone();
-            let task = thread::spawn(move || {
-                let result = self::fetcher::fetch_flake_source(&lang)
-                    .map(|source| self::nix_parser::parse_flake_shell(&source));
-                (lang, result)
-            });
-            fetch_tasks.push(task);
-        }
-
-        for task in fetch_tasks {
-            match task.join() {
-                Ok((lang, Ok(attrs))) => parsed_attrs.push((lang, attrs)),
-                Ok((lang, Err(e))) => {
-                    eprintln!(
-                        "Warning: Failed to fetch flake source for '{}': {}",
-                        lang, e
-                    );
-                    // Just continue, inputsFrom will still work for packages/shellHook
-                }
-                Err(_) => {
-                    eprintln!("Warning: Flake fetch task panicked unexpectedly");
+            for task in fetch_tasks {
+                match task.join() {
+                    Ok((lang, Ok(attrs))) => parsed_attrs.push((lang, attrs)),
+                    Ok((lang, Err(e))) => {
+                        eprintln!(
+                            "Warning: Failed to fetch flake source for '{}': {}",
+                            lang, e
+                        );
+                        // Just continue, inputsFrom will still work for packages/shellHook
+                    }
+                    Err(_) => {
+                        eprintln!("Warning: Flake fetch task panicked unexpectedly");
+                    }
                 }
             }
         }

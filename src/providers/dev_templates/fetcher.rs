@@ -48,8 +48,14 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
         .read_to_string()
         .map_err(|e| AhError::Provider(format!("Failed to read response body: {}", e)))?;
 
-    // Save to cache
-    fs::write(&cache_file, &body)?;
+    // Save to cache (best effort)
+    if let Err(e) = fs::write(&cache_file, &body) {
+        eprintln!(
+            "Warning: Failed to write cache for '{}': {}",
+            cache_file.display(),
+            e
+        );
+    }
 
     Ok(body)
 }
