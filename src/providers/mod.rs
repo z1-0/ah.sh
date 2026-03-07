@@ -3,12 +3,16 @@ use clap::ValueEnum;
 use serde_json::from_str;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::OnceLock;
 
 use self::dev_templates::DevTemplatesProvider;
 use self::devenv::DevenvProvider;
 
 pub mod dev_templates;
 pub mod devenv;
+
+type LanguageAliases = HashMap<String, HashMap<String, String>>;
+static LANGUAGE_ALIASES: OnceLock<LanguageAliases> = OnceLock::new();
 
 #[derive(ValueEnum, Clone, Debug)]
 pub enum ProviderType {
@@ -19,8 +23,8 @@ pub enum ProviderType {
 impl ProviderType {
     pub fn into_shell_provider(self) -> Box<dyn ShellProvider> {
         match self {
-            ProviderType::Devenv => Box::new(DevenvProvider::default()),
-            ProviderType::DevTemplates => Box::new(DevTemplatesProvider::default()),
+            ProviderType::Devenv => Box::new(DevenvProvider),
+            ProviderType::DevTemplates => Box::new(DevTemplatesProvider),
         }
     }
 }
@@ -35,9 +39,10 @@ pub trait ShellProvider {
 }
 
 pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> String {
-    let aliases_json = include_str!("../assets/language_aliases.json");
-    let aliases: HashMap<String, HashMap<String, String>> =
-        from_str(aliases_json).unwrap_or_default();
+    let aliases = LANGUAGE_ALIASES.get_or_init(|| {
+        let aliases_json = include_str!("../assets/language_aliases.json");
+        from_str(aliases_json).unwrap_or_default()
+    });
 
     aliases
         .get(lang)

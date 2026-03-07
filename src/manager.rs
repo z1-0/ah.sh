@@ -13,10 +13,7 @@ impl Manager {
             println!("No sessions found.");
             return Ok(());
         }
-        println!(
-            "{:<5} {:<10} {:<15} {}",
-            "ID", "Hash", "Provider", "Languages"
-        );
+        println!("{:<5} {:<10} {:<15} Languages", "ID", "Hash", "Provider");
         for (i, s) in list.iter().enumerate() {
             println!(
                 "{:<5} {:<10} {:<15} {}",

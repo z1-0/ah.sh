@@ -83,10 +83,11 @@ pub fn find_session(input: &str) -> Result<Session> {
     let sessions = list_sessions()?;
 
     // Try numeric index (1-based)
-    if let Ok(idx) = input.parse::<usize>() {
-        if idx > 0 && idx <= sessions.len() {
-            return Ok(sessions[idx - 1].clone());
-        }
+    if let Ok(idx) = input.parse::<usize>()
+        && idx > 0
+        && idx <= sessions.len()
+    {
+        return Ok(sessions[idx - 1].clone());
     }
 
     // Try hash prefix

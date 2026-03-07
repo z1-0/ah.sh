@@ -18,13 +18,12 @@ pub fn parse_flake_shell(source: &str) -> ShellAttrs {
 
     // Traverse the AST to find `pkgs.mkShell` or `pkgs.mkShellNoCC` calls
     for node in root.syntax().descendants() {
-        if let Some(apply) = Apply::cast(node.clone()) {
-            if is_mk_shell_call(&apply) {
-                if let Some(Expr::AttrSet(attr_set)) = apply.argument() {
-                    extract_attributes(&attr_set, &mut shell_attrs);
-                    break; // Just need the first mkShell call in the flake (the default one)
-                }
-            }
+        if let Some(apply) = Apply::cast(node.clone())
+            && is_mk_shell_call(&apply)
+            && let Some(Expr::AttrSet(attr_set)) = apply.argument()
+        {
+            extract_attributes(&attr_set, &mut shell_attrs);
+            break; // Just need the first mkShell call in the flake (the default one)
         }
     }
 
@@ -65,14 +64,13 @@ fn extract_attributes(attr_set: &AttrSet, shell_attrs: &mut ShellAttrs) {
                 "env" => {
                     if let Expr::AttrSet(inner_set) = value {
                         for inner_node in inner_set.syntax().children() {
-                            if let Some(inner_attr) = AttrpathValue::cast(inner_node) {
-                                if let (Some(k), Some(v)) =
+                            if let Some(inner_attr) = AttrpathValue::cast(inner_node)
+                                && let (Some(k), Some(v)) =
                                     (inner_attr.attrpath(), inner_attr.value())
-                                {
-                                    shell_attrs
-                                        .env
-                                        .push((k.to_string(), v.syntax().text().to_string()));
-                                }
+                            {
+                                shell_attrs
+                                    .env
+                                    .push((k.to_string(), v.syntax().text().to_string()));
                             }
                         }
                     } else {

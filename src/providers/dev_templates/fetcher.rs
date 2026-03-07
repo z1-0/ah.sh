@@ -2,6 +2,8 @@ use crate::error::{AhError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
 use std::fs;
 
+const CACHE_TTL_SECS: u64 = 24 * 60 * 60;
+
 pub fn fetch_flake_source(lang: &str) -> Result<String> {
     // Check cache first
     let cache_dir = get_xdg_dir(XdgDir::Cache)?.join("dev-templates-source");
@@ -14,16 +16,13 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
     // For simplicity, we just fetch it every time in development, but in a real
     // app we might want to cache it based on ETag or a TTL.
     // We'll cache it for 24 hours.
-    if cache_file.exists() {
-        if let Ok(metadata) = fs::metadata(&cache_file) {
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(elapsed) = modified.elapsed() {
-                    if elapsed.as_secs() < 24 * 60 * 60 {
-                        return Ok(fs::read_to_string(&cache_file)?);
-                    }
-                }
-            }
-        }
+    if cache_file.exists()
+        && let Ok(metadata) = fs::metadata(&cache_file)
+        && let Ok(modified) = metadata.modified()
+        && let Ok(elapsed) = modified.elapsed()
+        && elapsed.as_secs() < CACHE_TTL_SECS
+    {
+        return Ok(fs::read_to_string(&cache_file)?);
     }
 
     // Fetch from GitHub
