@@ -37,10 +37,13 @@ impl Manager {
         let provider = provider_type.into_shell_provider();
 
         // 1. Normalize and validate languages
-        let normalized_langs = languages
+        let mut normalized_langs = languages
             .iter()
             .map(|l| provider.normalize_language(l))
             .collect::<Vec<_>>();
+
+        let mut seen = HashSet::new();
+        normalized_langs.retain(|lang| seen.insert(lang.clone()));
 
         if normalized_langs.is_empty() {
             return Err(AhError::Generic(
