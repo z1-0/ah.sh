@@ -1,6 +1,7 @@
 use crate::error::{AhError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
 use std::fs;
+use std::path::Path;
 
 const CACHE_TTL_SECS: u64 = 24 * 60 * 60;
 
@@ -49,13 +50,55 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
         .map_err(|e| AhError::Provider(format!("Failed to read response body: {}", e)))?;
 
     // Save to cache (best effort)
-    if let Err(e) = fs::write(&cache_file, &body) {
+    write_cache_best_effort(&cache_file, &body);
+
+    Ok(body)
+}
+
+fn write_cache_best_effort(cache_file: &Path, body: &str) {
+    if let Err(e) = fs::write(cache_file, body) {
         eprintln!(
             "Warning: Failed to write cache for '{}': {}",
             cache_file.display(),
             e
         );
     }
+}
 
-    Ok(body)
+#[cfg(test)]
+mod tests {
+    use super::write_cache_best_effort;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_test_path(prefix: &str) -> std::path::PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
+    }
+
+    #[test]
+    fn cache_write_best_effort_succeeds_when_path_is_writable() {
+        let cache_file = unique_test_path("ah-cache-write-ok");
+
+        write_cache_best_effort(&cache_file, "hello");
+
+        let content = fs::read_to_string(&cache_file).expect("cache file should be written");
+        assert_eq!(content, "hello");
+
+        let _ = fs::remove_file(&cache_file);
+    }
+
+    #[test]
+    fn cache_write_best_effort_ignores_write_failures() {
+        let dir_path = unique_test_path("ah-cache-write-fail");
+        fs::create_dir_all(&dir_path).expect("test directory should be created");
+
+        write_cache_best_effort(&dir_path, "hello");
+
+        assert!(dir_path.is_dir());
+        let _ = fs::remove_dir_all(&dir_path);
+    }
 }
