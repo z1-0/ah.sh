@@ -27,8 +27,8 @@ impl Manager {
         Ok(())
     }
 
-    pub fn restore_session(target: &SessionSelector) -> Result<()> {
-        let session = sessions::find_session(target)?;
+    pub fn restore_session(selector: &SessionSelector) -> Result<()> {
+        let session = sessions::find_session(selector)?;
         let session_dir = sessions::get_session_dir()?.join(&session.id);
         execute_nix_develop(session_dir, false);
         Ok(())
@@ -54,8 +54,8 @@ impl Manager {
         Ok(())
     }
 
-    pub fn remove_sessions(targets: &[SessionSelector]) -> Result<()> {
-        if targets.is_empty() {
+    pub fn remove_sessions(selectors: &[SessionSelector]) -> Result<()> {
+        if selectors.is_empty() {
             return Err(AppError::Generic(
                 "No session target provided. Use 'ah session remove <index|id>...'".to_string(),
             ));
@@ -71,7 +71,7 @@ impl Manager {
         let mut seen_ids = HashSet::new();
         let mut missing = Vec::new();
 
-        for target in targets {
+        for target in selectors {
             match sessions::resolve_session(&list, target) {
                 Ok(session) => {
                     if seen_ids.insert(session.id.clone()) {

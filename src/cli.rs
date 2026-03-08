@@ -32,7 +32,7 @@ pub enum SessionCommands {
     /// Restore a session by index or id
     Restore {
         /// Session index (1, 2, ...) or id (8 hex chars)
-        target: SessionSelector,
+        selector: SessionSelector,
     },
     /// Remove one or more sessions by index or id
     Remove {
@@ -50,7 +50,7 @@ pub fn run() -> Result<()> {
     if let Some(Commands::Session { action }) = &cli.command {
         match action {
             None | Some(SessionCommands::List) => Manager::list_sessions()?,
-            Some(SessionCommands::Restore { target }) => Manager::restore_session(target)?,
+            Some(SessionCommands::Restore { selector }) => Manager::restore_session(selector)?,
             Some(SessionCommands::Clear) => Manager::clear_sessions()?,
             Some(SessionCommands::Remove { targets }) => Manager::remove_sessions(targets)?,
         }
