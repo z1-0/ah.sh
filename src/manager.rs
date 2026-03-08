@@ -1,8 +1,9 @@
 use crate::error::{AppError, Result};
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
-use crate::sessions::{self, Session};
+use crate::sessions::{self, Session, SessionResolveError, SessionSelector};
 use std::collections::HashSet;
+use std::io::{self, IsTerminal, Write};
 
 pub struct Manager;
 
@@ -13,7 +14,7 @@ impl Manager {
             println!("No sessions found.");
             return Ok(());
         }
-        println!("{:<5} {:<10} {:<15} Languages", "ID", "Hash", "Provider");
+        println!("{:<5} {:<10} {:<15} Languages", "Index", "ID", "Provider");
         for (i, s) in list.iter().enumerate() {
             println!(
                 "{:<5} {:<10} {:<15} {}",
@@ -26,10 +27,81 @@ impl Manager {
         Ok(())
     }
 
-    pub fn restore_session(args: &str) -> Result<()> {
-        let session = sessions::find_session(args)?;
+    pub fn restore_session(target: &SessionSelector) -> Result<()> {
+        let session = sessions::find_session(target)?;
         let session_dir = sessions::get_session_dir()?.join(&session.id);
         execute_nix_develop(session_dir, false);
+        Ok(())
+    }
+
+    pub fn clear_sessions() -> Result<()> {
+        let should_confirm = io::stdin().is_terminal();
+        if should_confirm {
+            print!("This will remove all sessions. Continue? [y/N]: ");
+            io::stdout().flush()?;
+
+            let mut input = String::new();
+            io::stdin().read_line(&mut input)?;
+            let confirmed = matches!(input.trim().to_ascii_lowercase().as_str(), "y" | "yes");
+            if !confirmed {
+                println!("Cancelled.");
+                return Ok(());
+            }
+        }
+
+        let removed = sessions::clear_sessions()?;
+        println!("Cleared {} session(s).", removed);
+        Ok(())
+    }
+
+    pub fn remove_sessions(targets: &[SessionSelector]) -> Result<()> {
+        if targets.is_empty() {
+            return Err(AppError::Generic(
+                "No session target provided. Use 'ah session remove <index|id>...'".to_string(),
+            ));
+        }
+
+        let list = sessions::list_sessions()?;
+        if list.is_empty() {
+            println!("No sessions found.");
+            return Ok(());
+        }
+
+        let mut ids_to_delete = Vec::new();
+        let mut seen_ids = HashSet::new();
+        let mut missing = Vec::new();
+
+        for target in targets {
+            match sessions::resolve_session(&list, target) {
+                Ok(session) => {
+                    if seen_ids.insert(session.id.clone()) {
+                        ids_to_delete.push(session.id);
+                    }
+                }
+                Err(SessionResolveError::NotFound(t)) => missing.push(t),
+            }
+        }
+
+        let mut deleted = Vec::new();
+        for id in ids_to_delete {
+            if sessions::delete_session(&id)? {
+                deleted.push(id);
+            } else {
+                missing.push(id);
+            }
+        }
+
+        if !deleted.is_empty() {
+            println!(
+                "Removed {} session(s): {}",
+                deleted.len(),
+                deleted.join(", ")
+            );
+        }
+        if !missing.is_empty() {
+            println!("Not found: {}", missing.join(", "));
+        }
+
         Ok(())
     }
 

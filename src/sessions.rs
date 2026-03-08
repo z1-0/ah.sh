@@ -1,9 +1,13 @@
 use crate::error::{AppError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::SystemTime;
+
+pub const SESSION_ID_LEN: usize = 8;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Session {
@@ -41,8 +45,8 @@ pub fn generate_id(provider: &str, languages: &[String]) -> String {
     sorted_langs.sort();
 
     let input = format!("{}:{}", provider, sorted_langs.join(","));
-    let hash = blake3::hash(input.as_bytes());
-    hash.to_hex().to_string()[..8].to_string()
+    let digest = blake3::hash(input.as_bytes());
+    digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
 }
 
 pub fn list_sessions() -> Result<Vec<Session>> {
@@ -79,23 +83,126 @@ pub fn save_session(session: &Session) -> Result<()> {
     Ok(())
 }
 
-pub fn find_session(input: &str) -> Result<Session> {
-    let sessions = list_sessions()?;
+#[derive(Debug)]
+pub enum SessionResolveError {
+    NotFound(String),
+}
 
-    // Try numeric index (1-based)
-    if let Ok(idx) = input.parse::<usize>()
-        && idx > 0
-        && idx <= sessions.len()
-    {
-        return Ok(sessions[idx - 1].clone());
+#[derive(Debug, Clone)]
+pub enum SessionSelector {
+    Index(usize),
+    Id(String),
+}
+
+impl fmt::Display for SessionSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SessionSelector::Index(i) => write!(f, "{i}"),
+            SessionSelector::Id(id) => write!(f, "{id}"),
+        }
     }
+}
 
-    // Try hash prefix
-    for s in sessions {
-        if s.id.starts_with(input) {
-            return Ok(s);
+#[derive(Debug, Clone)]
+pub struct ParseSessionSelectorError(pub String);
+
+impl fmt::Display for ParseSessionSelectorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for ParseSessionSelectorError {}
+
+impl FromStr for SessionSelector {
+    type Err = ParseSessionSelectorError;
+
+    fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
+        if input.is_empty() {
+            return Err(ParseSessionSelectorError(
+                "session target cannot be empty".to_string(),
+            ));
+        }
+
+        if input.chars().all(|c| c.is_ascii_digit()) {
+            let index = input
+                .parse::<usize>()
+                .map_err(|_| ParseSessionSelectorError("invalid session index".to_string()))?;
+            if index == 0 {
+                return Err(ParseSessionSelectorError(
+                    "session index must be greater than 0".to_string(),
+                ));
+            }
+            return Ok(SessionSelector::Index(index));
+        }
+
+        if !input.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(ParseSessionSelectorError(
+                "session id must contain only hexadecimal characters".to_string(),
+            ));
+        }
+
+        if input.len() != SESSION_ID_LEN {
+            return Err(ParseSessionSelectorError(format!(
+                "session id must be exactly {} hexadecimal characters",
+                SESSION_ID_LEN
+            )));
+        }
+
+        Ok(SessionSelector::Id(input.to_string()))
+    }
+}
+
+pub fn resolve_session(
+    sessions: &[Session],
+    selector: &SessionSelector,
+) -> std::result::Result<Session, SessionResolveError> {
+    match selector {
+        SessionSelector::Index(idx) => {
+            if *idx > 0 && *idx <= sessions.len() {
+                Ok(sessions[idx - 1].clone())
+            } else {
+                Err(SessionResolveError::NotFound(selector.to_string()))
+            }
+        }
+        SessionSelector::Id(id) => sessions
+            .iter()
+            .find(|s| s.id == *id)
+            .cloned()
+            .ok_or_else(|| SessionResolveError::NotFound(id.clone())),
+    }
+}
+
+pub fn find_session(selector: &SessionSelector) -> Result<Session> {
+    let sessions = list_sessions()?;
+    resolve_session(&sessions, selector).map_err(|e| match e {
+        SessionResolveError::NotFound(target) => {
+            AppError::Generic(format!("Session '{}' not found", target))
+        }
+    })
+}
+
+pub fn delete_session(session_id: &str) -> Result<bool> {
+    let session_path = get_session_dir()?.join(session_id);
+    if !session_path.exists() {
+        return Ok(false);
+    }
+    fs::remove_dir_all(session_path)?;
+    Ok(true)
+}
+
+pub fn clear_sessions() -> Result<usize> {
+    let session_dir = get_session_dir()?;
+    let mut removed = 0usize;
+
+    for entry in fs::read_dir(session_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            fs::remove_dir_all(path)?;
+            removed += 1;
         }
     }
 
-    Err(AppError::Generic(format!("Session '{}' not found", input)))
+    Ok(removed)
 }

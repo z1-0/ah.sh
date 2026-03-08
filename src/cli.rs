@@ -1,6 +1,7 @@
 use crate::error::Result;
 use crate::manager::Manager;
 use crate::providers::ProviderType;
+use crate::sessions::SessionSelector;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -19,20 +20,39 @@ pub struct Cli {
 pub enum Commands {
     /// Manage development sessions
     Session {
-        /// ID or index (1, 2, ...) of the session to restore, or 'list' to show sessions
-        #[arg(default_value = "list")]
-        args: String,
+        #[command(subcommand)]
+        action: Option<SessionCommands>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SessionCommands {
+    /// List sessions
+    List,
+    /// Restore a session by index or id
+    Restore {
+        /// Session index (1, 2, ...) or id (8 hex chars)
+        target: SessionSelector,
+    },
+    /// Remove one or more sessions by index or id
+    Remove {
+        /// Session index(es) or id(s) (8 hex chars)
+        #[arg(required = true, num_args = 1..)]
+        targets: Vec<SessionSelector>,
+    },
+    /// Remove all sessions
+    Clear,
 }
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
-    if let Some(Commands::Session { args }) = &cli.command {
-        if args == "list" {
-            Manager::list_sessions()?;
-        } else {
-            Manager::restore_session(args)?;
+    if let Some(Commands::Session { action }) = &cli.command {
+        match action {
+            None | Some(SessionCommands::List) => Manager::list_sessions()?,
+            Some(SessionCommands::Restore { target }) => Manager::restore_session(target)?,
+            Some(SessionCommands::Clear) => Manager::clear_sessions()?,
+            Some(SessionCommands::Remove { targets }) => Manager::remove_sessions(targets)?,
         }
         return Ok(());
     }
