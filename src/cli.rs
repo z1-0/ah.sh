@@ -1,13 +1,13 @@
 use crate::error::Result;
 use crate::manager::Manager;
 use crate::providers::ProviderType;
-use crate::sessions::SessionSelector;
+use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
-    pub language: Vec<String>,
+    pub languages: Vec<String>,
 
     #[arg(short, long, value_enum, default_value = "dev-templates")]
     pub provider: ProviderType,
@@ -32,13 +32,13 @@ pub enum SessionCommands {
     /// Restore a session by index or id
     Restore {
         /// Session index (1, 2, ...) or id (8 hex chars)
-        selector: SessionSelector,
+        key: SessionKey,
     },
     /// Remove one or more sessions by index or id
     Remove {
         /// Session index(es) or id(s) (8 hex chars)
         #[arg(required = true, num_args = 1..)]
-        targets: Vec<SessionSelector>,
+        keys: Vec<SessionKey>,
     },
     /// Remove all sessions
     Clear,
@@ -50,14 +50,14 @@ pub fn run() -> Result<()> {
     if let Some(Commands::Session { action }) = &cli.command {
         match action {
             None | Some(SessionCommands::List) => Manager::list_sessions()?,
-            Some(SessionCommands::Restore { selector }) => Manager::restore_session(selector)?,
+            Some(SessionCommands::Restore { key }) => Manager::restore_session(key)?,
             Some(SessionCommands::Clear) => Manager::clear_sessions()?,
-            Some(SessionCommands::Remove { targets }) => Manager::remove_sessions(targets)?,
+            Some(SessionCommands::Remove { keys }) => Manager::remove_sessions(keys)?,
         }
         return Ok(());
     }
 
-    Manager::create_session(cli.provider, cli.language)?;
+    Manager::create_session(cli.provider, cli.languages)?;
 
     Ok(())
 }

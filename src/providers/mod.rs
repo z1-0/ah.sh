@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use clap::ValueEnum;
 use serde_json::from_str;
 use std::collections::HashMap;
@@ -49,4 +49,19 @@ pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> String {
         .and_then(|m| m.get(provider_name))
         .cloned()
         .unwrap_or_else(|| lang.to_owned())
+}
+
+pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
+    let supported_set: std::collections::HashSet<_> = supported.iter().collect();
+    let invalids: Vec<_> = languages
+        .iter()
+        .filter(|language| !supported_set.contains(language))
+        .cloned()
+        .collect();
+
+    if invalids.is_empty() {
+        Ok(())
+    } else {
+        Err(AppError::UnsupportedLanguages(invalids))
+    }
 }

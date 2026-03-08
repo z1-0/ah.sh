@@ -1,21 +1,21 @@
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
-use crate::sessions::{self, Session, SessionError, SessionSelector};
-use std::collections::HashSet;
+use crate::session::SessionKey;
+use crate::session_service::SessionService;
 use std::io::{self, IsTerminal, Write};
 
 pub struct Manager;
 
 impl Manager {
     pub fn list_sessions() -> Result<()> {
-        let list = sessions::list_sessions()?;
-        if list.is_empty() {
+        let sessions = SessionService::list_sessions()?;
+        if sessions.is_empty() {
             println!("No sessions found.");
             return Ok(());
         }
         println!("{:<5} {:<10} {:<15} Languages", "Index", "ID", "Provider");
-        for (i, s) in list.iter().enumerate() {
+        for (i, s) in sessions.iter().enumerate() {
             println!(
                 "{:<5} {:<10} {:<15} {}",
                 i + 1,
@@ -27,9 +27,8 @@ impl Manager {
         Ok(())
     }
 
-    pub fn restore_session(selector: &SessionSelector) -> Result<()> {
-        let session = sessions::find_session(selector)?;
-        let session_dir = sessions::get_session_dir()?.join(&session.id);
+    pub fn restore_session(key: &SessionKey) -> Result<()> {
+        let session_dir = SessionService::resolve_session_dir(key)?;
         execute_nix_develop(session_dir, false);
         Ok(())
     }
@@ -49,114 +48,34 @@ impl Manager {
             }
         }
 
-        let removed = sessions::clear_sessions()?;
+        let removed = SessionService::clear_sessions()?;
         println!("Cleared {} session(s).", removed);
         Ok(())
     }
 
-    pub fn remove_sessions(selectors: &[SessionSelector]) -> Result<()> {
-        if selectors.is_empty() {
-            return Err(AppError::Generic(
-                "No session target provided. Use 'ah session remove <index|id>...'".to_string(),
-            ));
-        }
-
-        let list = sessions::list_sessions()?;
-        if list.is_empty() {
+    pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
+        let Some(result) = SessionService::remove_sessions(keys)? else {
             println!("No sessions found.");
             return Ok(());
-        }
+        };
 
-        let mut ids_to_delete = Vec::new();
-        let mut seen_ids = HashSet::new();
-        let mut missing = Vec::new();
-
-        for target in selectors {
-            match sessions::resolve_session(&list, target) {
-                Ok(session) => {
-                    if seen_ids.insert(session.id.clone()) {
-                        ids_to_delete.push(session.id);
-                    }
-                }
-                Err(AppError::Session(SessionError::NotFound(t))) => missing.push(t),
-                Err(e) => return Err(e),
-            }
-        }
-
-        let mut deleted = Vec::new();
-        for id in ids_to_delete {
-            if sessions::delete_session(&id)? {
-                deleted.push(id);
-            } else {
-                missing.push(id);
-            }
-        }
-
-        if !deleted.is_empty() {
+        if !result.removed_ids.is_empty() {
             println!(
                 "Removed {} session(s): {}",
-                deleted.len(),
-                deleted.join(", ")
+                result.removed_ids.len(),
+                result.removed_ids.join(", ")
             );
         }
-        if !missing.is_empty() {
-            println!("Not found: {}", missing.join(", "));
+        if !result.missing_keys.is_empty() {
+            println!("Not found: {}", result.missing_keys.join(", "));
         }
 
         Ok(())
     }
 
     pub fn create_session(provider_type: ProviderType, languages: Vec<String>) -> Result<()> {
-        let provider = provider_type.into_shell_provider();
-
-        // 1. Normalize and validate languages
-        let mut normalized_langs = languages
-            .iter()
-            .map(|l| provider.normalize_language(l))
-            .collect::<Vec<_>>();
-
-        let mut seen = HashSet::new();
-        normalized_langs.retain(|lang| seen.insert(lang.clone()));
-
-        if normalized_langs.is_empty() {
-            return Err(AppError::Generic(
-                "No languages specified. Use 'ah <langs>' or 'ah session list'".to_string(),
-            ));
-        }
-
-        let supported_langs = provider.get_supported_languages()?;
-        Self::validate_languages(&normalized_langs, &supported_langs)?;
-
-        // 2. Prepare Session and Directory
-        let session_id = sessions::generate_id(provider.name(), &normalized_langs);
-        let session_dir = sessions::get_session_dir()?.join(&session_id);
-        std::fs::create_dir_all(&session_dir)?;
-
-        // 3. Generate Flake in Session Directory
-        provider.ensure_files(&normalized_langs, &session_dir)?;
-
-        // 4. Session Metadata Management
-        let session = Session::new(session_id, normalized_langs, provider.name().to_string());
-        sessions::save_session(&session)?;
-
-        // 5. Execute
+        let session_dir = SessionService::create_session(provider_type, languages)?;
         execute_nix_develop(session_dir, true);
-
         Ok(())
-    }
-
-    fn validate_languages(langs: &[String], supported: &[String]) -> Result<()> {
-        let supported_set: HashSet<_> = supported.iter().collect();
-        let invalids: Vec<_> = langs
-            .iter()
-            .filter(|l| !supported_set.contains(l))
-            .cloned()
-            .collect();
-
-        if invalids.is_empty() {
-            Ok(())
-        } else {
-            Err(AppError::UnsupportedLanguages(invalids))
-        }
     }
 }

@@ -1,4 +1,4 @@
-use crate::sessions::SessionError;
+use crate::session::SessionError;
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]

@@ -11,7 +11,7 @@ pub const SESSION_ID_LEN: usize = 8;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SessionError {
-    #[error("invalid session selector: {0}")]
+    #[error("invalid session key: {0}")]
     InvalidSelector(String),
 
     #[error("session '{0}' not found")]
@@ -93,21 +93,21 @@ pub fn save_session(session: &Session) -> Result<()> {
 }
 
 #[derive(Debug, Clone)]
-pub enum SessionSelector {
+pub enum SessionKey {
     Index(usize),
     Id(String),
 }
 
-impl fmt::Display for SessionSelector {
+impl fmt::Display for SessionKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SessionSelector::Index(i) => write!(f, "{i}"),
-            SessionSelector::Id(id) => write!(f, "{id}"),
+            SessionKey::Index(i) => write!(f, "{i}"),
+            SessionKey::Id(id) => write!(f, "{id}"),
         }
     }
 }
 
-impl FromStr for SessionSelector {
+impl FromStr for SessionKey {
     type Err = AppError;
 
     fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
@@ -128,7 +128,7 @@ impl FromStr for SessionSelector {
                 )
                 .into());
             }
-            return Ok(SessionSelector::Index(index));
+            return Ok(SessionKey::Index(index));
         }
 
         if !input.chars().all(|c| c.is_ascii_hexdigit()) {
@@ -146,20 +146,20 @@ impl FromStr for SessionSelector {
             .into());
         }
 
-        Ok(SessionSelector::Id(input.to_string()))
+        Ok(SessionKey::Id(input.to_string()))
     }
 }
 
-pub fn resolve_session(sessions: &[Session], selector: &SessionSelector) -> Result<Session> {
-    match selector {
-        SessionSelector::Index(idx) => {
+pub fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session> {
+    match key {
+        SessionKey::Index(idx) => {
             if *idx > 0 && *idx <= sessions.len() {
                 Ok(sessions[idx - 1].clone())
             } else {
-                Err(SessionError::NotFound(selector.to_string()).into())
+                Err(SessionError::NotFound(key.to_string()).into())
             }
         }
-        SessionSelector::Id(id) => sessions
+        SessionKey::Id(id) => sessions
             .iter()
             .find(|s| s.id == *id)
             .cloned()
@@ -167,9 +167,9 @@ pub fn resolve_session(sessions: &[Session], selector: &SessionSelector) -> Resu
     }
 }
 
-pub fn find_session(selector: &SessionSelector) -> Result<Session> {
+pub fn find_session(key: &SessionKey) -> Result<Session> {
     let sessions = list_sessions()?;
-    resolve_session(&sessions, selector)
+    resolve_session(&sessions, key)
 }
 
 pub fn delete_session(session_id: &str) -> Result<bool> {
