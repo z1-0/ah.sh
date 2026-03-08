@@ -18,7 +18,7 @@ pub fn get_xdg_dir(dir_type: XdgDir) -> Result<PathBuf> {
         .map(PathBuf::from)
         .or_else(|_| std::env::var("HOME").map(|home| PathBuf::from(home).join(default_suffix)))
         .map_err(|_| {
-            crate::error::AhError::Generic(format!(
+            crate::error::AppError::Generic(format!(
                 "Could not find {} or HOME environment variable",
                 env_var
             ))

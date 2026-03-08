@@ -1,4 +1,4 @@
-use crate::error::{AhError, Result};
+use crate::error::{AppError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -97,5 +97,5 @@ pub fn find_session(input: &str) -> Result<Session> {
         }
     }
 
-    Err(AhError::Generic(format!("Session '{}' not found", input)))
+    Err(AppError::Generic(format!("Session '{}' not found", input)))
 }

@@ -1,6 +1,6 @@
 pub mod flake_generator;
 
-use crate::error::{AhError, Result};
+use crate::error::{AppError, Result};
 use crate::providers::ShellProvider;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -29,6 +29,6 @@ impl ShellProvider for DevenvProvider {
             serde_json::from_str(langs_json).map_err(|e| e.to_string())
         });
 
-        langs.clone().map_err(AhError::Provider)
+        langs.clone().map_err(AppError::Provider)
     }
 }

@@ -1,4 +1,4 @@
-use crate::error::{AhError, Result};
+use crate::error::{AppError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
 use std::fs;
 use std::path::Path;
@@ -34,10 +34,10 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
 
     let response = ureq::get(&url)
         .call()
-        .map_err(|e| AhError::Provider(format!("Failed to fetch flake for {}: {}", lang, e)))?;
+        .map_err(|e| AppError::Provider(format!("Failed to fetch flake for {}: {}", lang, e)))?;
 
     if response.status() != 200 {
-        return Err(AhError::Provider(format!(
+        return Err(AppError::Provider(format!(
             "Failed to fetch flake for {}: HTTP {}",
             lang,
             response.status()
@@ -47,7 +47,7 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
     let body = response
         .into_body()
         .read_to_string()
-        .map_err(|e| AhError::Provider(format!("Failed to read response body: {}", e)))?;
+        .map_err(|e| AppError::Provider(format!("Failed to read response body: {}", e)))?;
 
     // Save to cache (best effort)
     write_cache_best_effort(&cache_file, &body);

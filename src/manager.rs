@@ -1,4 +1,4 @@
-use crate::error::{AhError, Result};
+use crate::error::{AppError, Result};
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
 use crate::sessions::{self, Session};
@@ -46,7 +46,7 @@ impl Manager {
         normalized_langs.retain(|lang| seen.insert(lang.clone()));
 
         if normalized_langs.is_empty() {
-            return Err(AhError::Generic(
+            return Err(AppError::Generic(
                 "No languages specified. Use 'ah <langs>' or 'ah session list'".to_string(),
             ));
         }
@@ -83,7 +83,7 @@ impl Manager {
         if invalids.is_empty() {
             Ok(())
         } else {
-            Err(AhError::UnsupportedLanguages(invalids))
+            Err(AppError::UnsupportedLanguages(invalids))
         }
     }
 }

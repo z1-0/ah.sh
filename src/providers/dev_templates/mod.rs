@@ -2,7 +2,7 @@ pub mod fetcher;
 pub mod flake_generator;
 pub mod nix_parser;
 
-use crate::error::{AhError, Result};
+use crate::error::{AppError, Result};
 use crate::providers::ShellProvider;
 use std::collections::HashSet;
 use std::path::Path;
@@ -84,6 +84,6 @@ impl ShellProvider for DevTemplatesProvider {
             serde_json::from_str(langs_json).map_err(|e| e.to_string())
         });
 
-        langs.clone().map_err(AhError::Provider)
+        langs.clone().map_err(AppError::Provider)
     }
 }

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
-pub enum AhError {
+pub enum AppError {
     #[error("Environment variable not set: {0}")]
     EnvVarNotFound(#[from] std::env::VarError),
 
@@ -24,4 +24,4 @@ pub enum AhError {
     Generic(String),
 }
 
-pub type Result<T> = std::result::Result<T, AhError>;
+pub type Result<T> = std::result::Result<T, AppError>;
