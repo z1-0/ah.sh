@@ -1,3 +1,4 @@
+use crate::sessions::SessionError;
 use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
@@ -19,6 +20,9 @@ pub enum AppError {
 
     #[error("Provider error: {0}")]
     Provider(String),
+
+    #[error(transparent)]
+    Session(#[from] SessionError),
 
     #[error("{0}")]
     Generic(String),

@@ -9,6 +9,15 @@ use std::time::SystemTime;
 
 pub const SESSION_ID_LEN: usize = 8;
 
+#[derive(Debug, thiserror::Error)]
+pub enum SessionError {
+    #[error("invalid session selector: {0}")]
+    InvalidSelector(String),
+
+    #[error("session '{0}' not found")]
+    NotFound(String),
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Session {
     pub id: String,
@@ -83,11 +92,6 @@ pub fn save_session(session: &Session) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
-pub enum SessionResolveError {
-    NotFound(String),
-}
-
 #[derive(Debug, Clone)]
 pub enum SessionSelector {
     Index(usize),
@@ -103,83 +107,69 @@ impl fmt::Display for SessionSelector {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ParseSessionSelectorError(pub String);
-
-impl fmt::Display for ParseSessionSelectorError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for ParseSessionSelectorError {}
-
 impl FromStr for SessionSelector {
-    type Err = ParseSessionSelectorError;
+    type Err = AppError;
 
     fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
         if input.is_empty() {
-            return Err(ParseSessionSelectorError(
+            return Err(SessionError::InvalidSelector(
                 "session target cannot be empty".to_string(),
-            ));
+            )
+            .into());
         }
 
         if input.chars().all(|c| c.is_ascii_digit()) {
             let index = input
                 .parse::<usize>()
-                .map_err(|_| ParseSessionSelectorError("invalid session index".to_string()))?;
+                .map_err(|_| SessionError::InvalidSelector("invalid session index".to_string()))?;
             if index == 0 {
-                return Err(ParseSessionSelectorError(
+                return Err(SessionError::InvalidSelector(
                     "session index must be greater than 0".to_string(),
-                ));
+                )
+                .into());
             }
             return Ok(SessionSelector::Index(index));
         }
 
         if !input.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err(ParseSessionSelectorError(
+            return Err(SessionError::InvalidSelector(
                 "session id must contain only hexadecimal characters".to_string(),
-            ));
+            )
+            .into());
         }
 
         if input.len() != SESSION_ID_LEN {
-            return Err(ParseSessionSelectorError(format!(
+            return Err(SessionError::InvalidSelector(format!(
                 "session id must be exactly {} hexadecimal characters",
                 SESSION_ID_LEN
-            )));
+            ))
+            .into());
         }
 
         Ok(SessionSelector::Id(input.to_string()))
     }
 }
 
-pub fn resolve_session(
-    sessions: &[Session],
-    selector: &SessionSelector,
-) -> std::result::Result<Session, SessionResolveError> {
+pub fn resolve_session(sessions: &[Session], selector: &SessionSelector) -> Result<Session> {
     match selector {
         SessionSelector::Index(idx) => {
             if *idx > 0 && *idx <= sessions.len() {
                 Ok(sessions[idx - 1].clone())
             } else {
-                Err(SessionResolveError::NotFound(selector.to_string()))
+                Err(SessionError::NotFound(selector.to_string()).into())
             }
         }
         SessionSelector::Id(id) => sessions
             .iter()
             .find(|s| s.id == *id)
             .cloned()
-            .ok_or_else(|| SessionResolveError::NotFound(id.clone())),
+            .ok_or_else(|| SessionError::NotFound(id.clone()).into()),
     }
 }
 
 pub fn find_session(selector: &SessionSelector) -> Result<Session> {
     let sessions = list_sessions()?;
-    resolve_session(&sessions, selector).map_err(|e| match e {
-        SessionResolveError::NotFound(target) => {
-            AppError::Generic(format!("Session '{}' not found", target))
-        }
-    })
+    resolve_session(&sessions, selector)
 }
 
 pub fn delete_session(session_id: &str) -> Result<bool> {

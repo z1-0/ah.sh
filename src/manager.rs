@@ -1,7 +1,7 @@
 use crate::error::{AppError, Result};
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
-use crate::sessions::{self, Session, SessionResolveError, SessionSelector};
+use crate::sessions::{self, Session, SessionError, SessionSelector};
 use std::collections::HashSet;
 use std::io::{self, IsTerminal, Write};
 
@@ -78,7 +78,8 @@ impl Manager {
                         ids_to_delete.push(session.id);
                     }
                 }
-                Err(SessionResolveError::NotFound(t)) => missing.push(t),
+                Err(AppError::Session(SessionError::NotFound(t))) => missing.push(t),
+                Err(e) => return Err(e),
             }
         }
 
