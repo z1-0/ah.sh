@@ -36,6 +36,7 @@ jobs:
           git diff --stat
 
       - name: Create Pull Request
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -48,3 +49,16 @@ jobs:
           branch: update-supported-langs
           base: main
           delete-branch: true
+
+      - name: Comment when no changes
+        if: steps.cpr.outputs.pull-request-number != '' && steps.cpr.outputs.pull-request-operation == 'none'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number('${{ steps.cpr.outputs.pull-request-number }}'),
+              body: 'No code changes in this run.'
+            })

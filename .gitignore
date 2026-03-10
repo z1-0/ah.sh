@@ -1,10 +1,9 @@
 .direnv
 .devenv
+.claude
 .pre-commit-config.yaml
 
 result*
 result-*
 
 target
-
-AGENTS.md
