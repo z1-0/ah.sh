@@ -1,0 +1,103 @@
+use crate::error::Result;
+use crate::paths::{get_xdg_dir, XdgDir};
+use crate::session::{Session, SessionError, SessionKey, SESSION_ID_LEN};
+use std::fs;
+use std::path::PathBuf;
+
+pub(crate) fn get_session_dir() -> Result<PathBuf> {
+    let dir = get_xdg_dir(XdgDir::Cache)?.join("sessions");
+    if !dir.exists() {
+        fs::create_dir_all(&dir)?;
+    }
+    Ok(dir)
+}
+
+pub(crate) fn generate_id(provider: &str, languages: &[String]) -> String {
+    let mut sorted_langs = languages.to_vec();
+    sorted_langs.sort();
+
+    let input = format!("{}:{}", provider, sorted_langs.join(","));
+    let digest = blake3::hash(input.as_bytes());
+    digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
+}
+
+pub(crate) fn list_sessions() -> Result<Vec<Session>> {
+    let session_dir = get_session_dir()?;
+    let mut sessions = Vec::new();
+
+    for entry in fs::read_dir(session_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            let meta_path = path.join("metadata.json");
+            if meta_path.exists() {
+                let content = fs::read_to_string(&meta_path)?;
+                if let Ok(session) = serde_json::from_str::<Session>(&content) {
+                    sessions.push(session);
+                }
+            }
+        }
+    }
+
+    // Sort by created_at descending (newest first)
+    sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    Ok(sessions)
+}
+
+pub(crate) fn save_session(session: &Session) -> Result<()> {
+    let session_path = get_session_dir()?.join(&session.id);
+    if !session_path.exists() {
+        fs::create_dir_all(&session_path)?;
+    }
+    let meta_path = session_path.join("metadata.json");
+    let content = serde_json::to_string_pretty(session)?;
+    fs::write(&meta_path, content)?;
+    Ok(())
+}
+
+pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session> {
+    match key {
+        SessionKey::Index(idx) => {
+            if *idx > 0 && *idx <= sessions.len() {
+                Ok(sessions[idx - 1].clone())
+            } else {
+                Err(SessionError::NotFound(key.to_string()).into())
+            }
+        }
+        SessionKey::Id(id) => sessions
+            .iter()
+            .find(|s| s.id == *id)
+            .cloned()
+            .ok_or_else(|| SessionError::NotFound(id.clone()).into()),
+    }
+}
+
+pub(crate) fn find_session(key: &SessionKey) -> Result<Session> {
+    let sessions = list_sessions()?;
+    resolve_session(&sessions, key)
+}
+
+pub(crate) fn delete_session(session_id: &str) -> Result<bool> {
+    let session_path = get_session_dir()?.join(session_id);
+    if !session_path.exists() {
+        return Ok(false);
+    }
+    fs::remove_dir_all(session_path)?;
+    Ok(true)
+}
+
+pub(crate) fn clear_sessions() -> Result<usize> {
+    let session_dir = get_session_dir()?;
+    let mut removed = 0usize;
+
+    for entry in fs::read_dir(session_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            fs::remove_dir_all(path)?;
+            removed += 1;
+        }
+    }
+
+    Ok(removed)
+}
