@@ -40,8 +40,8 @@
 
 - 组件职责
   - `types`: 数据结构与解析（`SessionKey`、`Session`）
-  - `storage`: 仅文件系统读写与查询
-  - `service`: 业务流程（创建、移除、解析目录）
+  - `storage`: 文件系统读写与查询（会话目录、metadata 读写、list/find/delete/clear）
+  - `service`: 业务流程（创建会话、移除会话、解析会话目录路径）
 - 数据流
   - CLI → `Manager` → `SessionService`
   - `SessionService` 调用 `storage` 完成读写
@@ -53,18 +53,20 @@
   - `SessionService`、`SessionKey`、`SessionError` 等
 - 调用链不变，仅更新引用路径：
   - `crate::session_service::SessionService` → `crate::session::SessionService`
+  - `crate::session::SessionKey` 在 CLI 中继续使用
 
 ## 错误处理
 
+- `storage` 与 `service` 返回 `crate::error::Result`（即 `AppError`）
 - `SessionError` 仍由 `session` 模块对外 re-export
 - `AppError::Session` 保持不变（`error.rs` 不需改动）
-- `storage` 继续通过 `AppError` 上抛错误
 
 ## 实施要点
 
 - 新增：`src/session/mod.rs`、`types.rs`、`storage.rs`、`service.rs`
 - 删除：`src/session.rs`、`src/session_service.rs`
-- 更新：`src/lib.rs`、`src/manager.rs` 等引用路径
+- 更新：`src/lib.rs`、`src/manager.rs`、`src/cli.rs` 等引用路径
+- 不保留旧模块路径的过渡 re-export（内部使用方全部更新）
 
 ## 验证方式
 
