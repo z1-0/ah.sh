@@ -2,7 +2,7 @@ use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
 use crate::session::SessionKey;
-use crate::session_service::SessionService;
+use crate::session::SessionService;
 use std::io::{self, IsTerminal, Write};
 
 pub struct Manager;

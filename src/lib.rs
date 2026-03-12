@@ -5,4 +5,3 @@ pub mod manager;
 pub mod paths;
 pub mod providers;
 pub mod session;
-pub mod session_service;
