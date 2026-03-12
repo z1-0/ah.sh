@@ -2,6 +2,7 @@
 .devenv
 .claude
 .pre-commit-config.yaml
+.worktrees
 
 result*
 result-*
