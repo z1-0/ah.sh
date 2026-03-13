@@ -668,7 +668,7 @@ Expected: PASS。
 - [ ] **Step 2: 不更换并发模型/网络栈，不引入复杂缓存**
 - [ ] **Step 3: 硬闸门**
 
----
+## Expected: PASS
 
 ## Plan complete
 
