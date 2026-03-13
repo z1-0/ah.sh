@@ -1,3 +1,4 @@
+pub mod app;
 pub mod cli;
 pub mod error;
 pub mod executor;
@@ -6,7 +7,3 @@ pub mod paths;
 pub mod providers;
 pub mod session;
 pub mod warning;
-
-pub mod app;
-pub mod domain;
-pub mod infra;
