@@ -89,3 +89,35 @@ fn extract_attributes(attr_set: &AttrSet, shell_attrs: &mut ShellAttrs) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_flake_shell;
+
+    #[test]
+    fn parse_flake_shell_minimal_extracts_env_and_extras() {
+        let source = r#"
+            pkgs.mkShellNoCC {
+              env = { FOO = "bar"; };
+              venvDir = ".venv";
+              postShellHook = "echo hi";
+            }
+        "#;
+
+        let attrs = parse_flake_shell(source);
+
+        assert!(
+            attrs.env.iter().any(|(k, v)| k == "FOO" && v.contains("bar")),
+            "expected env to contain FOO with value containing 'bar', got: {:?}",
+            attrs.env
+        );
+
+        // Parser ignores shellHook but should keep postShellHook.
+        assert!(
+            attrs.extra_attrs.iter().any(|(k, _)| k == "venvDir")
+                || attrs.extra_attrs.iter().any(|(k, _)| k == "postShellHook"),
+            "expected extra_attrs to include venvDir or postShellHook, got: {:?}",
+            attrs.extra_attrs
+        );
+    }
+}

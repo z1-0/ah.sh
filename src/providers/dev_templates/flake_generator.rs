@@ -5,6 +5,7 @@ pub fn generate_dev_templates_flake(
     languages: &[String],
     parsed_attrs: &[(String, ShellAttrs)],
 ) -> String {
+
     let inputs_from: Vec<String> = languages
         .iter()
         .map(|lang| format!("\"{}\"", lang))
@@ -97,4 +98,42 @@ pub fn generate_dev_templates_flake(
         inputs_from.join("\n            "),
         extra_attrs_str
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{generate_dev_templates_flake, ShellAttrs};
+
+    #[test]
+    fn generate_dev_templates_flake_includes_languages_and_attrs() {
+        let languages = vec!["rust".to_string(), "go".to_string()];
+        let parsed_attrs = vec![(
+            "rust".to_string(),
+            ShellAttrs {
+                env: vec![("FOO".to_string(), "\"bar\"".to_string())],
+                extra_attrs: vec![("venvDir".to_string(), "\".venv\"".to_string())],
+            },
+        )];
+
+        let flake = generate_dev_templates_flake(&languages, &parsed_attrs);
+
+        assert!(
+            flake.contains("\"rust\"") && flake.contains("\"go\""),
+            "expected flake to include both languages, got:\n{flake}"
+        );
+
+        // Should include some rendered attrs (don't full-string compare).
+        assert!(
+            flake.contains("env = {") || flake.contains("venvDir"),
+            "expected flake to include env attrset or venvDir, got:\n{flake}"
+        );
+
+        // If env is rendered, it should include our FOO key.
+        if flake.contains("env = {") {
+            assert!(
+                flake.contains("FOO"),
+                "expected flake env to contain FOO, got:\n{flake}"
+            );
+        }
+    }
 }
