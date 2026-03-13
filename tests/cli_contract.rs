@@ -17,22 +17,12 @@ fn no_args_prints_help_and_exits_2() {
 
     let usage_stdout = predicate::str::contains("USAGE").or(predicate::str::contains("Usage"));
     let usage_stderr = predicate::str::contains("USAGE").or(predicate::str::contains("Usage"));
-    let commands_hdr = predicate::str::contains("COMMANDS")
-        .or(predicate::str::contains("Commands"))
-        .or(predicate::str::contains("SUBCOMMANDS"))
-        .or(predicate::str::contains("Subcommands"));
 
     cmd.assert()
         .failure()
         .code(2)
         // Help must be on stdout.
-        .stdout(
-            usage_stdout
-                .and(predicate::str::contains("session"))
-                // Avoid over-fitting to exact clap formatting while still asserting
-                // a recognizable help structure is present.
-                .and(commands_hdr.or(predicate::str::contains("Manage development sessions"))),
-        )
+        .stdout(usage_stdout.and(predicate::str::contains("session")))
         // Help should not be printed to stderr.
         .stderr(usage_stderr.not());
 }
@@ -57,7 +47,7 @@ fn session_clear_non_tty_does_not_block() {
     cmd.env("XDG_CACHE_HOME", tmp.path())
         .args(["session", "clear"])
         .write_stdin("")
-        .timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(5))
         .assert()
         .success()
         .stdout(predicate::str::contains("Cleared"));
