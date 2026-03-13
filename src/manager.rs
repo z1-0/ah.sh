@@ -1,3 +1,4 @@
+use crate::app::session_app::SessionApp;
 use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
@@ -11,7 +12,7 @@ pub struct Manager;
 
 impl Manager {
     pub fn list_sessions() -> Result<()> {
-        let sessions = SessionService::list_sessions()?;
+        let sessions = SessionApp::list_sessions()?;
         if sessions.is_empty() {
             println!("No sessions found.");
             return Ok(());
