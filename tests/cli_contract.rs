@@ -10,11 +10,31 @@ fn help_exits_zero() {
 
 #[test]
 fn no_args_prints_help_and_exits_2() {
+    // CLI contract:
+    // - running `ah` with no args is a *usage* error (exit code 2)
+    // - it must still print the clap help to *stdout* (not stderr)
     let mut cmd = Command::cargo_bin("ah").unwrap();
+
+    let usage_stdout = predicate::str::contains("USAGE").or(predicate::str::contains("Usage"));
+    let usage_stderr = predicate::str::contains("USAGE").or(predicate::str::contains("Usage"));
+    let commands_hdr = predicate::str::contains("COMMANDS")
+        .or(predicate::str::contains("Commands"))
+        .or(predicate::str::contains("SUBCOMMANDS"))
+        .or(predicate::str::contains("Subcommands"));
+
     cmd.assert()
         .failure()
         .code(2)
-        .stdout(predicate::str::contains("USAGE").or(predicate::str::contains("Usage")));
+        // Help must be on stdout.
+        .stdout(
+            usage_stdout
+                .and(predicate::str::contains("session"))
+                // Avoid over-fitting to exact clap formatting while still asserting
+                // a recognizable help structure is present.
+                .and(commands_hdr.or(predicate::str::contains("Manage development sessions"))),
+        )
+        // Help should not be printed to stderr.
+        .stderr(usage_stderr.not());
 }
 
 #[test]
