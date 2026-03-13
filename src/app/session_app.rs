@@ -1,6 +1,8 @@
 use crate::error::Result;
 use crate::providers::ProviderType;
-use crate::session::{CreateSessionResult, Session, SessionKey, SessionRemoveResult, SessionService};
+use crate::session::{
+    CreateSessionResult, Session, SessionKey, SessionRemoveResult, SessionService,
+};
 use std::path::PathBuf;
 
 pub(crate) struct SessionApp;
