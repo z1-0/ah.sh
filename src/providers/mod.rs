@@ -13,7 +13,11 @@ pub mod dev_templates;
 pub mod devenv;
 
 type LanguageAliases = HashMap<String, HashMap<String, String>>;
-static LANGUAGE_ALIASES: OnceLock<LanguageAliases> = OnceLock::new();
+static LANGUAGE_ALIASES: OnceLock<Result<LanguageAliases>> = OnceLock::new();
+
+fn parse_aliases(json: &str) -> Result<LanguageAliases> {
+    from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language aliases: {e}")))
+}
 
 #[derive(ValueEnum, Clone, Debug)]
 pub enum ProviderType {
@@ -38,22 +42,36 @@ pub trait ShellProvider {
     fn name(&self) -> &str;
     fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult>;
     fn get_supported_languages(&self) -> Result<Vec<String>>;
+
     fn normalize_language(&self, lang: &str) -> String {
+        // Backwards-compatible API: callers that want fail-fast should use
+        // `try_normalize_lang_for_provider`.
         normalize_lang_for_provider(self.name(), lang)
     }
 }
 
-pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> String {
+pub fn try_normalize_lang_for_provider(provider_name: &str, lang: &str) -> Result<String> {
     let aliases = LANGUAGE_ALIASES.get_or_init(|| {
         let aliases_json = include_str!("../assets/language_aliases.json");
-        from_str(aliases_json).unwrap_or_default()
+        parse_aliases(aliases_json)
     });
 
-    aliases
+    let aliases = match aliases {
+        Ok(v) => v,
+        Err(e) => return Err(AppError::Generic(e.to_string())),
+    };
+
+    Ok(aliases
         .get(lang)
         .and_then(|m| m.get(provider_name))
         .cloned()
-        .unwrap_or_else(|| lang.to_owned())
+        .unwrap_or_else(|| lang.to_owned()))
+}
+
+pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> String {
+    // Legacy behavior: if aliases parsing fails, fall back to identity.
+    // Fail-fast call sites should use `try_normalize_lang_for_provider`.
+    try_normalize_lang_for_provider(provider_name, lang).unwrap_or_else(|_| lang.to_owned())
 }
 
 pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
@@ -68,5 +86,17 @@ pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<
         Ok(())
     } else {
         Err(AppError::UnsupportedLanguages(invalids))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn parse_aliases_returns_err_for_invalid_json() {
+        let err = super::parse_aliases("not json").expect_err("should error");
+        assert!(
+            err.to_string().contains("language aliases"),
+            "unexpected error: {err}"
+        );
     }
 }
