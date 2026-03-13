@@ -110,4 +110,71 @@ mod tests {
             .expect_err("should error");
         assert!(err.to_string().contains("aliases source failed"));
     }
+
+    #[test]
+    fn validate_languages_returns_ok_when_all_languages_supported() {
+        let languages = vec!["rust".to_string(), "go".to_string()];
+        let supported = vec!["rust".to_string(), "go".to_string()];
+
+        super::validate_languages(&languages, &supported).expect("should be ok");
+    }
+
+    #[test]
+    fn validate_languages_returns_err_for_unsupported_language() {
+        let languages = vec!["rust".to_string(), "python".to_string()];
+        let supported = vec!["rust".to_string(), "go".to_string()];
+
+        let err = super::validate_languages(&languages, &supported).expect_err("should error");
+        match err {
+            AppError::UnsupportedLanguages(invalids) => {
+                assert!(
+                    invalids.contains(&"python".to_string()),
+                    "invalids: {invalids:?}"
+                );
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normalize_lang_for_provider_with_aliases_returns_mapped_value_when_present() {
+        let aliases_json = r#"{
+  "js": { "devenv": "javascript" }
+}"#;
+        let aliases = super::parse_aliases(aliases_json).expect("should parse");
+
+        let normalized = super::normalize_lang_for_provider_with_aliases(
+            "devenv",
+            "js",
+            &Ok(aliases),
+        )
+        .expect("should normalize");
+
+        assert_eq!(normalized, "javascript");
+    }
+
+    #[test]
+    fn normalize_lang_for_provider_with_aliases_returns_original_when_no_mapping_found() {
+        let aliases_json = r#"{
+  "js": { "devenv": "javascript" }
+}"#;
+        let aliases = super::parse_aliases(aliases_json).expect("should parse");
+
+        // Different provider => no mapping => return original.
+        let normalized = super::normalize_lang_for_provider_with_aliases(
+            "dev_templates",
+            "js",
+            &Ok(aliases),
+        )
+        .expect("should normalize");
+
+        assert_eq!(normalized, "js");
+    }
+
+    #[test]
+    fn normalize_lang_for_provider_returns_original_for_unknown_language() {
+        let lang = "__no_such_lang__";
+        let normalized = super::normalize_lang_for_provider("devenv", lang).expect("should ok");
+        assert_eq!(normalized, lang);
+    }
 }
