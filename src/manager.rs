@@ -93,16 +93,20 @@ fn format_warning_line(w: &AppWarning, color: bool) -> String {
     format!("\x1b[33mwarning[{}]\x1b[0m: {}", w.code, w.message)
 }
 
-fn print_warnings(warnings: &[AppWarning]) {
-    let color = io::stderr().is_terminal();
-
+fn sorted_warnings_for_print(warnings: &[AppWarning]) -> Vec<AppWarning> {
     // Sort deterministically by (code, message), and keep a stable order for exact ties.
     let mut warnings: Vec<(usize, AppWarning)> = warnings.iter().cloned().enumerate().collect();
     warnings.sort_by(|(ia, a), (ib, b)| {
         (a.code, &a.message, ia).cmp(&(b.code, &b.message, ib))
     });
 
-    for (_, w) in warnings {
+    warnings.into_iter().map(|(_, w)| w).collect()
+}
+
+fn print_warnings(warnings: &[AppWarning]) {
+    let color = io::stderr().is_terminal();
+
+    for w in sorted_warnings_for_print(warnings) {
         eprintln!("{}", format_warning_line(&w, color));
     }
 }
@@ -126,5 +130,24 @@ mod tests {
         assert!(s.contains("\x1b[0m"), "expected ANSI reset code");
         assert!(s.contains("warning[W001]"));
         assert!(s.ends_with(": hello"));
+    }
+
+    #[test]
+    fn print_warnings_sorts_stably_when_tied() {
+        let warnings = vec![
+            AppWarning::new("W002", "other").with_context("id", "other"),
+            AppWarning::new("W001", "duplicate").with_context("id", "first"),
+            AppWarning::new("W001", "aaa").with_context("id", "aaa"),
+            AppWarning::new("W001", "duplicate").with_context("id", "second"),
+        ];
+
+        let sorted = sorted_warnings_for_print(&warnings);
+        let tied_ids: Vec<&str> = sorted
+            .iter()
+            .filter(|w| w.code == "W001" && w.message == "duplicate")
+            .map(|w| w.context.iter().find(|(k, _)| k == "id").unwrap().1.as_str())
+            .collect();
+
+        assert_eq!(tied_ids, vec!["first", "second"]);
     }
 }
