@@ -1,10 +1,10 @@
 use crate::error::Result;
 use crate::session::{Session, SessionService};
 
-pub struct SessionApp;
+pub(crate) struct SessionApp;
 
 impl SessionApp {
-    pub fn list_sessions() -> Result<Vec<Session>> {
+    pub(crate) fn list_sessions() -> Result<Vec<Session>> {
         SessionService::list_sessions()
     }
 }

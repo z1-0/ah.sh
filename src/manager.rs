@@ -1,4 +1,4 @@
-use crate::app::session_app::SessionApp;
+use crate::app::SessionApp;
 use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
