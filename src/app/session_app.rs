@@ -1,5 +1,6 @@
 use crate::error::Result;
-use crate::session::{Session, SessionKey, SessionRemoveResult, SessionService};
+use crate::providers::ProviderType;
+use crate::session::{CreateSessionResult, Session, SessionKey, SessionRemoveResult, SessionService};
 use std::path::PathBuf;
 
 pub(crate) struct SessionApp;
@@ -19,5 +20,12 @@ impl SessionApp {
 
     pub(crate) fn prepare_restore_session(key: &SessionKey) -> Result<PathBuf> {
         SessionService::resolve_session_dir(key)
+    }
+
+    pub(crate) fn prepare_create_session(
+        provider_type: ProviderType,
+        languages: Vec<String>,
+    ) -> Result<CreateSessionResult> {
+        SessionService::create_session(provider_type, languages)
     }
 }

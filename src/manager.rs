@@ -3,7 +3,6 @@ use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
 use crate::session::SessionKey;
-use crate::session::SessionService;
 use crate::warning::AppWarning;
 use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
@@ -79,7 +78,7 @@ impl Manager {
         provider_type: ProviderType,
         languages: Vec<String>,
     ) -> Result<Infallible> {
-        let result = SessionService::create_session(provider_type, languages)?;
+        let result = SessionApp::prepare_create_session(provider_type, languages)?;
         print_warnings(&result.warnings);
         execute_nix_develop(result.session_dir, true)
     }
