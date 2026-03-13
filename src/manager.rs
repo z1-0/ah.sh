@@ -3,6 +3,7 @@ use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
 use crate::session::SessionKey;
 use crate::session::SessionService;
+use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
 
 pub struct Manager;
@@ -27,10 +28,9 @@ impl Manager {
         Ok(())
     }
 
-    pub fn restore_session(key: &SessionKey) -> Result<()> {
+    pub fn restore_session(key: &SessionKey) -> Result<Infallible> {
         let session_dir = SessionService::resolve_session_dir(key)?;
-        execute_nix_develop(session_dir, false);
-        Ok(())
+        execute_nix_develop(session_dir, false)
     }
 
     pub fn clear_sessions() -> Result<()> {
@@ -73,9 +73,11 @@ impl Manager {
         Ok(())
     }
 
-    pub fn create_session(provider_type: ProviderType, languages: Vec<String>) -> Result<()> {
+    pub fn create_session(
+        provider_type: ProviderType,
+        languages: Vec<String>,
+    ) -> Result<Infallible> {
         let session_dir = SessionService::create_session(provider_type, languages)?;
-        execute_nix_develop(session_dir, true);
-        Ok(())
+        execute_nix_develop(session_dir, true)
     }
 }

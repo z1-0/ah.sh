@@ -50,7 +50,10 @@ pub fn run() -> Result<()> {
     if let Some(Commands::Session { action }) = &cli.command {
         match action {
             None | Some(SessionCommands::List) => Manager::list_sessions()?,
-            Some(SessionCommands::Restore { key }) => Manager::restore_session(key)?,
+            Some(SessionCommands::Restore { key }) => {
+                Manager::restore_session(key)?;
+                unreachable!("restore_session diverges on success")
+            }
             Some(SessionCommands::Clear) => Manager::clear_sessions()?,
             Some(SessionCommands::Remove { keys }) => Manager::remove_sessions(keys)?,
         }
