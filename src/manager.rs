@@ -93,9 +93,9 @@ fn format_warning_line(w: &AppWarning, color: bool) -> String {
     format!("\x1b[33mwarning[{}]\x1b[0m: {}", w.code, w.message)
 }
 
-fn sorted_warnings_for_print(warnings: &[AppWarning]) -> Vec<AppWarning> {
+fn sorted_warnings_for_print(warnings: &[AppWarning]) -> Vec<&AppWarning> {
     // Sort deterministically by (code, message), and keep a stable order for exact ties.
-    let mut warnings: Vec<(usize, AppWarning)> = warnings.iter().cloned().enumerate().collect();
+    let mut warnings: Vec<(usize, &AppWarning)> = warnings.iter().enumerate().collect();
     warnings.sort_by(|(ia, a), (ib, b)| (a.code, &a.message, ia).cmp(&(b.code, &b.message, ib)));
 
     warnings.into_iter().map(|(_, w)| w).collect()
@@ -105,7 +105,7 @@ fn print_warnings(warnings: &[AppWarning]) {
     let color = io::stderr().is_terminal();
 
     for w in sorted_warnings_for_print(warnings) {
-        eprintln!("{}", format_warning_line(&w, color));
+        eprintln!("{}", format_warning_line(w, color));
     }
 }
 
@@ -128,6 +128,29 @@ mod tests {
         assert!(s.contains("\x1b[0m"), "expected ANSI reset code");
         assert!(s.contains("warning[W001]"));
         assert!(s.ends_with(": hello"));
+    }
+
+    #[test]
+    fn sorted_warnings_for_print_returns_borrowed_refs_in_sorted_order() {
+        let warnings = vec![
+            AppWarning::new("W002", "other"),
+            AppWarning::new("W001", "duplicate"),
+            AppWarning::new("W001", "aaa"),
+            AppWarning::new("W001", "duplicate"),
+        ];
+
+        let sorted = sorted_warnings_for_print(&warnings);
+        let ptrs: Vec<*const AppWarning> = sorted.iter().map(|w| *w as *const AppWarning).collect();
+
+        // Sorting key is (code, message) with stable ordering for exact ties.
+        let expected = vec![
+            &warnings[2] as *const AppWarning, // (W001, aaa)
+            &warnings[1] as *const AppWarning, // (W001, duplicate) - first
+            &warnings[3] as *const AppWarning, // (W001, duplicate) - second
+            &warnings[0] as *const AppWarning, // (W002, other)
+        ];
+
+        assert_eq!(ptrs, expected);
     }
 
     #[test]
