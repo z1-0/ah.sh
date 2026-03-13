@@ -96,9 +96,7 @@ fn format_warning_line(w: &AppWarning, color: bool) -> String {
 fn sorted_warnings_for_print(warnings: &[AppWarning]) -> Vec<AppWarning> {
     // Sort deterministically by (code, message), and keep a stable order for exact ties.
     let mut warnings: Vec<(usize, AppWarning)> = warnings.iter().cloned().enumerate().collect();
-    warnings.sort_by(|(ia, a), (ib, b)| {
-        (a.code, &a.message, ia).cmp(&(b.code, &b.message, ib))
-    });
+    warnings.sort_by(|(ia, a), (ib, b)| (a.code, &a.message, ia).cmp(&(b.code, &b.message, ib)));
 
     warnings.into_iter().map(|(_, w)| w).collect()
 }
@@ -145,7 +143,14 @@ mod tests {
         let tied_ids: Vec<&str> = sorted
             .iter()
             .filter(|w| w.code == "W001" && w.message == "duplicate")
-            .map(|w| w.context.iter().find(|(k, _)| k == "id").unwrap().1.as_str())
+            .map(|w| {
+                w.context
+                    .iter()
+                    .find(|(k, _)| k == "id")
+                    .unwrap()
+                    .1
+                    .as_str()
+            })
             .collect();
 
         assert_eq!(tied_ids, vec!["first", "second"]);
