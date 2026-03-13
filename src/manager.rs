@@ -31,7 +31,7 @@ impl Manager {
     }
 
     pub fn restore_session(key: &SessionKey) -> Result<Infallible> {
-        let session_dir = SessionService::resolve_session_dir(key)?;
+        let session_dir = SessionApp::prepare_restore_session(key)?;
         execute_nix_develop(session_dir, false)
     }
 
