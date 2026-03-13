@@ -84,11 +84,47 @@ impl Manager {
     }
 }
 
-fn print_warnings(warnings: &[AppWarning]) {
-    let mut warnings = warnings.to_vec();
-    warnings.sort_by(|a, b| (a.code, &a.message).cmp(&(b.code, &b.message)));
+fn format_warning_line(w: &AppWarning, color: bool) -> String {
+    if !color {
+        return format!("warning[{}]: {}", w.code, w.message);
+    }
 
-    for w in warnings {
-        eprintln!("warning[{}]: {}", w.code, w.message);
+    // Yellow prefix, reset after the bracketed warning label.
+    format!("\x1b[33mwarning[{}]\x1b[0m: {}", w.code, w.message)
+}
+
+fn print_warnings(warnings: &[AppWarning]) {
+    let color = io::stderr().is_terminal();
+
+    // Sort deterministically by (code, message), and keep a stable order for exact ties.
+    let mut warnings: Vec<(usize, AppWarning)> = warnings.iter().cloned().enumerate().collect();
+    warnings.sort_by(|(ia, a), (ib, b)| {
+        (a.code, &a.message, ia).cmp(&(b.code, &b.message, ib))
+    });
+
+    for (_, w) in warnings {
+        eprintln!("{}", format_warning_line(&w, color));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn format_warning_line_without_color_matches_legacy_format() {
+        let w = AppWarning::new("W001", "hello");
+        assert_eq!(format_warning_line(&w, false), "warning[W001]: hello");
+    }
+
+    #[test]
+    fn format_warning_line_with_color_includes_ansi_and_original_text() {
+        let w = AppWarning::new("W001", "hello");
+        let s = format_warning_line(&w, true);
+
+        assert!(s.contains("\x1b[33m"), "expected yellow ANSI code");
+        assert!(s.contains("\x1b[0m"), "expected ANSI reset code");
+        assert!(s.contains("warning[W001]"));
+        assert!(s.ends_with(": hello"));
     }
 }
