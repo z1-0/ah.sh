@@ -51,8 +51,8 @@ pub fn run() -> Result<()> {
         match action {
             None | Some(SessionCommands::List) => Manager::list_sessions()?,
             Some(SessionCommands::Restore { key }) => {
-                Manager::restore_session(key)?;
-                unreachable!("restore_session diverges on success")
+                let never = Manager::restore_session(key)?;
+                match never {}
             }
             Some(SessionCommands::Clear) => Manager::clear_sessions()?,
             Some(SessionCommands::Remove { keys }) => Manager::remove_sessions(keys)?,
