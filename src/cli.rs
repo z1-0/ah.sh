@@ -1,8 +1,8 @@
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::manager::Manager;
 use crate::providers::ProviderType;
 use crate::session::SessionKey;
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -55,17 +55,6 @@ pub fn run() -> Result<()> {
             Some(SessionCommands::Remove { keys }) => Manager::remove_sessions(keys)?,
         }
         return Ok(());
-    }
-
-    if cli.languages.is_empty() {
-        let mut cmd = Cli::command();
-        cmd.print_help()
-            .map_err(|e| AppError::CliUsage(e.to_string()))?;
-        println!();
-
-        return Err(AppError::CliUsage(
-            "No languages specified. Use 'ah <langs>' or 'ah session list'".to_string(),
-        ));
     }
 
     Manager::create_session(cli.provider, cli.languages)?;

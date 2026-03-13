@@ -1,6 +1,6 @@
-mod service;
-mod storage;
 pub mod types;
+mod storage;
+mod service;
 
 pub use service::{SessionRemoveResult, SessionService};
-pub use types::{SESSION_ID_LEN, Session, SessionError, SessionKey};
+pub use types::{Session, SessionError, SessionKey, SESSION_ID_LEN};
