@@ -141,7 +141,8 @@ exec 失败时的对外合同（建议）：
 
 用户确认的对外行为：
 
-- 直接运行 `ah`（无 languages 且无子命令）时：显示 help 并退出非 0（建议 2）
+- 直接运行 `ah`（无 languages 且无子命令）时：将 clap help 打印到 **stdout**，
+  并以退出码 **2** 退出（usage error；help 不应出现在 stderr）
 
 ## 破坏性变更的管理方式（Changelog-as-Contract）
 
@@ -247,7 +248,8 @@ Stage gate：
 
 ### Changed
 
-- 直接运行 `ah`（无 languages 且无子命令）时：显示 help 并退出非 0（建议 2）
+- 直接运行 `ah`（无 languages 且无子命令）时：将 clap help 打印到 **stdout**，
+  并以退出码 **2** 退出（usage error；help 不应出现在 stderr）
 
 ## 约定
 
