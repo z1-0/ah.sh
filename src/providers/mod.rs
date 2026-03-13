@@ -43,23 +43,19 @@ pub trait ShellProvider {
     fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult>;
     fn get_supported_languages(&self) -> Result<Vec<String>>;
 
-    fn normalize_language(&self, lang: &str) -> String {
-        // Backwards-compatible API: callers that want fail-fast should use
-        // `try_normalize_lang_for_provider`.
+    fn normalize_language(&self, lang: &str) -> Result<String> {
         normalize_lang_for_provider(self.name(), lang)
     }
 }
 
-pub fn try_normalize_lang_for_provider(provider_name: &str, lang: &str) -> Result<String> {
-    let aliases = LANGUAGE_ALIASES.get_or_init(|| {
-        let aliases_json = include_str!("../assets/language_aliases.json");
-        parse_aliases(aliases_json)
-    });
-
-    let aliases = match aliases {
-        Ok(v) => v,
-        Err(e) => return Err(AppError::Generic(e.to_string())),
-    };
+fn normalize_lang_for_provider_with_aliases(
+    provider_name: &str,
+    lang: &str,
+    aliases: &Result<LanguageAliases>,
+) -> Result<String> {
+    let aliases = aliases
+        .as_ref()
+        .map_err(|e| AppError::Generic(e.to_string()))?;
 
     Ok(aliases
         .get(lang)
@@ -68,10 +64,13 @@ pub fn try_normalize_lang_for_provider(provider_name: &str, lang: &str) -> Resul
         .unwrap_or_else(|| lang.to_owned()))
 }
 
-pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> String {
-    // Legacy behavior: if aliases parsing fails, fall back to identity.
-    // Fail-fast call sites should use `try_normalize_lang_for_provider`.
-    try_normalize_lang_for_provider(provider_name, lang).unwrap_or_else(|_| lang.to_owned())
+pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> Result<String> {
+    let aliases = LANGUAGE_ALIASES.get_or_init(|| {
+        let aliases_json = include_str!("../assets/language_aliases.json");
+        parse_aliases(aliases_json)
+    });
+
+    normalize_lang_for_provider_with_aliases(provider_name, lang, aliases)
 }
 
 pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
@@ -91,6 +90,8 @@ pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<
 
 #[cfg(test)]
 mod tests {
+    use crate::error::AppError;
+
     #[test]
     fn parse_aliases_returns_err_for_invalid_json() {
         let err = super::parse_aliases("not json").expect_err("should error");
@@ -98,5 +99,15 @@ mod tests {
             err.to_string().contains("language aliases"),
             "unexpected error: {err}"
         );
+    }
+
+    #[test]
+    fn normalize_returns_err_when_aliases_source_is_err() {
+        let aliases: super::Result<super::LanguageAliases> =
+            Err(AppError::Generic("aliases source failed".to_string()));
+
+        let err = super::normalize_lang_for_provider_with_aliases("devenv", "rust", &aliases)
+            .expect_err("should error");
+        assert!(err.to_string().contains("aliases source failed"));
     }
 }

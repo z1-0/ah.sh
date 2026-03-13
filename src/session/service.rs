@@ -1,7 +1,5 @@
 use crate::error::{AppError, Result};
-use crate::providers::{
-    EnsureFilesResult, ProviderType, try_normalize_lang_for_provider, validate_languages,
-};
+use crate::providers::{EnsureFilesResult, ProviderType, validate_languages};
 use crate::session::storage;
 use crate::session::{Session, SessionError, SessionKey};
 use crate::warning::AppWarning;
@@ -81,7 +79,7 @@ impl SessionService {
 
         let mut normalized_langs = languages
             .iter()
-            .map(|language| try_normalize_lang_for_provider(provider.name(), language))
+            .map(|language| provider.normalize_language(language))
             .collect::<Result<Vec<_>>>()?;
 
         let mut seen = HashSet::new();
