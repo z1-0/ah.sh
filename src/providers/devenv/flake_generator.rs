@@ -75,6 +75,5 @@ mod tests {
 
         // sanity: make sure we're not matching some unrelated word.
         assert!(!flake.contains("languages.python.enable = true;"));
-
     }
 }

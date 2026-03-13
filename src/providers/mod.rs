@@ -143,12 +143,9 @@ mod tests {
 }"#;
         let aliases = super::parse_aliases(aliases_json).expect("should parse");
 
-        let normalized = super::normalize_lang_for_provider_with_aliases(
-            "devenv",
-            "js",
-            &Ok(aliases),
-        )
-        .expect("should normalize");
+        let normalized =
+            super::normalize_lang_for_provider_with_aliases("devenv", "js", &Ok(aliases))
+                .expect("should normalize");
 
         assert_eq!(normalized, "javascript");
     }
@@ -161,12 +158,9 @@ mod tests {
         let aliases = super::parse_aliases(aliases_json).expect("should parse");
 
         // Different provider => no mapping => return original.
-        let normalized = super::normalize_lang_for_provider_with_aliases(
-            "dev_templates",
-            "js",
-            &Ok(aliases),
-        )
-        .expect("should normalize");
+        let normalized =
+            super::normalize_lang_for_provider_with_aliases("dev_templates", "js", &Ok(aliases))
+                .expect("should normalize");
 
         assert_eq!(normalized, "js");
     }

@@ -111,7 +111,10 @@ mod tests {
         let attrs = parse_flake_shell(source);
 
         assert!(
-            attrs.env.iter().any(|(k, v)| k == "FOO" && v.contains("bar")),
+            attrs
+                .env
+                .iter()
+                .any(|(k, v)| k == "FOO" && v.contains("bar")),
             "expected env to contain FOO with value containing 'bar', got: {:?}",
             attrs.env
         );
@@ -130,7 +133,10 @@ mod tests {
 
         // Ensure ignored attributes do not leak into extra_attrs/env.
         assert!(
-            !attrs.extra_attrs.iter().any(|(k, _)| k == "shellHook" || k == "buildInputs"),
+            !attrs
+                .extra_attrs
+                .iter()
+                .any(|(k, _)| k == "shellHook" || k == "buildInputs"),
             "expected ignored attrs (shellHook/buildInputs) to be absent, got extra_attrs: {:?}",
             attrs.extra_attrs
         );
@@ -153,7 +159,8 @@ mod tests {
             attrs.env
         );
         assert!(
-            attrs.extra_attrs
+            attrs
+                .extra_attrs
                 .iter()
                 .any(|(k, v)| k == "env" && v.contains("someExpr")),
             "expected non-attrset env to be captured as extra attr, got: {:?}",

@@ -5,7 +5,6 @@ pub fn generate_dev_templates_flake(
     languages: &[String],
     parsed_attrs: &[(String, ShellAttrs)],
 ) -> String {
-
     let inputs_from: Vec<String> = languages
         .iter()
         .map(|lang| format!("\"{}\"", lang))
@@ -102,7 +101,7 @@ pub fn generate_dev_templates_flake(
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_dev_templates_flake, ShellAttrs};
+    use super::{ShellAttrs, generate_dev_templates_flake};
 
     #[test]
     fn generate_dev_templates_flake_includes_languages_and_attrs() {
