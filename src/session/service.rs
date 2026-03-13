@@ -1,11 +1,17 @@
 use crate::error::{AppError, Result};
-use crate::providers::{ProviderType, validate_languages};
+use crate::providers::{EnsureFilesResult, ProviderType, validate_languages};
 use crate::session::storage;
 use crate::session::{Session, SessionError, SessionKey};
+use crate::warning::AppWarning;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
 pub struct SessionService;
+
+pub struct CreateSessionResult {
+    pub session_dir: PathBuf,
+    pub warnings: Vec<AppWarning>,
+}
 
 pub struct SessionRemoveResult {
     pub removed_ids: Vec<String>,
@@ -65,7 +71,10 @@ impl SessionService {
         }))
     }
 
-    pub fn create_session(provider_type: ProviderType, languages: Vec<String>) -> Result<PathBuf> {
+    pub fn create_session(
+        provider_type: ProviderType,
+        languages: Vec<String>,
+    ) -> Result<CreateSessionResult> {
         let provider = provider_type.into_shell_provider();
 
         let mut normalized_langs = languages
@@ -82,6 +91,8 @@ impl SessionService {
             ));
         }
 
+        let mut warnings: Vec<AppWarning> = Vec::new();
+
         let supported_langs = provider.get_supported_languages()?;
         validate_languages(&normalized_langs, &supported_langs)?;
 
@@ -89,11 +100,17 @@ impl SessionService {
         let session_dir = storage::get_session_dir()?.join(&session_id);
         std::fs::create_dir_all(&session_dir)?;
 
-        provider.ensure_files(&normalized_langs, &session_dir)?;
+        let EnsureFilesResult {
+            warnings: provider_warnings,
+        } = provider.ensure_files(&normalized_langs, &session_dir)?;
+        warnings.extend(provider_warnings);
 
         let session = Session::new(session_id, normalized_langs, provider.name().to_string());
         storage::save_session(&session)?;
 
-        Ok(session_dir)
+        Ok(CreateSessionResult {
+            session_dir,
+            warnings,
+        })
     }
 }

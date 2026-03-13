@@ -1,5 +1,6 @@
 use crate::error::{AppError, Result};
 use crate::paths::{XdgDir, get_xdg_dir};
+use crate::warning::AppWarning;
 use std::fs;
 use std::path::Path;
 
@@ -50,55 +51,55 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
         .map_err(|e| AppError::Provider(format!("Failed to read response body: {}", e)))?;
 
     // Save to cache (best effort)
-    write_cache_best_effort(&cache_file, &body);
+    let _ = write_cache_best_effort(&cache_file, &body);
 
     Ok(body)
 }
 
-fn write_cache_best_effort(cache_file: &Path, body: &str) {
-    if let Err(e) = fs::write(cache_file, body) {
-        eprintln!(
-            "Warning: Failed to write cache for '{}': {}",
-            cache_file.display(),
-            e
-        );
+#[cfg(test)]
+pub(super) fn write_cache_best_effort_for_test(
+    cache_file: &Path,
+    body: &str,
+) -> Option<AppWarning> {
+    write_cache_best_effort(cache_file, body)
+}
+
+fn write_cache_best_effort(cache_file: &Path, body: &str) -> Option<AppWarning> {
+    match fs::write(cache_file, body) {
+        Ok(()) => None,
+        Err(e) => Some(
+            AppWarning::new("dev_templates.cache_write_failed", e.to_string())
+                .with_context("path", cache_file.display().to_string()),
+        ),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::write_cache_best_effort;
-    use std::fs;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use super::write_cache_best_effort_for_test;
+    use crate::warning::AppWarning;
+    use std::path::Path;
 
-    fn unique_test_path(prefix: &str) -> std::path::PathBuf {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()))
+    fn write_cache_best_effort(cache_file: &Path, body: &str) -> Option<AppWarning> {
+        write_cache_best_effort_for_test(cache_file, body)
     }
 
     #[test]
     fn cache_write_best_effort_succeeds_when_path_is_writable() {
-        let cache_file = unique_test_path("ah-cache-write-ok");
+        let dir = tempfile::tempdir().unwrap();
+        let cache_file = dir.path().join("cache.nix");
 
-        write_cache_best_effort(&cache_file, "hello");
+        let warning = write_cache_best_effort(&cache_file, "hello");
 
-        let content = fs::read_to_string(&cache_file).expect("cache file should be written");
+        assert!(warning.is_none());
+        let content = std::fs::read_to_string(&cache_file).expect("cache file should be written");
         assert_eq!(content, "hello");
-
-        let _ = fs::remove_file(&cache_file);
     }
 
     #[test]
-    fn cache_write_best_effort_ignores_write_failures() {
-        let dir_path = unique_test_path("ah-cache-write-fail");
-        fs::create_dir_all(&dir_path).expect("test directory should be created");
-
-        write_cache_best_effort(&dir_path, "hello");
-
-        assert!(dir_path.is_dir());
-        let _ = fs::remove_dir_all(&dir_path);
+    fn cache_write_best_effort_returns_warning_on_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let warning = write_cache_best_effort(dir.path(), "hello").expect("should warn");
+        assert_eq!(warning.code, "dev_templates.cache_write_failed");
     }
 }

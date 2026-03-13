@@ -1,4 +1,5 @@
 use crate::error::{AppError, Result};
+use crate::warning::AppWarning;
 use clap::ValueEnum;
 use serde_json::from_str;
 use std::collections::HashMap;
@@ -29,9 +30,13 @@ impl ProviderType {
     }
 }
 
+pub struct EnsureFilesResult {
+    pub warnings: Vec<AppWarning>,
+}
+
 pub trait ShellProvider {
     fn name(&self) -> &str;
-    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()>;
+    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult>;
     fn get_supported_languages(&self) -> Result<Vec<String>>;
     fn normalize_language(&self, lang: &str) -> String {
         normalize_lang_for_provider(self.name(), lang)

@@ -250,6 +250,9 @@ Stage gate：
 
 - 直接运行 `ah`（无 languages 且无子命令）时：将 clap help 打印到 **stdout**，
   并以退出码 **2** 退出（usage error；help 不应出现在 stderr）
+- warnings 统一由 CLI 输出到 **stderr**，每条一行且格式稳定：
+  - `warning[code]: message`
+  - 约定保持：help 不出现在 stderr（避免污染脚本/管道）
 
 ## 约定
 

@@ -3,6 +3,7 @@ use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
 use crate::session::SessionKey;
 use crate::session::SessionService;
+use crate::warning::AppWarning;
 use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
 
@@ -77,7 +78,17 @@ impl Manager {
         provider_type: ProviderType,
         languages: Vec<String>,
     ) -> Result<Infallible> {
-        let session_dir = SessionService::create_session(provider_type, languages)?;
-        execute_nix_develop(session_dir, true)
+        let result = SessionService::create_session(provider_type, languages)?;
+        print_warnings(&result.warnings);
+        execute_nix_develop(result.session_dir, true)
+    }
+}
+
+fn print_warnings(warnings: &[AppWarning]) {
+    let mut warnings = warnings.to_vec();
+    warnings.sort_by(|a, b| (a.code, &a.message).cmp(&(b.code, &b.message)));
+
+    for w in warnings {
+        eprintln!("warning[{}]: {}", w.code, w.message);
     }
 }

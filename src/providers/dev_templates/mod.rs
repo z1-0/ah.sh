@@ -3,7 +3,8 @@ pub mod flake_generator;
 pub mod nix_parser;
 
 use crate::error::{AppError, Result};
-use crate::providers::ShellProvider;
+use crate::providers::{EnsureFilesResult, ShellProvider};
+use crate::warning::AppWarning;
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::OnceLock;
@@ -19,7 +20,7 @@ impl ShellProvider for DevTemplatesProvider {
         "dev-templates"
     }
 
-    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()> {
+    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult> {
         let mut seen = HashSet::new();
         let deduped_languages: Vec<String> = languages
             .iter()
@@ -37,6 +38,7 @@ impl ShellProvider for DevTemplatesProvider {
             .clamp(1, MAX_FETCH_CONCURRENCY);
 
         let mut parsed_attrs = Vec::new();
+        let mut warnings: Vec<AppWarning> = Vec::new();
 
         for chunk in fetch_languages.chunks(fetch_concurrency) {
             let mut fetch_tasks = Vec::with_capacity(chunk.len());
@@ -55,14 +57,17 @@ impl ShellProvider for DevTemplatesProvider {
                 match task.join() {
                     Ok((lang, Ok(attrs))) => parsed_attrs.push((lang, attrs)),
                     Ok((lang, Err(e))) => {
-                        eprintln!(
-                            "Warning: Failed to fetch flake source for '{}': {}",
-                            lang, e
+                        warnings.push(
+                            AppWarning::new("dev_templates.fetch_failed", e.to_string())
+                                .with_context("language", lang),
                         );
                         // Just continue, inputsFrom will still work for packages/shellHook
                     }
                     Err(_) => {
-                        eprintln!("Warning: Flake fetch task panicked unexpectedly");
+                        warnings.push(AppWarning::new(
+                            "dev_templates.fetch_panicked",
+                            "Flake fetch task panicked unexpectedly",
+                        ));
                     }
                 }
             }
@@ -74,7 +79,7 @@ impl ShellProvider for DevTemplatesProvider {
         let flake_path = target_dir.join("flake.nix");
         std::fs::write(flake_path, flake_content)?;
 
-        Ok(())
+        Ok(EnsureFilesResult { warnings })
     }
 
     fn get_supported_languages(&self) -> Result<Vec<String>> {

@@ -21,11 +21,11 @@ fn create_session_returns_dir() {
         std::env::set_var("XDG_CACHE_HOME", &cache_root);
     }
 
-    let session_dir =
-        SessionService::create_session(ProviderType::Devenv, vec!["rust".to_string()])
-            .expect("session should be created");
+    let result = SessionService::create_session(ProviderType::Devenv, vec!["rust".to_string()])
+        .expect("session should be created");
 
-    assert!(session_dir.is_dir());
+    assert!(result.session_dir.is_dir());
+    assert!(result.warnings.is_empty());
 
     let _ = fs::remove_dir_all(&cache_root);
 

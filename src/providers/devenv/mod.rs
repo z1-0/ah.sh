@@ -1,7 +1,7 @@
 pub mod flake_generator;
 
 use crate::error::{AppError, Result};
-use crate::providers::ShellProvider;
+use crate::providers::{EnsureFilesResult, ShellProvider};
 use std::path::Path;
 use std::sync::OnceLock;
 
@@ -14,13 +14,15 @@ impl ShellProvider for DevenvProvider {
         "devenv"
     }
 
-    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()> {
+    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult> {
         let flake_content = self::flake_generator::generate_devenv_flake(languages);
 
         let flake_path = target_dir.join("flake.nix");
         std::fs::write(flake_path, flake_content)?;
 
-        Ok(())
+        Ok(EnsureFilesResult {
+            warnings: Vec::new(),
+        })
     }
 
     fn get_supported_languages(&self) -> Result<Vec<String>> {
