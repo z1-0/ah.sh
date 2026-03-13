@@ -50,13 +50,13 @@ impl Manager {
             }
         }
 
-        let removed = SessionService::clear_sessions()?;
+        let removed = SessionApp::clear_sessions()?;
         println!("Cleared {} session(s).", removed);
         Ok(())
     }
 
     pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
-        let Some(result) = SessionService::remove_sessions(keys)? else {
+        let Some(result) = SessionApp::remove_sessions(keys)? else {
             println!("No sessions found.");
             return Ok(());
         };
