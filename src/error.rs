@@ -25,7 +25,19 @@ pub enum AppError {
     Session(#[from] SessionError),
 
     #[error("{0}")]
+    CliUsage(String),
+
+    #[error("{0}")]
     Generic(String),
+}
+
+impl AppError {
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            AppError::CliUsage(_) => 2,
+            _ => 1,
+        }
+    }
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;

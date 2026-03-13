@@ -1,6 +1,6 @@
 use crate::error::Result;
-use crate::paths::{get_xdg_dir, XdgDir};
-use crate::session::{Session, SessionError, SessionKey, SESSION_ID_LEN};
+use crate::paths::{XdgDir, get_xdg_dir};
+use crate::session::{SESSION_ID_LEN, Session, SessionError, SessionKey};
 use std::fs;
 use std::path::PathBuf;
 
