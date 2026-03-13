@@ -98,6 +98,10 @@ mod tests {
     fn parse_flake_shell_minimal_extracts_env_and_extras() {
         let source = r#"
             pkgs.mkShellNoCC {
+              # Fields like shellHook/buildInputs should be ignored by the parser.
+              shellHook = "echo SHOULD_BE_IGNORED";
+              buildInputs = [ pkgs.hello ];
+
               env = { FOO = "bar"; };
               venvDir = ".venv";
               postShellHook = "echo hi";
@@ -112,11 +116,47 @@ mod tests {
             attrs.env
         );
 
-        // Parser ignores shellHook but should keep postShellHook.
+        // Since the input contains both, assert we extract both (no OR).
         assert!(
-            attrs.extra_attrs.iter().any(|(k, _)| k == "venvDir")
-                || attrs.extra_attrs.iter().any(|(k, _)| k == "postShellHook"),
-            "expected extra_attrs to include venvDir or postShellHook, got: {:?}",
+            attrs.extra_attrs.iter().any(|(k, _)| k == "venvDir"),
+            "expected extra_attrs to include venvDir, got: {:?}",
+            attrs.extra_attrs
+        );
+        assert!(
+            attrs.extra_attrs.iter().any(|(k, _)| k == "postShellHook"),
+            "expected extra_attrs to include postShellHook, got: {:?}",
+            attrs.extra_attrs
+        );
+
+        // Ensure ignored attributes do not leak into extra_attrs/env.
+        assert!(
+            !attrs.extra_attrs.iter().any(|(k, _)| k == "shellHook" || k == "buildInputs"),
+            "expected ignored attrs (shellHook/buildInputs) to be absent, got extra_attrs: {:?}",
+            attrs.extra_attrs
+        );
+    }
+
+    #[test]
+    fn parse_flake_shell_env_non_attrset_is_captured_as_extra_attr() {
+        let source = r#"
+            pkgs.mkShellNoCC {
+              env = someExpr;
+              venvDir = ".venv";
+            }
+        "#;
+
+        let attrs = parse_flake_shell(source);
+
+        assert!(
+            attrs.env.is_empty(),
+            "expected env vec to be empty when env is not an attrset, got: {:?}",
+            attrs.env
+        );
+        assert!(
+            attrs.extra_attrs
+                .iter()
+                .any(|(k, v)| k == "env" && v.contains("someExpr")),
+            "expected non-attrset env to be captured as extra attr, got: {:?}",
             attrs.extra_attrs
         );
     }

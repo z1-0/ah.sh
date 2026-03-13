@@ -122,18 +122,18 @@ mod tests {
             "expected flake to include both languages, got:\n{flake}"
         );
 
-        // Should include some rendered attrs (don't full-string compare).
+        // Since parsed_attrs contains both env and extra attrs, assert both are rendered (no OR).
         assert!(
-            flake.contains("env = {") || flake.contains("venvDir"),
-            "expected flake to include env attrset or venvDir, got:\n{flake}"
+            flake.contains("env = {"),
+            "expected flake to include env attrset, got:\n{flake}"
         );
-
-        // If env is rendered, it should include our FOO key.
-        if flake.contains("env = {") {
-            assert!(
-                flake.contains("FOO"),
-                "expected flake env to contain FOO, got:\n{flake}"
-            );
-        }
+        assert!(
+            flake.contains("FOO = shells.\"rust\".FOO;"),
+            "expected flake env to reference shells for FOO, got:\n{flake}"
+        );
+        assert!(
+            flake.contains("venvDir = shells.\"rust\".venvDir;"),
+            "expected flake to include venvDir extra attr, got:\n{flake}"
+        );
     }
 }
