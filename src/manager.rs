@@ -9,6 +9,8 @@ use std::io::{self, IsTerminal, Write};
 
 pub struct Manager;
 
+const PROVIDER_TABLE_NAME_WIDTH: usize = 15;
+
 impl Manager {
     pub fn list_sessions() -> Result<()> {
         let sessions = SessionApp::list_sessions()?;
@@ -81,6 +83,91 @@ impl Manager {
         let result = SessionApp::prepare_create_session(provider_type, languages)?;
         print_warnings(&result.warnings);
         execute_nix_develop(result.session_dir, true)
+    }
+
+    pub fn list_providers() -> Result<()> {
+        let providers = [ProviderType::Devenv, ProviderType::DevTemplates];
+
+        println!(
+            "{:<5} {:<width$}",
+            "Index",
+            "Provider",
+            width = PROVIDER_TABLE_NAME_WIDTH
+        );
+
+        for (i, provider_type) in providers.iter().enumerate() {
+            let provider = (*provider_type).into_shell_provider();
+            println!(
+                "{:<5} {:<width$}",
+                i + 1,
+                provider.name(),
+                width = PROVIDER_TABLE_NAME_WIDTH
+            );
+        }
+
+        Ok(())
+    }
+
+    pub fn show_provider(provider_type: ProviderType) -> Result<()> {
+        Self::write_provider_languages(provider_type, false)
+    }
+
+    pub fn show_all_providers() -> Result<()> {
+        let providers = [ProviderType::Devenv, ProviderType::DevTemplates];
+
+        for (i, provider) in providers.iter().enumerate() {
+            if i > 0 {
+                println!();
+            }
+            Self::write_provider_languages(*provider, true)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_provider_languages(provider_type: ProviderType, include_header: bool) -> Result<()> {
+        use std::io::{ErrorKind, Write};
+
+        let provider = provider_type.into_shell_provider();
+        let provider_name = provider.name();
+
+        let mut languages = provider.get_supported_languages()?;
+        languages.sort();
+
+        let aliases_by_canonical =
+            crate::providers::language_aliases_by_canonical_for_provider(provider_name)?;
+
+        let mut out = std::io::stdout().lock();
+
+        if include_header {
+            if let Err(e) = writeln!(out, "Provider: {provider_name}") {
+                if e.kind() == ErrorKind::BrokenPipe {
+                    return Ok(());
+                }
+                return Err(e.into());
+            }
+        }
+
+        for lang in languages {
+            let aliases = aliases_by_canonical.get(&lang).cloned().unwrap_or_default();
+
+            let line = if aliases.is_empty() {
+                lang
+            } else {
+                // Show aliases in parentheses after the canonical name.
+                // Same-name aliases are ignored by language_aliases_by_canonical_for_provider.
+                format!("{} ({})", lang, aliases.join(","))
+            };
+
+            if let Err(e) = writeln!(out, "{line}") {
+                if e.kind() == ErrorKind::BrokenPipe {
+                    return Ok(());
+                }
+                return Err(e.into());
+            }
+        }
+
+        Ok(())
     }
 }
 

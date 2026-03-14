@@ -19,10 +19,48 @@ fn parse_aliases(json: &str) -> Result<LanguageAliases> {
     from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language aliases: {e}")))
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProviderType {
     Devenv,
     DevTemplates,
+}
+
+pub fn language_aliases_by_canonical_for_provider(
+    provider_name: &str,
+) -> Result<HashMap<String, Vec<String>>> {
+    let aliases = LANGUAGE_ALIASES.get_or_init(|| {
+        let aliases_json = include_str!("../assets/language_aliases.json");
+        parse_aliases(aliases_json)
+    });
+
+    let aliases = aliases
+        .as_ref()
+        .map_err(|e| AppError::Generic(e.to_string()))?;
+
+    let mut by_canonical: HashMap<String, Vec<String>> = HashMap::new();
+
+    for (alias, mapping) in aliases.iter() {
+        let Some(canonical) = mapping.get(provider_name) else {
+            continue;
+        };
+
+        // Avoid duplicating the canonical name in the alias list.
+        if alias == canonical {
+            continue;
+        }
+
+        by_canonical
+            .entry(canonical.clone())
+            .or_default()
+            .push(alias.clone());
+    }
+
+    for aliases in by_canonical.values_mut() {
+        aliases.sort();
+        aliases.dedup();
+    }
+
+    Ok(by_canonical)
 }
 
 impl ProviderType {
