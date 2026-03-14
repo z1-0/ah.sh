@@ -76,7 +76,7 @@ impl Manager {
         Ok(())
     }
 
-    pub fn create_session(
+    pub fn use_languages(
         provider_type: ProviderType,
         languages: Vec<String>,
     ) -> Result<Infallible> {

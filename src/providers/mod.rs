@@ -1,6 +1,5 @@
 use crate::error::{AppError, Result};
 use crate::warning::AppWarning;
-use clap::ValueEnum;
 use serde_json::from_str;
 use std::collections::HashMap;
 use std::path::Path;
@@ -19,7 +18,7 @@ fn parse_aliases(json: &str) -> Result<LanguageAliases> {
     from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language aliases: {e}")))
 }
 
-#[derive(ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProviderType {
     Devenv,
     DevTemplates,
