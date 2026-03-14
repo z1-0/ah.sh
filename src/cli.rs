@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::manager::Manager;
-use crate::providers::ProviderType;
+use crate::providers::{ProviderKeyOrAll, ProviderType};
 use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
 
@@ -64,25 +64,8 @@ pub enum ProviderCommands {
     /// Show provider supported languages
     Show {
         /// Provider name (devenv/dev-templates) or "all"
-        provider: ProviderShowTarget,
+        provider: ProviderKeyOrAll,
     },
-}
-
-#[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ProviderShowTarget {
-    Devenv,
-    DevTemplates,
-    All,
-}
-
-impl ProviderShowTarget {
-    fn as_provider_type(&self) -> Option<ProviderType> {
-        match self {
-            ProviderShowTarget::Devenv => Some(ProviderType::Devenv),
-            ProviderShowTarget::DevTemplates => Some(ProviderType::DevTemplates),
-            ProviderShowTarget::All => None,
-        }
-    }
 }
 
 pub fn run() -> Result<()> {

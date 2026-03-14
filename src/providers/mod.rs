@@ -24,6 +24,39 @@ pub enum ProviderType {
     DevTemplates,
 }
 
+/// Target of `ah provider show`: select a provider, or choose all.
+#[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ProviderKeyOrAll {
+    Devenv,
+    DevTemplates,
+    All,
+}
+
+impl ProviderKeyOrAll {
+    pub fn as_provider_type(&self) -> Option<ProviderType> {
+        match self {
+            ProviderKeyOrAll::Devenv => Some(ProviderType::Devenv),
+            ProviderKeyOrAll::DevTemplates => Some(ProviderType::DevTemplates),
+            ProviderKeyOrAll::All => None,
+        }
+    }
+}
+
+impl From<ProviderType> for ProviderKeyOrAll {
+    fn from(value: ProviderType) -> Self {
+        match value {
+            ProviderType::Devenv => ProviderKeyOrAll::Devenv,
+            ProviderType::DevTemplates => ProviderKeyOrAll::DevTemplates,
+        }
+    }
+}
+
+impl From<ProviderKeyOrAll> for Option<ProviderType> {
+    fn from(value: ProviderKeyOrAll) -> Self {
+        value.as_provider_type()
+    }
+}
+
 pub fn language_aliases_by_canonical_for_provider(
     provider_name: &str,
 ) -> Result<HashMap<String, Vec<String>>> {
