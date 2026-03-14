@@ -95,7 +95,6 @@
                 "editorconfig-checker"
                 "fix-byte-order-marker"
                 "flake-checker"
-                "markdownlint"
                 "mixed-line-endings"
                 "trim-trailing-whitespace"
               ]
