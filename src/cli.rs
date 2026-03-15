@@ -18,7 +18,7 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Create a development session
-    Lang {
+    Use {
         /// Languages to enable (e.g. rust go)
         #[arg(required = true, num_args = 1..)]
         languages: Vec<String>,
@@ -72,7 +72,7 @@ pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Lang { languages } => {
+        Commands::Use { languages } => {
             let never = Manager::use_languages(cli.provider, languages.clone())?;
             match never {}
         }
@@ -94,5 +94,32 @@ pub fn run() -> Result<()> {
                 Some(provider) => Manager::show_provider(provider),
             },
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn parse_use_with_single_language() {
+        let cli = Cli::try_parse_from(["ah", "use", "rust"]).unwrap();
+        match cli.command {
+            Commands::Use { languages } => assert_eq!(languages, vec!["rust"]),
+            other => panic!("unexpected command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_lang_is_rejected() {
+        let err = Cli::try_parse_from(["ah", "lang", "rust"]).err().unwrap();
+        assert!(err.to_string().contains("lang"));
+    }
+
+    #[test]
+    fn parse_use_without_languages_is_rejected() {
+        let err = Cli::try_parse_from(["ah", "use"]).err().unwrap();
+        assert!(err.to_string().contains("use"));
     }
 }

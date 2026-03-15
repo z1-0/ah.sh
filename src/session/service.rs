@@ -87,7 +87,7 @@ impl SessionService {
 
         if normalized_langs.is_empty() {
             return Err(AppError::Generic(
-                "No languages specified. Use 'ah <langs>' or 'ah session list'".to_string(),
+                "No languages specified. Use 'ah use <langs>' or 'ah session list'".to_string(),
             ));
         }
 

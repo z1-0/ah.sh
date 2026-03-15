@@ -2,11 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+- 中文沟通 / English comments：与用户对话用中文，代码注释使用英文
+
 ## 项目概览
 
 `ah` 是一个 Rust 编写的 CLI，用“语言列表”快速创建/恢复可复用的 Nix dev shell 会话。
 
-- 入口命令：`ah lang <languages...>`
+- 入口命令：`ah use <languages...>`
 - 会话：落盘到 XDG cache 目录，可 `list/restore/remove/clear`
 - Provider：决定如何把语言列表生成 `flake.nix`
   - `dev-templates`（默认）：基于 `the-nix-way/dev-templates` 拼装；并尝试解析各模板的 `mkShell` 属性
