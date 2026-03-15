@@ -1,8 +1,8 @@
-use crate::app::SessionApp;
 use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::providers::ProviderType;
 use crate::session::SessionKey;
+use crate::session::SessionService;
 use crate::warning::AppWarning;
 use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
@@ -13,7 +13,7 @@ const PROVIDER_TABLE_NAME_WIDTH: usize = 15;
 
 impl Manager {
     pub fn list_sessions() -> Result<()> {
-        let sessions = SessionApp::list_sessions()?;
+        let sessions = SessionService::list_sessions()?;
         if sessions.is_empty() {
             println!("No sessions found.");
             return Ok(());
@@ -32,7 +32,7 @@ impl Manager {
     }
 
     pub fn restore_session(key: &SessionKey) -> Result<Infallible> {
-        let session_dir = SessionApp::prepare_restore_session(key)?;
+        let session_dir = SessionService::resolve_session_dir(key)?;
         execute_nix_develop(session_dir, false)
     }
 
@@ -51,13 +51,13 @@ impl Manager {
             }
         }
 
-        let removed = SessionApp::clear_sessions()?;
+        let removed = SessionService::clear_sessions()?;
         println!("Cleared {} session(s).", removed);
         Ok(())
     }
 
     pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
-        let Some(result) = SessionApp::remove_sessions(keys)? else {
+        let Some(result) = SessionService::remove_sessions(keys)? else {
             println!("No sessions found.");
             return Ok(());
         };
@@ -80,7 +80,7 @@ impl Manager {
         provider_type: ProviderType,
         languages: Vec<String>,
     ) -> Result<Infallible> {
-        let result = SessionApp::prepare_create_session(provider_type, languages)?;
+        let result = SessionService::create_session(provider_type, languages)?;
         print_warnings(&result.warnings);
         execute_nix_develop(result.session_dir, true)
     }
@@ -139,13 +139,11 @@ impl Manager {
 
         let mut out = std::io::stdout().lock();
 
-        if include_header {
-            if let Err(e) = writeln!(out, "Provider: {provider_name}") {
-                if e.kind() == ErrorKind::BrokenPipe {
-                    return Ok(());
-                }
-                return Err(e.into());
+        if include_header && let Err(e) = writeln!(out, "Provider: {provider_name}") {
+            if e.kind() == ErrorKind::BrokenPipe {
+                return Ok(());
             }
+            return Err(e.into());
         }
 
         for lang in languages {
