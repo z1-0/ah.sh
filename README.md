@@ -237,6 +237,7 @@ Options:
 ## Roadmap（克制版）
 
 - 管理当前会话
+- 重构cli.rs, provider/mod.rs
 - 更友好的输出（更清晰的错误提示、可复制的建议命令）
 - 为脚本/CI 提供机器可读输出（如 `--json`）
 

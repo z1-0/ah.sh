@@ -23,13 +23,15 @@ struct LanguageMaps {
 
 static LANGUAGE_MAPS: OnceLock<Result<LanguageMaps>> = OnceLock::new();
 
-const PROVIDER_LANGUAGE_MAPS: [(&str, &str); 2] = [
+const PROVIDER_LANGUAGE_MAPS: [(&str, &str, &str); 2] = [
     (
         "devenv",
+        include_str!("../assets/providers/devenv/supported_langs.json"),
         include_str!("../assets/providers/devenv/mapping_langs.json"),
     ),
     (
         "dev-templates",
+        include_str!("../assets/providers/dev-templates/supported_langs.json"),
         include_str!("../assets/providers/dev-templates/mapping_langs.json"),
     ),
 ];
@@ -39,12 +41,20 @@ impl LanguageMaps {
         let mut by_provider = HashMap::new();
         let mut input_map = HashMap::new();
 
-        for (provider, map_json) in PROVIDER_LANGUAGE_MAPS {
-            let parsed = Self::parse_language_map(map_json)?;
-            let inputs = Self::language_map_to_input_map(&parsed);
+        for (provider, supported_json, map_json) in PROVIDER_LANGUAGE_MAPS {
+            let parsed_map = Self::parse_language_map(map_json)?;
+            let inputs = Self::language_map_to_input_map(&parsed_map);
+            let mut all_inputs = inputs;
 
-            by_provider.insert(provider.to_string(), parsed);
-            input_map.insert(provider.to_string(), inputs);
+            // Also include the raw supported languages
+            let supported: Vec<String> = from_str(supported_json)
+                .map_err(|e| AppError::Generic(format!("Failed to parse supported_langs: {e}")))?;
+            for lang in supported {
+                all_inputs.entry(lang.clone()).or_insert(lang);
+            }
+
+            by_provider.insert(provider.to_string(), parsed_map);
+            input_map.insert(provider.to_string(), all_inputs);
         }
 
         Ok(Self {
@@ -117,6 +127,16 @@ impl LanguageMaps {
     fn map_language_with_input_map(input: &str, map: &ProviderInputMap) -> String {
         map.get(input).cloned().unwrap_or_else(|| input.to_string())
     }
+
+    fn is_input_in_map(&self, input: &str) -> bool {
+        self.input_map.values().any(|map| map.contains_key(input))
+    }
+}
+
+pub fn is_maybe_language(input: &str) -> bool {
+    LanguageMaps::global()
+        .map(|maps| maps.is_input_in_map(input))
+        .unwrap_or(false)
 }
 
 pub fn language_map_for_provider(provider_name: &str) -> Result<ProviderLanguageMap> {
