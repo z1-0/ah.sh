@@ -11,11 +11,81 @@ use self::devenv::DevenvProvider;
 pub mod dev_templates;
 pub mod devenv;
 
-type LanguageAliases = HashMap<String, HashMap<String, String>>;
-static LANGUAGE_ALIASES: OnceLock<Result<LanguageAliases>> = OnceLock::new();
+type ProviderLanguageMap = HashMap<String, Vec<String>>;
+type LanguageMapByProvider = HashMap<String, ProviderLanguageMap>;
+pub(crate) type ProviderInputMap = HashMap<String, String>;
+type InputMapByProvider = HashMap<String, ProviderInputMap>;
 
-fn parse_aliases(json: &str) -> Result<LanguageAliases> {
-    from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language aliases: {e}")))
+struct LanguageMaps {
+    by_provider: LanguageMapByProvider,
+    input_map: InputMapByProvider,
+}
+
+static LANGUAGE_MAPS: OnceLock<Result<LanguageMaps>> = OnceLock::new();
+
+fn parse_language_map(json: &str) -> Result<ProviderLanguageMap> {
+    from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language map: {e}")))
+}
+
+pub(crate) fn language_map_to_input_map(map: ProviderLanguageMap) -> ProviderInputMap {
+    let mut inputs = ProviderInputMap::new();
+
+    for (mapped, candidates) in map.iter() {
+        inputs.insert(mapped.clone(), mapped.clone());
+        for candidate in candidates {
+            inputs.insert(candidate.clone(), mapped.clone());
+        }
+    }
+
+    inputs
+}
+
+fn load_language_maps() -> Result<LanguageMaps> {
+    let mut by_provider = HashMap::new();
+    let mut input_map = HashMap::new();
+    let providers = ["devenv", "dev-templates"];
+
+    for provider in providers {
+        let map_json = match provider {
+            "devenv" => include_str!("../assets/providers/devenv/mapping_langs.json"),
+            "dev-templates" => include_str!("../assets/providers/dev-templates/mapping_langs.json"),
+            _ => return Err(AppError::Generic("Unknown provider".to_string())),
+        };
+        let parsed = parse_language_map(map_json)?;
+        let inputs = language_map_to_input_map(parsed.clone());
+
+        by_provider.insert(provider.to_string(), parsed);
+        input_map.insert(provider.to_string(), inputs);
+    }
+
+    Ok(LanguageMaps {
+        by_provider,
+        input_map,
+    })
+}
+
+pub fn language_map_for_provider(provider_name: &str) -> Result<ProviderLanguageMap> {
+    let maps = LANGUAGE_MAPS.get_or_init(|| load_language_maps());
+    let maps = maps
+        .as_ref()
+        .map_err(|e| AppError::Generic(e.to_string()))?;
+
+    maps.by_provider
+        .get(provider_name)
+        .cloned()
+        .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+}
+
+pub fn input_map_for_provider(provider_name: &str) -> Result<ProviderInputMap> {
+    let maps = LANGUAGE_MAPS.get_or_init(|| load_language_maps());
+    let maps = maps
+        .as_ref()
+        .map_err(|e| AppError::Generic(e.to_string()))?;
+
+    maps.input_map
+        .get(provider_name)
+        .cloned()
+        .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
 }
 
 #[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
@@ -57,44 +127,6 @@ impl From<ProviderKeyOrAll> for Option<ProviderType> {
     }
 }
 
-pub fn language_aliases_by_canonical_for_provider(
-    provider_name: &str,
-) -> Result<HashMap<String, Vec<String>>> {
-    let aliases = LANGUAGE_ALIASES.get_or_init(|| {
-        let aliases_json = include_str!("../assets/language_aliases.json");
-        parse_aliases(aliases_json)
-    });
-
-    let aliases = aliases
-        .as_ref()
-        .map_err(|e| AppError::Generic(e.to_string()))?;
-
-    let mut by_canonical: HashMap<String, Vec<String>> = HashMap::new();
-
-    for (alias, mapping) in aliases.iter() {
-        let Some(canonical) = mapping.get(provider_name) else {
-            continue;
-        };
-
-        // Avoid duplicating the canonical name in the alias list.
-        if alias == canonical {
-            continue;
-        }
-
-        by_canonical
-            .entry(canonical.clone())
-            .or_default()
-            .push(alias.clone());
-    }
-
-    for aliases in by_canonical.values_mut() {
-        aliases.sort();
-        aliases.dedup();
-    }
-
-    Ok(by_canonical)
-}
-
 impl ProviderType {
     pub fn into_shell_provider(self) -> Box<dyn ShellProvider> {
         match self {
@@ -113,34 +145,43 @@ pub trait ShellProvider {
     fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult>;
     fn get_supported_languages(&self) -> Result<Vec<String>>;
 
-    fn normalize_language(&self, lang: &str) -> Result<String> {
-        normalize_lang_for_provider(self.name(), lang)
+    fn map_language(&self, input: &str) -> Result<String> {
+        map_language_for_provider(self.name(), input)
     }
 }
 
-fn normalize_lang_for_provider_with_aliases(
-    provider_name: &str,
-    lang: &str,
-    aliases: &Result<LanguageAliases>,
-) -> Result<String> {
-    let aliases = aliases
-        .as_ref()
-        .map_err(|e| AppError::Generic(e.to_string()))?;
+fn map_language_with_input_map(input: &str, map: &Result<ProviderInputMap>) -> Result<String> {
+    let map = map.as_ref().map_err(|e| AppError::Generic(e.to_string()))?;
 
-    Ok(aliases
-        .get(lang)
-        .and_then(|m| m.get(provider_name))
-        .cloned()
-        .unwrap_or_else(|| lang.to_owned()))
+    Ok(map.get(input).cloned().unwrap_or_else(|| input.to_string()))
 }
 
-pub fn normalize_lang_for_provider(provider_name: &str, lang: &str) -> Result<String> {
-    let aliases = LANGUAGE_ALIASES.get_or_init(|| {
-        let aliases_json = include_str!("../assets/language_aliases.json");
-        parse_aliases(aliases_json)
-    });
+pub fn map_language_for_provider(provider_name: &str, input: &str) -> Result<String> {
+    let map = input_map_for_provider(provider_name)?;
+    map_language_with_input_map(input, &Ok(map))
+}
 
-    normalize_lang_for_provider_with_aliases(provider_name, lang, aliases)
+pub fn language_map_for_display(provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
+    let map = language_map_for_provider(provider_name)?;
+    Ok(language_map_for_display_with_map(map))
+}
+
+pub(crate) fn language_map_for_display_with_map(
+    map: ProviderLanguageMap,
+) -> HashMap<String, Vec<String>> {
+    let mut by_mapped = HashMap::new();
+
+    for (mapped, inputs) in map {
+        let mut display_inputs: Vec<String> = inputs
+            .into_iter()
+            .filter(|input| input != &mapped)
+            .collect();
+        display_inputs.sort();
+        display_inputs.dedup();
+        by_mapped.insert(mapped, display_inputs);
+    }
+
+    by_mapped
 }
 
 pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
@@ -163,22 +204,21 @@ mod tests {
     use crate::error::AppError;
 
     #[test]
-    fn parse_aliases_returns_err_for_invalid_json() {
-        let err = super::parse_aliases("not json").expect_err("should error");
+    fn parse_language_map_returns_err_for_invalid_json() {
+        let err = super::parse_language_map("not json").expect_err("should error");
         assert!(
-            err.to_string().contains("language aliases"),
+            err.to_string().contains("language map"),
             "unexpected error: {err}"
         );
     }
 
     #[test]
-    fn normalize_returns_err_when_aliases_source_is_err() {
-        let aliases: super::Result<super::LanguageAliases> =
-            Err(AppError::Generic("aliases source failed".to_string()));
+    fn map_language_returns_err_when_map_source_is_err() {
+        let map: super::Result<super::ProviderInputMap> =
+            Err(AppError::Generic("map source failed".to_string()));
 
-        let err = super::normalize_lang_for_provider_with_aliases("devenv", "rust", &aliases)
-            .expect_err("should error");
-        assert!(err.to_string().contains("aliases source failed"));
+        let err = super::map_language_with_input_map("rust", &map).expect_err("should error");
+        assert!(err.to_string().contains("map source failed"));
     }
 
     #[test]
@@ -207,38 +247,46 @@ mod tests {
     }
 
     #[test]
-    fn normalize_lang_for_provider_with_aliases_returns_mapped_value_when_present() {
-        let aliases_json = r#"{
-  "js": { "devenv": "javascript" }
+    fn map_language_with_map_returns_mapped_value_when_present() {
+        let map_json = r#"{
+  "javascript": ["js", "javascript"]
 }"#;
-        let aliases = super::parse_aliases(aliases_json).expect("should parse");
+        let map = super::parse_language_map(map_json).expect("should parse");
+        let input_map = super::language_map_to_input_map(map);
 
-        let normalized =
-            super::normalize_lang_for_provider_with_aliases("devenv", "js", &Ok(aliases))
-                .expect("should normalize");
+        let mapped = super::map_language_with_input_map("js", &Ok(input_map)).expect("should map");
 
-        assert_eq!(normalized, "javascript");
+        assert_eq!(mapped, "javascript");
     }
 
     #[test]
-    fn normalize_lang_for_provider_with_aliases_returns_original_when_no_mapping_found() {
-        let aliases_json = r#"{
-  "js": { "devenv": "javascript" }
+    fn map_language_with_map_returns_original_when_no_mapping_found() {
+        let map_json = r#"{
+  "javascript": ["js", "javascript"]
 }"#;
-        let aliases = super::parse_aliases(aliases_json).expect("should parse");
+        let map = super::parse_language_map(map_json).expect("should parse");
+        let input_map = super::language_map_to_input_map(map);
 
-        // Different provider => no mapping => return original.
-        let normalized =
-            super::normalize_lang_for_provider_with_aliases("dev_templates", "js", &Ok(aliases))
-                .expect("should normalize");
+        let mapped = super::map_language_with_input_map("go", &Ok(input_map)).expect("should map");
 
-        assert_eq!(normalized, "js");
+        assert_eq!(mapped, "go");
     }
 
     #[test]
-    fn normalize_lang_for_provider_returns_original_for_unknown_language() {
+    fn map_language_for_provider_returns_original_for_unknown_language() {
         let lang = "__no_such_lang__";
-        let normalized = super::normalize_lang_for_provider("devenv", lang).expect("should ok");
-        assert_eq!(normalized, lang);
+        let mapped = super::map_language_for_provider("devenv", lang).expect("should ok");
+        assert_eq!(mapped, lang);
+    }
+
+    #[test]
+    fn language_map_for_display_filters_self_mappings() {
+        let map_json = r#"{
+  "javascript": ["js", "javascript"]
+}"#;
+        let map = super::parse_language_map(map_json).expect("should parse");
+        let display = super::language_map_for_display_with_map(map);
+
+        assert_eq!(display.get("javascript"), Some(&vec!["js".to_string()]));
     }
 }

@@ -1,0 +1,7 @@
+{
+  "cplusplus": ["c++", "cpp"],
+  "javascript": ["js"],
+  "typescript": ["ts"],
+  "python": ["py"],
+  "ruby": ["rb"]
+}

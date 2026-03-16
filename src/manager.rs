@@ -134,8 +134,7 @@ impl Manager {
         let mut languages = provider.get_supported_languages()?;
         languages.sort();
 
-        let aliases_by_canonical =
-            crate::providers::language_aliases_by_canonical_for_provider(provider_name)?;
+        let map_by_language = crate::providers::language_map_for_display(provider_name)?;
 
         let mut out = std::io::stdout().lock();
 
@@ -147,14 +146,13 @@ impl Manager {
         }
 
         for lang in languages {
-            let aliases = aliases_by_canonical.get(&lang).cloned().unwrap_or_default();
+            let mapped_inputs = map_by_language.get(&lang).cloned().unwrap_or_default();
 
-            let line = if aliases.is_empty() {
+            let line = if mapped_inputs.is_empty() {
                 lang
             } else {
-                // Show aliases in parentheses after the canonical name.
-                // Same-name aliases are ignored by language_aliases_by_canonical_for_provider.
-                format!("{} ({})", lang, aliases.join(","))
+                // Show mapped inputs in parentheses after the mapped name.
+                format!("{} ({})", lang, mapped_inputs.join(","))
             };
 
             if let Err(e) = writeln!(out, "{line}") {

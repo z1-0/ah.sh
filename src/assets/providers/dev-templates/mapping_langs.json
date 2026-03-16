@@ -1,0 +1,5 @@
+{
+  "c-cpp": ["c", "c++", "cpp"],
+  "node": ["javascript", "js", "typescript", "ts"],
+  "python": ["py"]
+}

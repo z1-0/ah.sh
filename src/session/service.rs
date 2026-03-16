@@ -77,15 +77,17 @@ impl SessionService {
     ) -> Result<CreateSessionResult> {
         let provider = provider_type.into_shell_provider();
 
-        let mut normalized_langs = languages
+        let mapped_langs = languages
             .iter()
-            .map(|language| provider.normalize_language(language))
+            .map(|language| provider.map_language(language))
             .collect::<Result<Vec<_>>>()?;
 
-        let mut seen = HashSet::new();
-        normalized_langs.retain(|language| seen.insert(language.clone()));
+        let mut deduped_langs = mapped_langs;
 
-        if normalized_langs.is_empty() {
+        let mut seen = HashSet::new();
+        deduped_langs.retain(|language| seen.insert(language.clone()));
+
+        if deduped_langs.is_empty() {
             return Err(AppError::Generic(
                 "No languages specified. Use 'ah use <langs>' or 'ah session list'".to_string(),
             ));
@@ -94,18 +96,18 @@ impl SessionService {
         let mut warnings: Vec<AppWarning> = Vec::new();
 
         let supported_langs = provider.get_supported_languages()?;
-        validate_languages(&normalized_langs, &supported_langs)?;
+        validate_languages(&deduped_langs, &supported_langs)?;
 
-        let session_id = storage::generate_id(provider.name(), &normalized_langs);
+        let session_id = storage::generate_id(provider.name(), &deduped_langs);
         let session_dir = storage::get_session_dir()?.join(&session_id);
         std::fs::create_dir_all(&session_dir)?;
 
         let EnsureFilesResult {
             warnings: provider_warnings,
-        } = provider.ensure_files(&normalized_langs, &session_dir)?;
+        } = provider.ensure_files(&deduped_langs, &session_dir)?;
         warnings.extend(provider_warnings);
 
-        let session = Session::new(session_id, normalized_langs, provider.name().to_string());
+        let session = Session::new(session_id, deduped_langs, provider.name().to_string());
         storage::save_session(&session)?;
 
         Ok(CreateSessionResult {
