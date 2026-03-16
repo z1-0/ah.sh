@@ -11,9 +11,9 @@ use self::devenv::DevenvProvider;
 pub mod dev_templates;
 pub mod devenv;
 
+pub(crate) type ProviderInputMap = HashMap<String, String>;
 type ProviderLanguageMap = HashMap<String, Vec<String>>;
 type LanguageMapByProvider = HashMap<String, ProviderLanguageMap>;
-pub(crate) type ProviderInputMap = HashMap<String, String>;
 type InputMapByProvider = HashMap<String, ProviderInputMap>;
 
 struct LanguageMaps {
@@ -23,69 +23,112 @@ struct LanguageMaps {
 
 static LANGUAGE_MAPS: OnceLock<Result<LanguageMaps>> = OnceLock::new();
 
-fn parse_language_map(json: &str) -> Result<ProviderLanguageMap> {
-    from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language map: {e}")))
-}
+const PROVIDER_LANGUAGE_MAPS: [(&str, &str); 2] = [
+    (
+        "devenv",
+        include_str!("../assets/providers/devenv/mapping_langs.json"),
+    ),
+    (
+        "dev-templates",
+        include_str!("../assets/providers/dev-templates/mapping_langs.json"),
+    ),
+];
 
-pub(crate) fn language_map_to_input_map(map: ProviderLanguageMap) -> ProviderInputMap {
-    let mut inputs = ProviderInputMap::new();
+impl LanguageMaps {
+    fn load() -> Result<Self> {
+        let mut by_provider = HashMap::new();
+        let mut input_map = HashMap::new();
 
-    for (mapped, candidates) in map.iter() {
-        inputs.insert(mapped.clone(), mapped.clone());
-        for candidate in candidates {
-            inputs.insert(candidate.clone(), mapped.clone());
+        for (provider, map_json) in PROVIDER_LANGUAGE_MAPS {
+            let parsed = Self::parse_language_map(map_json)?;
+            let inputs = Self::language_map_to_input_map(&parsed);
+
+            by_provider.insert(provider.to_string(), parsed);
+            input_map.insert(provider.to_string(), inputs);
         }
+
+        Ok(Self {
+            by_provider,
+            input_map,
+        })
     }
 
-    inputs
-}
-
-fn load_language_maps() -> Result<LanguageMaps> {
-    let mut by_provider = HashMap::new();
-    let mut input_map = HashMap::new();
-    let providers = ["devenv", "dev-templates"];
-
-    for provider in providers {
-        let map_json = match provider {
-            "devenv" => include_str!("../assets/providers/devenv/mapping_langs.json"),
-            "dev-templates" => include_str!("../assets/providers/dev-templates/mapping_langs.json"),
-            _ => return Err(AppError::Generic("Unknown provider".to_string())),
-        };
-        let parsed = parse_language_map(map_json)?;
-        let inputs = language_map_to_input_map(parsed.clone());
-
-        by_provider.insert(provider.to_string(), parsed);
-        input_map.insert(provider.to_string(), inputs);
+    fn global() -> Result<&'static Self> {
+        let maps = LANGUAGE_MAPS.get_or_init(Self::load);
+        maps.as_ref().map_err(|e| AppError::Generic(e.to_string()))
     }
 
-    Ok(LanguageMaps {
-        by_provider,
-        input_map,
-    })
+    fn normalize(&self, provider_name: &str, input: &str) -> Result<String> {
+        let map = self.input_map(provider_name)?;
+        Ok(Self::map_language_with_input_map(input, map))
+    }
+
+    fn input_map(&self, provider_name: &str) -> Result<&ProviderInputMap> {
+        self.input_map
+            .get(provider_name)
+            .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+    }
+
+    fn raw_map(&self, provider_name: &str) -> Result<&ProviderLanguageMap> {
+        self.by_provider
+            .get(provider_name)
+            .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+    }
+
+    fn display_map(&self, provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
+        let map = self.raw_map(provider_name)?;
+        Ok(Self::display_map_with_map(map))
+    }
+
+    fn display_map_with_map(map: &ProviderLanguageMap) -> HashMap<String, Vec<String>> {
+        let mut by_mapped = HashMap::new();
+
+        for (mapped, inputs) in map {
+            let mut display_inputs: Vec<String> = inputs
+                .iter()
+                .filter(|input| *input != mapped)
+                .cloned()
+                .collect();
+            display_inputs.sort();
+            display_inputs.dedup();
+            by_mapped.insert(mapped.clone(), display_inputs);
+        }
+
+        by_mapped
+    }
+
+    fn parse_language_map(json: &str) -> Result<ProviderLanguageMap> {
+        from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language map: {e}")))
+    }
+
+    fn language_map_to_input_map(map: &ProviderLanguageMap) -> ProviderInputMap {
+        let mut inputs = ProviderInputMap::new();
+
+        for (mapped, candidates) in map {
+            inputs.insert(mapped.clone(), mapped.clone());
+            for candidate in candidates {
+                inputs.insert(candidate.clone(), mapped.clone());
+            }
+        }
+
+        inputs
+    }
+
+    fn map_language_with_input_map(input: &str, map: &ProviderInputMap) -> String {
+        map.get(input).cloned().unwrap_or_else(|| input.to_string())
+    }
 }
 
 pub fn language_map_for_provider(provider_name: &str) -> Result<ProviderLanguageMap> {
-    let maps = LANGUAGE_MAPS.get_or_init(|| load_language_maps());
-    let maps = maps
-        .as_ref()
-        .map_err(|e| AppError::Generic(e.to_string()))?;
-
-    maps.by_provider
-        .get(provider_name)
-        .cloned()
-        .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+    LanguageMaps::global()?.raw_map(provider_name).cloned()
 }
 
-pub fn input_map_for_provider(provider_name: &str) -> Result<ProviderInputMap> {
-    let maps = LANGUAGE_MAPS.get_or_init(|| load_language_maps());
-    let maps = maps
-        .as_ref()
-        .map_err(|e| AppError::Generic(e.to_string()))?;
+pub fn map_language_for_provider(provider_name: &str, input: &str) -> Result<String> {
+    LanguageMaps::global()?.normalize(provider_name, input)
+}
 
-    maps.input_map
-        .get(provider_name)
-        .cloned()
-        .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+pub fn language_map_for_display(provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
+    LanguageMaps::global()?.display_map(provider_name)
 }
 
 #[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
@@ -150,40 +193,6 @@ pub trait ShellProvider {
     }
 }
 
-fn map_language_with_input_map(input: &str, map: &Result<ProviderInputMap>) -> Result<String> {
-    let map = map.as_ref().map_err(|e| AppError::Generic(e.to_string()))?;
-
-    Ok(map.get(input).cloned().unwrap_or_else(|| input.to_string()))
-}
-
-pub fn map_language_for_provider(provider_name: &str, input: &str) -> Result<String> {
-    let map = input_map_for_provider(provider_name)?;
-    map_language_with_input_map(input, &Ok(map))
-}
-
-pub fn language_map_for_display(provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
-    let map = language_map_for_provider(provider_name)?;
-    Ok(language_map_for_display_with_map(map))
-}
-
-pub(crate) fn language_map_for_display_with_map(
-    map: ProviderLanguageMap,
-) -> HashMap<String, Vec<String>> {
-    let mut by_mapped = HashMap::new();
-
-    for (mapped, inputs) in map {
-        let mut display_inputs: Vec<String> = inputs
-            .into_iter()
-            .filter(|input| input != &mapped)
-            .collect();
-        display_inputs.sort();
-        display_inputs.dedup();
-        by_mapped.insert(mapped, display_inputs);
-    }
-
-    by_mapped
-}
-
 pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
     let supported_set: std::collections::HashSet<_> = supported.iter().collect();
     let invalids: Vec<_> = languages
@@ -205,20 +214,57 @@ mod tests {
 
     #[test]
     fn parse_language_map_returns_err_for_invalid_json() {
-        let err = super::parse_language_map("not json").expect_err("should error");
+        let err = super::LanguageMaps::parse_language_map("not json").expect_err("should error");
         assert!(
             err.to_string().contains("language map"),
             "unexpected error: {err}"
         );
     }
 
-    #[test]
-    fn map_language_returns_err_when_map_source_is_err() {
-        let map: super::Result<super::ProviderInputMap> =
-            Err(AppError::Generic("map source failed".to_string()));
+    fn sample_language_map_json() -> &'static str {
+        r#"{
+  "javascript": ["js", "javascript"]
+}"#
+    }
 
-        let err = super::map_language_with_input_map("rust", &map).expect_err("should error");
-        assert!(err.to_string().contains("map source failed"));
+    fn sample_language_map() -> super::ProviderLanguageMap {
+        super::LanguageMaps::parse_language_map(sample_language_map_json()).expect("should parse")
+    }
+
+    fn sample_input_map() -> super::ProviderInputMap {
+        super::LanguageMaps::language_map_to_input_map(&sample_language_map())
+    }
+
+    #[test]
+    fn map_language_with_map_returns_mapped_value_when_present() {
+        let input_map = sample_input_map();
+
+        let mapped = super::LanguageMaps::map_language_with_input_map("js", &input_map);
+
+        assert_eq!(mapped, "javascript");
+    }
+
+    #[test]
+    fn map_language_with_map_returns_original_when_no_mapping_found() {
+        let input_map = sample_input_map();
+
+        let mapped = super::LanguageMaps::map_language_with_input_map("go", &input_map);
+
+        assert_eq!(mapped, "go");
+    }
+
+    #[test]
+    fn map_language_for_provider_returns_original_for_unknown_language() {
+        let lang = "__no_such_lang__";
+        let mapped = super::map_language_for_provider("devenv", lang).expect("should ok");
+        assert_eq!(mapped, lang);
+    }
+
+    #[test]
+    fn language_map_for_display_filters_self_mappings() {
+        let display = super::LanguageMaps::display_map_with_map(&sample_language_map());
+
+        assert_eq!(display.get("javascript"), Some(&vec!["js".to_string()]));
     }
 
     #[test]
@@ -244,49 +290,5 @@ mod tests {
             }
             other => panic!("unexpected error: {other:?}"),
         }
-    }
-
-    #[test]
-    fn map_language_with_map_returns_mapped_value_when_present() {
-        let map_json = r#"{
-  "javascript": ["js", "javascript"]
-}"#;
-        let map = super::parse_language_map(map_json).expect("should parse");
-        let input_map = super::language_map_to_input_map(map);
-
-        let mapped = super::map_language_with_input_map("js", &Ok(input_map)).expect("should map");
-
-        assert_eq!(mapped, "javascript");
-    }
-
-    #[test]
-    fn map_language_with_map_returns_original_when_no_mapping_found() {
-        let map_json = r#"{
-  "javascript": ["js", "javascript"]
-}"#;
-        let map = super::parse_language_map(map_json).expect("should parse");
-        let input_map = super::language_map_to_input_map(map);
-
-        let mapped = super::map_language_with_input_map("go", &Ok(input_map)).expect("should map");
-
-        assert_eq!(mapped, "go");
-    }
-
-    #[test]
-    fn map_language_for_provider_returns_original_for_unknown_language() {
-        let lang = "__no_such_lang__";
-        let mapped = super::map_language_for_provider("devenv", lang).expect("should ok");
-        assert_eq!(mapped, lang);
-    }
-
-    #[test]
-    fn language_map_for_display_filters_self_mappings() {
-        let map_json = r#"{
-  "javascript": ["js", "javascript"]
-}"#;
-        let map = super::parse_language_map(map_json).expect("should parse");
-        let display = super::language_map_for_display_with_map(map);
-
-        assert_eq!(display.get("javascript"), Some(&vec!["js".to_string()]));
     }
 }
