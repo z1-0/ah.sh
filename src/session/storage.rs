@@ -1,11 +1,11 @@
 use crate::error::Result;
-use crate::paths::{XdgDir, get_xdg_dir};
+use crate::paths::get_cache_dir;
 use crate::session::{SESSION_ID_LEN, Session, SessionError, SessionKey};
 use std::fs;
 use std::path::PathBuf;
 
 pub(crate) fn get_session_dir() -> Result<PathBuf> {
-    let dir = get_xdg_dir(XdgDir::Cache)?.join("sessions");
+    let dir = get_cache_dir()?.join("sessions");
     if !dir.exists() {
         fs::create_dir_all(&dir)?;
     }

@@ -1,28 +1,21 @@
 use crate::error::Result;
+use directories::ProjectDirs;
 use std::path::PathBuf;
 
 const PROGRAM_NAME: &str = env!("CARGO_PKG_NAME");
 
-pub enum XdgDir {
-    Data,
-    Cache,
+pub fn get_data_dir() -> Result<PathBuf> {
+    let project_dirs = ProjectDirs::from("", "", PROGRAM_NAME).ok_or_else(|| {
+        crate::error::AppError::Generic("Could not determine project directories".to_string())
+    })?;
+
+    Ok(project_dirs.data_dir().join(PROGRAM_NAME))
 }
 
-pub fn get_xdg_dir(dir_type: XdgDir) -> Result<PathBuf> {
-    let (env_var, default_suffix) = match dir_type {
-        XdgDir::Data => ("XDG_DATA_HOME", ".local/share"),
-        XdgDir::Cache => ("XDG_CACHE_HOME", ".cache"),
-    };
+pub fn get_cache_dir() -> Result<PathBuf> {
+    let project_dirs = ProjectDirs::from("", "", PROGRAM_NAME).ok_or_else(|| {
+        crate::error::AppError::Generic("Could not determine project directories".to_string())
+    })?;
 
-    let base_dir = std::env::var(env_var)
-        .map(PathBuf::from)
-        .or_else(|_| std::env::var("HOME").map(|home| PathBuf::from(home).join(default_suffix)))
-        .map_err(|_| {
-            crate::error::AppError::Generic(format!(
-                "Could not find {} or HOME environment variable",
-                env_var
-            ))
-        })?;
-
-    Ok(base_dir.join(PROGRAM_NAME))
+    Ok(project_dirs.cache_dir().join(PROGRAM_NAME))
 }

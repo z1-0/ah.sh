@@ -1,5 +1,5 @@
 use crate::error::{AppError, Result};
-use crate::paths::{XdgDir, get_xdg_dir};
+use crate::paths::get_cache_dir;
 use crate::warning::AppWarning;
 use std::fs;
 use std::path::Path;
@@ -8,7 +8,7 @@ const CACHE_TTL_SECS: u64 = 24 * 60 * 60;
 
 pub fn fetch_flake_source(lang: &str) -> Result<String> {
     // Check cache first
-    let cache_dir = get_xdg_dir(XdgDir::Cache)?.join("dev-templates-source");
+    let cache_dir = get_cache_dir()?.join("dev-templates-source");
     if !cache_dir.exists() {
         fs::create_dir_all(&cache_dir)?;
     }
