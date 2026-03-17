@@ -1,4 +1,4 @@
-use crate::providers::{ProviderKeyOrAll, ProviderType};
+use crate::provider::{ProviderKeyOrAll, ProviderType};
 use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
 

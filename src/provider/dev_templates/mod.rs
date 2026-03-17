@@ -3,7 +3,7 @@ pub mod flake_generator;
 pub mod nix_parser;
 
 use crate::error::{AppError, Result};
-use crate::providers::{EnsureFilesResult, ShellProvider};
+use crate::provider::{EnsureFilesResult, ShellProvider};
 use crate::warning::AppWarning;
 use std::collections::HashSet;
 use std::path::Path;

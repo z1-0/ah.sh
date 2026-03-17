@@ -1,7 +1,7 @@
 pub mod flake_generator;
 
 use crate::error::{AppError, Result};
-use crate::providers::{EnsureFilesResult, ShellProvider};
+use crate::provider::{EnsureFilesResult, ShellProvider};
 use std::path::Path;
 use std::sync::OnceLock;
 

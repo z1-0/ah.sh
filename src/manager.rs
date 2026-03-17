@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::executor::execute_nix_develop;
-use crate::providers::ProviderType;
+use crate::provider::ProviderType;
 use crate::session::SessionKey;
 use crate::session::SessionService;
 use crate::warning::AppWarning;
@@ -134,7 +134,7 @@ impl Manager {
         let mut languages = provider.get_supported_languages()?;
         languages.sort();
 
-        let map_by_language = crate::providers::language_map_for_display(provider_name)?;
+        let map_by_language = crate::provider::language_map_for_display(provider_name)?;
 
         let mut out = std::io::stdout().lock();
 

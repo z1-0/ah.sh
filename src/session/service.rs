@@ -1,5 +1,5 @@
 use crate::error::{AppError, Result};
-use crate::providers::{EnsureFilesResult, ProviderType, validate_languages};
+use crate::provider::{EnsureFilesResult, ProviderType, validate_languages};
 use crate::session::storage;
 use crate::session::{Session, SessionError, SessionKey};
 use crate::warning::AppWarning;

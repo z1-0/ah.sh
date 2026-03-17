@@ -1,7 +1,7 @@
 use clap::Command;
 use std::ffi::OsString;
 
-use crate::providers::is_maybe_language;
+use crate::provider::is_maybe_language;
 
 pub fn maybe_implicit_use_command(mut args: Vec<OsString>, cmd: &Command) -> Vec<OsString> {
     let first_arg = match args.get(1) {

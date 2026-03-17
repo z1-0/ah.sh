@@ -3,6 +3,6 @@ pub mod error;
 pub mod executor;
 pub mod manager;
 pub mod paths;
-pub mod providers;
+pub mod provider;
 pub mod session;
 pub mod warning;
