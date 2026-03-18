@@ -6,10 +6,7 @@ pub mod language_maps;
 pub mod registry;
 pub mod types;
 
-pub use language_maps::{
-    is_maybe_language, language_map_for_display, language_map_for_provider,
-    map_language_for_provider,
-};
+pub use language_maps::{is_maybe_language, language_map_for_display, map_language_for_provider};
 pub use registry::{ProviderInfo, all_providers, provider_info, provider_name};
 pub use types::{
     EnsureFilesResult, ProviderKeyOrAll, ProviderType, ShellProvider, validate_languages,
@@ -25,7 +22,7 @@ impl ProviderType {
 mod tests {
     use crate::error::AppError;
     use crate::provider::{
-        ProviderType, all_providers, is_maybe_language, language_map_for_display,
+        ProviderKeyOrAll, ProviderType, all_providers, is_maybe_language, language_map_for_display,
         map_language_for_provider, provider_info,
     };
 
@@ -104,5 +101,10 @@ mod tests {
                 .unwrap(),
             &vec!["js".to_string()]
         );
+    }
+
+    #[test]
+    fn provider_key_or_all_maps_all_to_none() {
+        assert_eq!(ProviderKeyOrAll::All.as_provider_type(), None);
     }
 }

@@ -1,4 +1,4 @@
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::provider::dev_templates::DevTemplatesProvider;
 use crate::provider::devenv::DevenvProvider;
 use crate::provider::language_maps::{
@@ -8,25 +8,17 @@ use crate::provider::language_maps::{
 use super::{ProviderType, ShellProvider};
 
 pub struct ProviderInfo {
-    provider_type: ProviderType,
     name: &'static str,
 }
 
 const PROVIDERS: [ProviderInfo; 2] = [
-    ProviderInfo::new(ProviderType::Devenv, "devenv"),
-    ProviderInfo::new(ProviderType::DevTemplates, "dev-templates"),
+    ProviderInfo::new("devenv"),
+    ProviderInfo::new("dev-templates"),
 ];
 
 impl ProviderInfo {
-    pub const fn new(provider_type: ProviderType, name: &'static str) -> Self {
-        Self {
-            provider_type,
-            name,
-        }
-    }
-
-    pub fn provider_type(&self) -> ProviderType {
-        self.provider_type
+    pub const fn new(name: &'static str) -> Self {
+        Self { name }
     }
 
     pub fn name(&self) -> &'static str {
@@ -66,11 +58,4 @@ pub fn into_shell_provider(provider_type: ProviderType) -> Box<dyn ShellProvider
 
 pub fn provider_name(provider_type: ProviderType) -> &'static str {
     provider_info(provider_type).name()
-}
-
-pub fn provider_info_by_name(name: &str) -> Result<&'static ProviderInfo> {
-    all_providers()
-        .iter()
-        .find(|info| info.name() == name)
-        .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {name}")))
 }

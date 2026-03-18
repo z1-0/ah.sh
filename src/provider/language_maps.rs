@@ -147,10 +147,6 @@ pub fn is_maybe_language(input: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn language_map_for_provider(provider_name: &str) -> Result<ProviderLanguageMap> {
-    LanguageMaps::global()?.raw_map(provider_name).cloned()
-}
-
 pub fn supported_languages_for_provider(provider_name: &str) -> Result<Vec<String>> {
     LanguageMaps::global()?.supported_languages(provider_name)
 }

@@ -118,7 +118,7 @@ impl Manager {
     }
 
     pub fn show_provider(provider_type: ProviderType) -> Result<()> {
-        Self::write_provider_languages(provider_type, false)
+        Self::write_provider_languages(provider_info(provider_type), false)
     }
 
     pub fn show_all_providers() -> Result<()> {
@@ -126,16 +126,18 @@ impl Manager {
             if i > 0 {
                 println!();
             }
-            Self::write_provider_languages(provider.provider_type(), true)?;
+            Self::write_provider_languages(provider, true)?;
         }
 
         Ok(())
     }
 
-    fn write_provider_languages(provider_type: ProviderType, include_header: bool) -> Result<()> {
+    fn write_provider_languages(
+        provider: &crate::provider::ProviderInfo,
+        include_header: bool,
+    ) -> Result<()> {
         use std::io::{ErrorKind, Write};
 
-        let provider = provider_info(provider_type);
         let provider_name = provider.name();
 
         let mut languages = provider.supported_languages()?;

@@ -26,21 +26,6 @@ impl ProviderKeyOrAll {
     }
 }
 
-impl From<ProviderType> for ProviderKeyOrAll {
-    fn from(value: ProviderType) -> Self {
-        match value {
-            ProviderType::Devenv => ProviderKeyOrAll::Devenv,
-            ProviderType::DevTemplates => ProviderKeyOrAll::DevTemplates,
-        }
-    }
-}
-
-impl From<ProviderKeyOrAll> for Option<ProviderType> {
-    fn from(value: ProviderKeyOrAll) -> Self {
-        value.as_provider_type()
-    }
-}
-
 pub struct EnsureFilesResult {
     pub warnings: Vec<AppWarning>,
 }
