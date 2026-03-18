@@ -5,9 +5,26 @@ pub fn generate_dev_templates_flake(
     languages: &[String],
     parsed_attrs: &[(String, ShellAttrs)],
 ) -> String {
-    let inputs_from: Vec<String> = languages
+    let input_names: Vec<String> = languages
         .iter()
-        .map(|lang| format!("\"{}\"", lang))
+        .map(|lang| format!("tmpl_{}", lang))
+        .collect();
+
+    let inputs_entries: Vec<String> = languages
+        .iter()
+        .map(|lang| {
+            format!(
+                "  tmpl_{}.url = \"github:the-nix-way/dev-templates?dir={}\";",
+                lang, lang
+            )
+        })
+        .collect();
+
+    let outputs_inputs = input_names.join(", ");
+
+    let shells_entries: Vec<String> = languages
+        .iter()
+        .map(|lang| format!("          {} = tmpl_{}.devShells.${{system}}.default;", lang, lang))
         .collect();
 
     // Group by attribute names to avoid duplicate keys in Nix
@@ -56,10 +73,13 @@ pub fn generate_dev_templates_flake(
 
     format!(
         r#"{{
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+  inputs = {{
+    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+{}
+  }};
 
   outputs =
-    {{ nixpkgs, ... }}:
+    {{ nixpkgs, {}, ... }}:
     let
       allSystems = [
         "x86_64-linux"
@@ -70,19 +90,15 @@ pub fn generate_dev_templates_flake(
 
       forAllSystems =
         f: nixpkgs.lib.genAttrs allSystems (system: f {{ pkgs = import nixpkgs {{ inherit system; }}; }});
-
-      getTemplateShell =
-        system: lang:
-        (builtins.getFlake "github:the-nix-way/dev-templates?dir=${{lang}}").devShells.${{system}}.default;
     in
     {{
       devShells = forAllSystems (
         {{ pkgs }}:
         let
-          languages = [
-            {}
-          ];
-          shells = nixpkgs.lib.genAttrs languages (lang: getTemplateShell pkgs.stdenv.hostPlatform.system lang);
+          system = pkgs.stdenv.hostPlatform.system;
+          shells = {{
+{}
+          }};
           inputsFrom = builtins.attrValues shells;
         in
         {{
@@ -94,7 +110,29 @@ pub fn generate_dev_templates_flake(
     }};
 }}
 "#,
-        inputs_from.join("\n            "),
+        inputs_entries.join("\n"),
+        outputs_inputs,
+        shells_entries.join("\n"),
         extra_attrs_str
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::generate_dev_templates_flake;
+
+    #[test]
+    fn dev_templates_flake_uses_explicit_inputs_single() {
+        let langs = vec!["rust".to_string()];
+        let flake = generate_dev_templates_flake(&langs, &[]);
+        assert!(flake.contains("tmpl_rust.url"));
+        assert!(!flake.contains("builtins.getFlake"));
+    }
+
+    #[test]
+    fn dev_templates_flake_outputs_include_all_inputs() {
+        let langs = vec!["rust".to_string(), "python".to_string()];
+        let flake = generate_dev_templates_flake(&langs, &[]);
+        assert!(flake.contains("{ nixpkgs, tmpl_rust, tmpl_python, ... }"));
+    }
 }
