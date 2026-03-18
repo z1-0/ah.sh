@@ -2,24 +2,18 @@ pub mod fetcher;
 pub mod flake_generator;
 pub mod nix_parser;
 
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::provider::{EnsureFilesResult, ShellProvider};
 use crate::warning::AppWarning;
 use std::collections::HashSet;
 use std::path::Path;
-use std::sync::OnceLock;
 use std::thread;
 
 pub struct DevTemplatesProvider;
 
-static SUPPORTED_LANGUAGES: OnceLock<std::result::Result<Vec<String>, String>> = OnceLock::new();
 const MAX_FETCH_CONCURRENCY: usize = 8;
 
 impl ShellProvider for DevTemplatesProvider {
-    fn name(&self) -> &str {
-        "dev-templates"
-    }
-
     fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult> {
         let mut seen = HashSet::new();
         let deduped_languages: Vec<String> = languages
@@ -61,7 +55,6 @@ impl ShellProvider for DevTemplatesProvider {
                             AppWarning::new("dev_templates.fetch_failed", e.to_string())
                                 .with_context("language", lang),
                         );
-                        // Just continue, inputsFrom will still work for packages/shellHook
                     }
                     Err(_) => {
                         warnings.push(AppWarning::new(
@@ -80,15 +73,5 @@ impl ShellProvider for DevTemplatesProvider {
         std::fs::write(flake_path, flake_content)?;
 
         Ok(EnsureFilesResult { warnings })
-    }
-
-    fn get_supported_languages(&self) -> Result<Vec<String>> {
-        let langs = SUPPORTED_LANGUAGES.get_or_init(|| {
-            let langs_json =
-                include_str!("../../assets/providers/dev-templates/supported_langs.json");
-            serde_json::from_str(langs_json).map_err(|e| e.to_string())
-        });
-
-        langs.clone().map_err(AppError::Provider)
     }
 }
