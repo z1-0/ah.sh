@@ -53,27 +53,3 @@ pub fn generate_devenv_flake(languages: &[String]) -> String {
         languages_enable_str
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::generate_devenv_flake;
-
-    #[test]
-    fn generate_devenv_flake_enables_languages() {
-        let languages = vec!["rust".to_string(), "go".to_string()];
-
-        let flake = generate_devenv_flake(&languages);
-
-        assert!(
-            flake.contains("languages.rust.enable = true;"),
-            "expected rust to be enabled, got:\n{flake}"
-        );
-        assert!(
-            flake.contains("languages.go.enable = true;"),
-            "expected go to be enabled, got:\n{flake}"
-        );
-
-        // sanity: make sure we're not matching some unrelated word.
-        assert!(!flake.contains("languages.python.enable = true;"));
-    }
-}

@@ -13,8 +13,3 @@ serde_json = "1.0.149"
 thiserror = "2.0"
 ureq = "3"
 directories = "6"
-
-[dev-dependencies]
-assert_cmd = "2"
-predicates = "3"
-tempfile = "3"

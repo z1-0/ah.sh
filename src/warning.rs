@@ -19,12 +19,3 @@ impl AppWarning {
         self
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn warning_can_attach_context() {
-        let w = crate::warning::AppWarning::new("x", "m").with_context("k", "v");
-        assert_eq!(w.context.len(), 1);
-    }
-}

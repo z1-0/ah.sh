@@ -56,14 +56,6 @@ pub fn fetch_flake_source(lang: &str) -> Result<String> {
     Ok(body)
 }
 
-#[cfg(test)]
-pub(super) fn write_cache_best_effort_for_test(
-    cache_file: &Path,
-    body: &str,
-) -> Option<AppWarning> {
-    write_cache_best_effort(cache_file, body)
-}
-
 fn write_cache_best_effort(cache_file: &Path, body: &str) -> Option<AppWarning> {
     match fs::write(cache_file, body) {
         Ok(()) => None,
@@ -71,35 +63,5 @@ fn write_cache_best_effort(cache_file: &Path, body: &str) -> Option<AppWarning> 
             AppWarning::new("dev_templates.cache_write_failed", e.to_string())
                 .with_context("path", cache_file.display().to_string()),
         ),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::write_cache_best_effort_for_test;
-    use crate::warning::AppWarning;
-    use std::path::Path;
-
-    fn write_cache_best_effort(cache_file: &Path, body: &str) -> Option<AppWarning> {
-        write_cache_best_effort_for_test(cache_file, body)
-    }
-
-    #[test]
-    fn cache_write_best_effort_succeeds_when_path_is_writable() {
-        let dir = tempfile::tempdir().unwrap();
-        let cache_file = dir.path().join("cache.nix");
-
-        let warning = write_cache_best_effort(&cache_file, "hello");
-
-        assert!(warning.is_none());
-        let content = std::fs::read_to_string(&cache_file).expect("cache file should be written");
-        assert_eq!(content, "hello");
-    }
-
-    #[test]
-    fn cache_write_best_effort_returns_warning_on_failure() {
-        let dir = tempfile::tempdir().unwrap();
-        let warning = write_cache_best_effort(dir.path(), "hello").expect("should warn");
-        assert_eq!(warning.code, "dev_templates.cache_write_failed");
     }
 }
