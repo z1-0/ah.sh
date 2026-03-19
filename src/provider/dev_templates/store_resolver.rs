@@ -6,6 +6,18 @@ pub trait CommandRunner {
     fn run(&self, program: &str, args: &[&str]) -> Result<String>;
 }
 
+trait FlakeReader {
+    fn read_to_string(&self, path: &str) -> std::io::Result<String>;
+}
+
+struct FsFlakeReader;
+
+impl FlakeReader for FsFlakeReader {
+    fn read_to_string(&self, path: &str) -> std::io::Result<String> {
+        fs::read_to_string(path)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedStoreSource {
     pub locked_key: String,
@@ -24,6 +36,14 @@ pub fn extract_locked_key(raw: &str) -> Result<String> {
 }
 
 pub fn resolve_store_source(lang: &str, runner: &dyn CommandRunner) -> Result<ResolvedStoreSource> {
+    resolve_store_source_with_reader(lang, runner, &FsFlakeReader)
+}
+
+fn resolve_store_source_with_reader(
+    lang: &str,
+    runner: &dyn CommandRunner,
+    reader: &dyn FlakeReader,
+) -> Result<ResolvedStoreSource> {
     let lock_raw = query_lock_data(lang, runner)?;
 
     let (locked_key, store_path) = match extract_lock_and_store_path(&lock_raw) {
@@ -35,7 +55,7 @@ pub fn resolve_store_source(lang: &str, runner: &dyn CommandRunner) -> Result<Re
         }
     };
 
-    let flake_source = read_store_flake(&store_path)?;
+    let flake_source = read_store_flake_with_reader(&store_path, reader)?;
 
     Ok(ResolvedStoreSource {
         locked_key,
@@ -58,9 +78,10 @@ fn prefetch(lang: &str, runner: &dyn CommandRunner) -> Result<()> {
     Ok(())
 }
 
-fn read_store_flake(store_path: &str) -> Result<String> {
+fn read_store_flake_with_reader(store_path: &str, reader: &dyn FlakeReader) -> Result<String> {
     let flake_path = format!("{store_path}/flake.nix");
-    fs::read_to_string(&flake_path)
+    reader
+        .read_to_string(&flake_path)
         .map_err(|err| AppError::Provider(format!("failed to read {flake_path}: {err}")))
 }
 
@@ -112,7 +133,7 @@ fn extract_lock_and_store_path(raw: &str) -> Result<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::VecDeque;
+    use std::collections::{HashMap, VecDeque};
     use std::sync::{Arc, Mutex};
 
     #[derive(Clone, Debug)]
@@ -164,6 +185,34 @@ mod tests {
         }
     }
 
+    #[derive(Clone, Debug)]
+    struct FakeFlakeReader {
+        files: Arc<Mutex<HashMap<String, std::io::Result<String>>>>,
+    }
+
+    impl FakeFlakeReader {
+        fn with_files(files: Vec<(String, std::io::Result<String>)>) -> Self {
+            Self {
+                files: Arc::new(Mutex::new(HashMap::from_iter(files))),
+            }
+        }
+    }
+
+    impl FlakeReader for FakeFlakeReader {
+        fn read_to_string(&self, path: &str) -> std::io::Result<String> {
+            self.files
+                .lock()
+                .expect("files lock poisoned")
+                .remove(path)
+                .unwrap_or_else(|| {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        format!("missing fake file: {path}"),
+                    ))
+                })
+        }
+    }
+
     #[test]
     fn resolver_supports_injected_command_runner() {
         let runner =
@@ -201,13 +250,16 @@ mod tests {
             Ok(r#"{"path":"/nix/store/prefetched-source"}"#.to_string()),
             Ok(r#"{"locked":{"narHash":"sha256-prefetched"},"path":"/nix/store/prefetched-source"}"#.to_string()),
         ]);
+        let reader = FakeFlakeReader::with_files(vec![(
+            "/nix/store/prefetched-source/flake.nix".to_string(),
+            Ok("{ description = \"prefetched\"; }".to_string()),
+        )]);
 
-        let err = resolve_store_source("rust", &runner).unwrap_err();
+        let resolved = resolve_store_source_with_reader("rust", &runner, &reader)
+            .expect("resolver should complete after retry and fake read");
 
-        assert!(
-            err.to_string().contains("flake.nix"),
-            "resolver should try to read flake from store after retry"
-        );
+        assert_eq!(resolved.locked_key, "sha256-prefetched");
+        assert_eq!(resolved.flake_source, "{ description = \"prefetched\"; }");
 
         let calls = runner.calls();
         assert_eq!(
@@ -225,7 +277,9 @@ mod tests {
 
     #[test]
     fn read_store_flake_returns_provider_error_when_missing() {
-        let err = read_store_flake("/nix/store/ah-missing-store-source").unwrap_err();
+        let reader = FakeFlakeReader::with_files(vec![]);
+        let err = read_store_flake_with_reader("/nix/store/ah-missing-store-source", &reader)
+            .unwrap_err();
 
         assert!(matches!(err, AppError::Provider(_)));
         assert!(err.to_string().contains("flake.nix"));
