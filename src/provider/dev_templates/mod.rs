@@ -1,6 +1,7 @@
 pub mod fetcher;
 pub mod flake_generator;
 pub mod nix_parser;
+pub mod store_resolver;
 
 use crate::error::Result;
 use crate::provider::{EnsureFilesResult, ShellProvider};
