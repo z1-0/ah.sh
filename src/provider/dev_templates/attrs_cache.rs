@@ -50,7 +50,15 @@ fn load_cached_attrs_from_dir(
         return Ok((None, None));
     }
 
-    let raw = fs::read_to_string(&cache_file)?;
+    let raw = match fs::read_to_string(&cache_file) {
+        Ok(value) => value,
+        Err(err) => {
+            let warning = AppWarning::new("dev_templates.attrs_cache_read_failed", err.to_string())
+                .with_context("language", lang.to_string())
+                .with_context("path", cache_file.display().to_string());
+            return Ok((None, Some(warning)));
+        }
+    };
     let parsed: CachedAttrsRecord = match serde_json::from_str(&raw) {
         Ok(value) => value,
         Err(err) => {
@@ -160,6 +168,31 @@ mod tests {
     }
 
     #[test]
+    fn read_failed_cache_degrades_to_miss_with_warning() {
+        let cache_dir = test_cache_dir("read-failed");
+        let cache_file = cache_file_path(&cache_dir, "rust");
+        std::fs::create_dir_all(&cache_file).expect("cache file path can be occupied by directory");
+
+        let (loaded, warning) =
+            load_cached_attrs_from_dir(&cache_dir, "rust", "keyA").expect("load should not fail");
+
+        assert!(loaded.is_none());
+        let warning = warning.expect("read failure should emit warning");
+        assert_eq!(warning.code, "dev_templates.attrs_cache_read_failed");
+        assert!(
+            warning
+                .context
+                .contains(&("language".to_string(), "rust".to_string()))
+        );
+        assert!(
+            warning
+                .context
+                .iter()
+                .any(|(k, v)| k == "path" && v == &cache_file.display().to_string())
+        );
+    }
+
+    #[test]
     fn corrupted_cache_degrades_to_miss_with_warning() {
         let cache_dir = test_cache_dir("corrupted");
         std::fs::create_dir_all(&cache_dir).expect("cache dir should be creatable");
@@ -172,5 +205,11 @@ mod tests {
         assert!(loaded.is_none());
         let warning = warning.expect("corrupted cache should emit warning");
         assert_eq!(warning.code, "dev_templates.attrs_cache_corrupted");
+        assert!(
+            warning
+                .context
+                .contains(&("language".to_string(), "rust".to_string()))
+        );
+        assert!(warning.context.iter().any(|(k, _)| k == "path"));
     }
 }
