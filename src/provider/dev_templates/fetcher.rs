@@ -6,6 +6,8 @@ use std::path::Path;
 
 const CACHE_TTL_SECS: u64 = 24 * 60 * 60;
 
+// Legacy fetcher kept temporarily while the main pipeline uses store resolver + attrs cache.
+#[allow(dead_code)]
 pub fn fetch_flake_source(lang: &str) -> Result<String> {
     // Check cache first
     let cache_dir = get_cache_dir()?.join("dev-templates-source");
