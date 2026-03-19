@@ -2,7 +2,7 @@ use rnix::Root;
 use rnix::ast::{Apply, AttrSet, AttrpathValue, Expr};
 use rowan::ast::AstNode;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ShellAttrs {
     /// Items meant to be env vars, e.g. env = { RUST_SRC_PATH = "..."; }
     pub env: Vec<(String, String)>,
