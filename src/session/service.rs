@@ -111,6 +111,11 @@ impl SessionService {
         let session_dir = storage::get_session_dir()?.join(&session_id);
         let flake_path = session_dir.join("flake.nix");
         if flake_path.exists() {
+            let meta_path = session_dir.join("metadata.json");
+            if !meta_path.exists() {
+                let session = Session::new(session_id, deduped_langs, provider_name.to_string());
+                storage::save_session(&session)?;
+            }
             return Ok(CreateSessionResult {
                 session_dir,
                 warnings,
@@ -188,9 +193,11 @@ mod tests {
             .as_nanos();
         let temp_root = env::temp_dir().join(format!("ah-test-cache-{ts}"));
         fs::create_dir_all(&temp_root).unwrap();
+        let original_cache_home = env::var_os("XDG_CACHE_HOME");
         unsafe {
             env::set_var("XDG_CACHE_HOME", &temp_root);
         }
+        let _cache_home_guard = CacheHomeGuard::new(original_cache_home);
 
         let provider_type = ProviderType::Devenv;
         let provider_name = provider_info(provider_type).name();
@@ -212,5 +219,29 @@ mod tests {
 
         let content = fs::read_to_string(&flake_path).unwrap();
         assert_eq!(content, marker);
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    struct CacheHomeGuard {
+        original: Option<std::ffi::OsString>,
+    }
+
+    impl CacheHomeGuard {
+        fn new(original: Option<std::ffi::OsString>) -> Self {
+            Self { original }
+        }
+    }
+
+    impl Drop for CacheHomeGuard {
+        fn drop(&mut self) {
+            unsafe {
+                if let Some(ref value) = self.original {
+                    env::set_var("XDG_CACHE_HOME", value);
+                } else {
+                    env::remove_var("XDG_CACHE_HOME");
+                }
+            }
+        }
     }
 }
