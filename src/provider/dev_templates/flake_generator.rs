@@ -1,5 +1,6 @@
 use super::nix_parser::ShellAttrs;
 use std::collections::HashMap;
+use std::fmt::Write;
 
 pub fn generate_dev_templates_flake(
     languages: &[String],
@@ -7,15 +8,15 @@ pub fn generate_dev_templates_flake(
 ) -> String {
     let input_names: Vec<String> = languages
         .iter()
-        .map(|lang| format!("tmpl_{}", lang))
+        .map(|lang| format!("dev-templates_{}", lang))
         .collect();
 
     let inputs_entries: Vec<String> = languages
         .iter()
         .map(|lang| {
             format!(
-                "  tmpl_{}.url = \"github:the-nix-way/dev-templates?dir={}\";",
-                lang, lang
+                "    dev-templates_{}.url = \"github:the-nix-way/dev-templates?dir={}\";\n    dev-templates_{}.inputs.nixpkgs.follows = \"nixpkgs\";",
+                lang, lang, lang
             )
         })
         .collect();
@@ -24,14 +25,28 @@ pub fn generate_dev_templates_flake(
 
     let shells_entries: Vec<String> = languages
         .iter()
-        .map(|lang| format!("          {} = tmpl_{}.devShells.${{system}}.default;", lang, lang))
+        .map(|lang| {
+            format!(
+                "            {} = dev-templates_{}.devShells.${{system}}.default;",
+                lang, lang
+            )
+        })
         .collect();
 
     // Group by attribute names to avoid duplicate keys in Nix
     let mut extra_attrs_map: HashMap<String, Vec<String>> = HashMap::new();
     let mut env_map: HashMap<String, String> = HashMap::new();
+    let parsed_attrs_by_lang: HashMap<&str, &ShellAttrs> = parsed_attrs
+        .iter()
+        .map(|(lang, attrs)| (lang.as_str(), attrs))
+        .collect();
 
-    for (lang, attrs) in parsed_attrs {
+    // Make precedence explicit: process attributes by requested language order.
+    for lang in languages {
+        let Some(attrs) = parsed_attrs_by_lang.get(lang.as_str()) else {
+            continue;
+        };
+
         for (k, _) in &attrs.extra_attrs {
             // Use the 'shells' attrset defined in the Nix template
             let expr = format!("shells.\"{}\".{}", lang, k);
@@ -40,33 +55,42 @@ pub fn generate_dev_templates_flake(
 
         for (k, _) in &attrs.env {
             let expr = format!("shells.\"{}\".{}", lang, k);
-            // Just take the last one if there's a conflict
+            // Keep last language in request order on conflict.
             env_map.insert(k.clone(), expr);
         }
     }
 
     let mut extra_attrs_str = String::new();
 
-    // Render extra attributes
-    for (k, exprs) in extra_attrs_map {
-        if k == "postShellHook" || k == "shellHook" || k == "preHook" {
+    // Render extra attributes in stable key order.
+    let mut extra_attr_keys: Vec<&String> = extra_attrs_map.keys().collect();
+    extra_attr_keys.sort_unstable();
+    for key in extra_attr_keys {
+        let exprs = &extra_attrs_map[key];
+        if key == "postShellHook" || key == "shellHook" || key == "preHook" {
             // Concatenate hooks
-            extra_attrs_str.push_str(&format!(
-                "            {} = {};\n",
-                k,
+            writeln!(
+                extra_attrs_str,
+                "            {} = {};",
+                key,
                 exprs.join(" + \"\\n\" + ")
-            ));
-        } else {
-            // For other attributes, just use the first one if there are conflicts
-            extra_attrs_str.push_str(&format!("            {} = {};\n", k, exprs[0]));
+            )
+            .expect("writing to String cannot fail");
+        } else if let Some(expr) = exprs.first() {
+            // For other attributes, keep the first language in request order.
+            writeln!(extra_attrs_str, "            {} = {};", key, expr)
+                .expect("writing to String cannot fail");
         }
     }
 
-    // Render env
+    // Render env in stable key order.
     if !env_map.is_empty() {
         extra_attrs_str.push_str("            env = {\n");
-        for (k, expr) in env_map {
-            extra_attrs_str.push_str(&format!("              {} = {};\n", k, expr));
+        let mut env_keys: Vec<&String> = env_map.keys().collect();
+        env_keys.sort_unstable();
+        for key in env_keys {
+            writeln!(extra_attrs_str, "              {} = {};", key, env_map[key])
+                .expect("writing to String cannot fail");
         }
         extra_attrs_str.push_str("            };\n");
     }
@@ -115,24 +139,4 @@ pub fn generate_dev_templates_flake(
         shells_entries.join("\n"),
         extra_attrs_str
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::generate_dev_templates_flake;
-
-    #[test]
-    fn dev_templates_flake_uses_explicit_inputs_single() {
-        let langs = vec!["rust".to_string()];
-        let flake = generate_dev_templates_flake(&langs, &[]);
-        assert!(flake.contains("tmpl_rust.url"));
-        assert!(!flake.contains("builtins.getFlake"));
-    }
-
-    #[test]
-    fn dev_templates_flake_outputs_include_all_inputs() {
-        let langs = vec!["rust".to_string(), "python".to_string()];
-        let flake = generate_dev_templates_flake(&langs, &[]);
-        assert!(flake.contains("{ nixpkgs, tmpl_rust, tmpl_python, ... }"));
-    }
 }

@@ -1,11 +1,9 @@
 pub fn generate_devenv_flake(languages: &[String]) -> String {
-    let mut languages_enable_str = String::new();
-    for lang in languages {
-        languages_enable_str.push_str(&format!(
-            "                languages.{}.enable = true;\n",
-            lang
-        ));
-    }
+    let languages_enable_str = languages
+        .iter()
+        .map(|lang| format!("languages.{}.enable = true;", lang))
+        .collect::<Vec<_>>()
+        .join("\n                ");
 
     format!(
         r#"{{
@@ -42,7 +40,8 @@ pub fn generate_devenv_flake(languages: &[String]) -> String {
             inherit inputs pkgs;
             modules = [
               {{
-{}              }}
+                {}
+              }}
             ];
           }};
         }}
