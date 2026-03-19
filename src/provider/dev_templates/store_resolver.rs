@@ -141,12 +141,10 @@ mod tests {
         output: std::result::Result<String, String>,
     }
 
-    type ProgramArgsCall = (String, Vec<String>);
-
     #[derive(Clone, Debug)]
     struct FakeRunner {
         replies: Arc<Mutex<VecDeque<CommandReply>>>,
-        calls: Arc<Mutex<Vec<ProgramArgsCall>>>,
+        calls: Arc<Mutex<Vec<(String, Vec<String>)>>>,
     }
 
     impl FakeRunner {
