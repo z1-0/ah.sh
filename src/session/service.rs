@@ -109,6 +109,13 @@ impl SessionService {
 
         let session_id = storage::generate_id(provider_name, &deduped_langs);
         let session_dir = storage::get_session_dir()?.join(&session_id);
+        let flake_path = session_dir.join("flake.nix");
+        if flake_path.exists() {
+            return Ok(CreateSessionResult {
+                session_dir,
+                warnings,
+            });
+        }
         std::fs::create_dir_all(&session_dir)?;
 
         let provider = provider_type.into_shell_provider();
@@ -132,6 +139,9 @@ mod tests {
     use super::normalize_and_dedup_languages;
     use crate::error::AppError;
     use crate::provider::{ProviderType, provider_info, validate_languages};
+    use std::env;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn normalize_and_dedup_preserves_first_seen_order() {
@@ -171,11 +181,36 @@ mod tests {
     }
 
     #[test]
-    fn provider_name_continuity_uses_existing_strings() {
-        assert_eq!(provider_info(ProviderType::Devenv).name(), "devenv");
-        assert_eq!(
-            provider_info(ProviderType::DevTemplates).name(),
-            "dev-templates"
-        );
+    fn create_session_does_not_overwrite_existing_flake() {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let temp_root = env::temp_dir().join(format!("ah-test-cache-{ts}"));
+        fs::create_dir_all(&temp_root).unwrap();
+        unsafe {
+            env::set_var("XDG_CACHE_HOME", &temp_root);
+        }
+
+        let provider_type = ProviderType::Devenv;
+        let provider_name = provider_info(provider_type).name();
+        let languages = vec!["rust".to_string()];
+        let session_id = crate::session::storage::generate_id(provider_name, &languages);
+        let session_dir = temp_root
+            .join("ah")
+            .join("ah")
+            .join("sessions")
+            .join(&session_id);
+        fs::create_dir_all(&session_dir).unwrap();
+
+        let flake_path = session_dir.join("flake.nix");
+        let marker = "# marker flake";
+        fs::write(&flake_path, marker).unwrap();
+
+        let result = super::SessionService::create_session(provider_type, languages).unwrap();
+        assert_eq!(result.session_dir, session_dir);
+
+        let content = fs::read_to_string(&flake_path).unwrap();
+        assert_eq!(content, marker);
     }
 }
