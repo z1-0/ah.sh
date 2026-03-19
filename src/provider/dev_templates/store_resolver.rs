@@ -1,5 +1,6 @@
 use crate::error::{AppError, Result};
 use serde_json::Value;
+use std::fs;
 
 pub trait CommandRunner {
     fn run(&self, program: &str, args: &[&str]) -> Result<String>;
@@ -34,8 +35,7 @@ pub fn resolve_store_source(lang: &str, runner: &dyn CommandRunner) -> Result<Re
         }
     };
 
-    let flake_path = format!("{store_path}/flake.nix");
-    let flake_source = runner.run("cat", &[flake_path.as_str()])?;
+    let flake_source = read_store_flake(&store_path)?;
 
     Ok(ResolvedStoreSource {
         locked_key,
@@ -45,13 +45,41 @@ pub fn resolve_store_source(lang: &str, runner: &dyn CommandRunner) -> Result<Re
 
 fn query_lock_data(lang: &str, runner: &dyn CommandRunner) -> Result<String> {
     let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
-    runner.run("nix", &["flake", "prefetch", "--json", flake_ref.as_str()])
+    runner
+        .run("nix", &["flake", "prefetch", "--json", flake_ref.as_str()])
+        .map_err(|err| map_command_failure(lang, "query lock data", err))
 }
 
 fn prefetch(lang: &str, runner: &dyn CommandRunner) -> Result<()> {
     let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
-    let _ = runner.run("nix", &["prefetch", flake_ref.as_str()])?;
+    runner
+        .run("nix", &["prefetch", flake_ref.as_str()])
+        .map_err(|err| map_command_failure(lang, "prefetch flake input", err))?;
     Ok(())
+}
+
+fn read_store_flake(store_path: &str) -> Result<String> {
+    let flake_path = format!("{store_path}/flake.nix");
+    fs::read_to_string(&flake_path)
+        .map_err(|err| AppError::Provider(format!("failed to read {flake_path}: {err}")))
+}
+
+fn map_command_failure(lang: &str, action: &str, err: AppError) -> AppError {
+    let summary = summarize_error(&err);
+    AppError::Provider(format!(
+        "failed to {action} for language `{lang}`: {summary}"
+    ))
+}
+
+fn summarize_error(err: &AppError) -> String {
+    match err {
+        AppError::Provider(message) => message
+            .lines()
+            .find(|line| !line.trim().is_empty())
+            .map(|line| line.trim().to_string())
+            .unwrap_or_else(|| "unknown provider error".to_string()),
+        _ => err.to_string(),
+    }
 }
 
 fn extract_lock_and_store_path(raw: &str) -> Result<(String, String)> {
@@ -172,19 +200,20 @@ mod tests {
             Ok(r#"{"locked":{}}"#.to_string()),
             Ok(r#"{"path":"/nix/store/prefetched-source"}"#.to_string()),
             Ok(r#"{"locked":{"narHash":"sha256-prefetched"},"path":"/nix/store/prefetched-source"}"#.to_string()),
-            Ok("# prefetched flake".to_string()),
         ]);
 
-        let resolved = resolve_store_source("rust", &runner).expect("must resolve after prefetch");
+        let err = resolve_store_source("rust", &runner).unwrap_err();
 
-        assert_eq!(resolved.locked_key, "sha256-prefetched");
-        assert_eq!(resolved.flake_source, "# prefetched flake");
+        assert!(
+            err.to_string().contains("flake.nix"),
+            "resolver should try to read flake from store after retry"
+        );
 
         let calls = runner.calls();
         assert_eq!(
             calls.len(),
-            4,
-            "resolver should query, prefetch, retry, read"
+            3,
+            "resolver should query, prefetch, retry before store read"
         );
         assert!(
             calls
@@ -192,5 +221,27 @@ mod tests {
                 .any(|(program, args)| program == "nix" && args.iter().any(|arg| arg == "prefetch")),
             "expected prefetch command to be invoked"
         );
+    }
+
+    #[test]
+    fn read_store_flake_returns_provider_error_when_missing() {
+        let err = read_store_flake("/nix/store/ah-missing-store-source").unwrap_err();
+
+        assert!(matches!(err, AppError::Provider(_)));
+        assert!(err.to_string().contains("flake.nix"));
+    }
+
+    #[test]
+    fn command_failure_maps_to_provider_error_with_context() {
+        let runner = FakeRunner::with_outputs(vec![Err(AppError::Provider(
+            "error: unable to download source\nexit status: 1".to_string(),
+        ))]);
+
+        let err = resolve_store_source("rust", &runner).unwrap_err();
+
+        assert!(matches!(err, AppError::Provider(_)));
+        let rendered = err.to_string();
+        assert!(rendered.contains("rust"));
+        assert!(rendered.contains("unable to download source"));
     }
 }
