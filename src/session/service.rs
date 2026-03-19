@@ -1,4 +1,5 @@
 use crate::error::{AppError, Result};
+use crate::paths::get_session_dir;
 use crate::provider::{EnsureFilesResult, ProviderType, provider_info, validate_languages};
 use crate::session::storage;
 use crate::session::{Session, SessionError, SessionKey};
@@ -42,7 +43,7 @@ impl SessionService {
 
     pub fn resolve_session_dir(key: &SessionKey) -> Result<PathBuf> {
         let session = storage::find_session(key)?;
-        Ok(storage::get_session_dir()?.join(&session.id))
+        Ok(get_session_dir()?.join(&session.id))
     }
 
     pub fn clear_sessions() -> Result<usize> {
@@ -108,7 +109,7 @@ impl SessionService {
         validate_languages(&deduped_langs, &supported_langs)?;
 
         let session_id = storage::generate_id(provider_name, &deduped_langs);
-        let session_dir = storage::get_session_dir()?.join(&session_id);
+        let session_dir = get_session_dir()?.join(&session_id);
         let flake_path = session_dir.join("flake.nix");
         if flake_path.exists() {
             let meta_path = session_dir.join("metadata.json");
