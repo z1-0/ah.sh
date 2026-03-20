@@ -14,13 +14,13 @@ fn get_project_dirs() -> Result<ProjectDirs> {
 pub fn get_data_dir() -> Result<PathBuf> {
     let project_dirs = get_project_dirs()?;
 
-    Ok(project_dirs.data_dir().join(PROGRAM_NAME))
+    Ok(project_dirs.data_dir().to_path_buf())
 }
 
 pub fn get_cache_dir() -> Result<PathBuf> {
     let project_dirs = get_project_dirs()?;
 
-    Ok(project_dirs.cache_dir().join(PROGRAM_NAME))
+    Ok(project_dirs.cache_dir().to_path_buf())
 }
 
 pub fn get_session_dir() -> Result<PathBuf> {
