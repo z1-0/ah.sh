@@ -150,20 +150,13 @@ impl SessionService {
         warnings.extend(provider_warnings);
 
         // Save persisted session metadata
-        let persisted_session = Session {
-            id: session_id.clone(),
-            session_dir: session_dir.clone(),
-            provider: provider_name.to_string(),
-            languages: deduped_langs.clone(),
-        };
-        storage::save_session(&persisted_session)?;
-
         let session = Session {
             id: session_id,
             session_dir,
             provider: provider_name.to_string(),
             languages: deduped_langs,
         };
+        storage::save_session(&session)?;
 
         Ok(CreateSessionResult { session, warnings })
     }

@@ -1,6 +1,5 @@
 use crate::error::AppError;
 use crate::warning::AppWarning;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -16,7 +15,7 @@ pub enum SessionError {
     NotFound(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct Session {
     pub id: String,
     pub session_dir: PathBuf,
