@@ -2,31 +2,13 @@ use crate::error::{AppError, Result};
 use crate::paths::get_session_dir;
 use crate::provider::{EnsureFilesResult, ProviderType, provider_info, validate_languages};
 use crate::session::storage;
-use crate::session::types::Session as PersistedSession;
-use crate::session::{SessionError, SessionKey};
+use crate::session::types::{
+    CreateSessionResult, Session, SessionError, SessionKey, SessionRemoveResult,
+};
 use crate::warning::AppWarning;
 use std::collections::HashSet;
-use std::path::PathBuf;
 
 pub struct SessionService;
-
-/// Session entry point - contains all info needed to enter a session
-pub struct Session {
-    pub session_id: String,
-    pub session_dir: PathBuf,
-    pub provider: String,
-    pub languages: Vec<String>,
-}
-
-pub struct CreateSessionResult {
-    pub session: Session,
-    pub warnings: Vec<AppWarning>,
-}
-
-pub struct SessionRemoveResult {
-    pub removed_ids: Vec<String>,
-    pub missing_keys: Vec<String>,
-}
 
 fn normalize_and_dedup_languages(
     provider_type: ProviderType,
@@ -69,31 +51,26 @@ impl SessionService {
 
         // Session exists, read metadata
         let sessions = storage::list_sessions()?;
-        let session =
-            sessions
-                .into_iter()
-                .find(|s| s.id == session_id)
-                .unwrap_or(PersistedSession::new(
-                    session_id.clone(),
-                    deduped_langs.clone(),
-                    provider_name.to_string(),
-                ));
+        let session = sessions
+            .into_iter()
+            .find(|s| s.id == session_id)
+            .unwrap_or(Session {
+                id: session_id,
+                session_dir: session_dir.clone(),
+                provider: provider_name.to_string(),
+                languages: deduped_langs,
+            });
 
-        Ok(Some(Session {
-            session_id: session.id,
-            session_dir,
-            provider: session.provider,
-            languages: session.languages,
-        }))
+        Ok(Some(session))
     }
 
-    pub fn list_sessions() -> Result<Vec<PersistedSession>> {
+    pub fn list_sessions() -> Result<Vec<Session>> {
         storage::list_sessions()
     }
 
-    pub fn resolve_session_dir(key: &SessionKey) -> Result<PathBuf> {
+    pub fn resolve_session_dir(key: &SessionKey) -> Result<std::path::PathBuf> {
         let session = storage::find_session(key)?;
-        Ok(get_session_dir()?.join(&session.id))
+        Ok(session.session_dir)
     }
 
     pub fn clear_sessions() -> Result<usize> {
@@ -173,15 +150,16 @@ impl SessionService {
         warnings.extend(provider_warnings);
 
         // Save persisted session metadata
-        let persisted_session = PersistedSession::new(
-            session_id.clone(),
-            deduped_langs.clone(),
-            provider_name.to_string(),
-        );
+        let persisted_session = Session {
+            id: session_id.clone(),
+            session_dir: session_dir.clone(),
+            provider: provider_name.to_string(),
+            languages: deduped_langs.clone(),
+        };
         storage::save_session(&persisted_session)?;
 
         let session = Session {
-            session_id,
+            id: session_id,
             session_dir,
             provider: provider_name.to_string(),
             languages: deduped_langs,

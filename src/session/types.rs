@@ -1,8 +1,9 @@
 use crate::error::AppError;
+use crate::warning::AppWarning;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::SystemTime;
 
 pub const SESSION_ID_LEN: usize = 8;
 
@@ -18,24 +19,19 @@ pub enum SessionError {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Session {
     pub id: String,
-    pub languages: Vec<String>,
+    pub session_dir: PathBuf,
     pub provider: String,
-    pub created_at: u64,
+    pub languages: Vec<String>,
 }
 
-impl Session {
-    pub fn new(id: String, languages: Vec<String>, provider: String) -> Self {
-        let created_at = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        Self {
-            id,
-            languages,
-            provider,
-            created_at,
-        }
-    }
+pub struct CreateSessionResult {
+    pub session: Session,
+    pub warnings: Vec<AppWarning>,
+}
+
+pub struct SessionRemoveResult {
+    pub removed_ids: Vec<String>,
+    pub missing_keys: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

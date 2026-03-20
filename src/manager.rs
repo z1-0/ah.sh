@@ -100,7 +100,7 @@ impl Manager {
         // First try to find an existing session
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
-                println!("Restoring existing session: {}", session.session_id);
+                println!("Restoring existing session: {}", session.id);
                 execute_nix_develop(session.session_dir, false)
             }
             None => {
