@@ -1,6 +1,8 @@
 use crate::error::Result;
 use crate::paths::get_session_dir;
-use crate::session::{SESSION_ID_LEN, Session, SessionError, SessionKey};
+use crate::session::types::{
+    SESSION_ID_LEN, Session as PersistedSession, SessionError, SessionKey,
+};
 use std::fs;
 
 pub(crate) fn generate_id(provider: &str, languages: &[String]) -> String {
@@ -12,7 +14,7 @@ pub(crate) fn generate_id(provider: &str, languages: &[String]) -> String {
     digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
 }
 
-pub(crate) fn list_sessions() -> Result<Vec<Session>> {
+pub(crate) fn list_sessions() -> Result<Vec<PersistedSession>> {
     let session_dir = get_session_dir()?;
     let mut sessions = Vec::new();
 
@@ -23,7 +25,7 @@ pub(crate) fn list_sessions() -> Result<Vec<Session>> {
             let meta_path = path.join("metadata.json");
             if meta_path.exists() {
                 let content = fs::read_to_string(&meta_path)?;
-                if let Ok(session) = serde_json::from_str::<Session>(&content) {
+                if let Ok(session) = serde_json::from_str::<PersistedSession>(&content) {
                     sessions.push(session);
                 }
             }
@@ -35,7 +37,7 @@ pub(crate) fn list_sessions() -> Result<Vec<Session>> {
     Ok(sessions)
 }
 
-pub(crate) fn save_session(session: &Session) -> Result<()> {
+pub(crate) fn save_session(session: &PersistedSession) -> Result<()> {
     let session_path = get_session_dir()?.join(&session.id);
     if !session_path.exists() {
         fs::create_dir_all(&session_path)?;
@@ -46,7 +48,10 @@ pub(crate) fn save_session(session: &Session) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session> {
+pub(crate) fn resolve_session(
+    sessions: &[PersistedSession],
+    key: &SessionKey,
+) -> Result<PersistedSession> {
     match key {
         SessionKey::Index(idx) => {
             if *idx > 0 && *idx <= sessions.len() {
@@ -63,7 +68,7 @@ pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<
     }
 }
 
-pub(crate) fn find_session(key: &SessionKey) -> Result<Session> {
+pub(crate) fn find_session(key: &SessionKey) -> Result<PersistedSession> {
     let sessions = list_sessions()?;
     resolve_session(&sessions, key)
 }

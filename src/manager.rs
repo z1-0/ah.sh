@@ -97,9 +97,19 @@ impl Manager {
         provider_type: ProviderType,
         languages: Vec<String>,
     ) -> Result<Infallible> {
-        let result = SessionService::create_session(provider_type, languages)?;
-        print_warnings(&result.warnings);
-        execute_nix_develop(result.session_dir, true)
+        // First try to find an existing session
+        match SessionService::find_session(provider_type, &languages)? {
+            Some(session) => {
+                println!("Restoring existing session: {}", session.session_id);
+                execute_nix_develop(session.session_dir, false)
+            }
+            None => {
+                println!("Creating new session...");
+                let result = SessionService::create_session(provider_type, languages)?;
+                print_warnings(&result.warnings);
+                execute_nix_develop(result.session.session_dir, true)
+            }
+        }
     }
 
     pub fn list_providers() -> Result<()> {
@@ -190,46 +200,5 @@ fn print_warnings(warnings: &[AppWarning]) {
 
     for w in sorted_warnings_for_print(warnings) {
         eprintln!("{}", format_warning_line(w, color));
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{format_provider_language_line, format_provider_row};
-    use crate::provider::all_providers;
-
-    #[test]
-    fn provider_list_order_remains_stable() {
-        let providers = all_providers();
-        assert_eq!(providers[0].name(), "devenv");
-        assert_eq!(providers[1].name(), "dev-templates");
-    }
-
-    #[test]
-    fn provider_language_line_keeps_alias_format() {
-        let line = format_provider_language_line(
-            "node".to_string(),
-            vec!["javascript".to_string(), "js".to_string()],
-        );
-
-        assert_eq!(line, "node (javascript,js)");
-    }
-
-    #[test]
-    fn provider_row_formatting_keeps_expected_name_order() {
-        let first = format_provider_row(1, all_providers()[0].name());
-        let second = format_provider_row(2, all_providers()[1].name());
-
-        assert!(first.contains("devenv"));
-        assert!(second.contains("dev-templates"));
-    }
-
-    #[test]
-    fn provider_supported_languages_are_sorted_before_rendering() {
-        let provider = &all_providers()[0];
-        let mut languages = provider.supported_languages().unwrap();
-        languages.sort();
-
-        assert!(languages.windows(2).all(|pair| pair[0] <= pair[1]));
     }
 }

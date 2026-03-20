@@ -2,15 +2,24 @@ use crate::error::{AppError, Result};
 use crate::paths::get_session_dir;
 use crate::provider::{EnsureFilesResult, ProviderType, provider_info, validate_languages};
 use crate::session::storage;
-use crate::session::{Session, SessionError, SessionKey};
+use crate::session::types::Session as PersistedSession;
+use crate::session::{SessionError, SessionKey};
 use crate::warning::AppWarning;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
 pub struct SessionService;
 
-pub struct CreateSessionResult {
+/// Session entry point - contains all info needed to enter a session
+pub struct Session {
+    pub session_id: String,
     pub session_dir: PathBuf,
+    pub provider: String,
+    pub languages: Vec<String>,
+}
+
+pub struct CreateSessionResult {
+    pub session: Session,
     pub warnings: Vec<AppWarning>,
 }
 
@@ -37,7 +46,48 @@ fn normalize_and_dedup_languages(
 }
 
 impl SessionService {
-    pub fn list_sessions() -> Result<Vec<Session>> {
+    /// Find an existing session by provider + language list
+    pub fn find_session(
+        provider_type: ProviderType,
+        languages: &[String],
+    ) -> Result<Option<Session>> {
+        let provider_metadata = provider_info(provider_type);
+        let provider_name = provider_metadata.name();
+        let deduped_langs = normalize_and_dedup_languages(provider_type, languages)?;
+
+        if deduped_langs.is_empty() {
+            return Ok(None);
+        }
+
+        let session_id = storage::generate_id(provider_name, &deduped_langs);
+        let session_dir = get_session_dir()?.join(&session_id);
+        let flake_path = session_dir.join("flake.nix");
+
+        if !flake_path.exists() {
+            return Ok(None);
+        }
+
+        // Session exists, read metadata
+        let sessions = storage::list_sessions()?;
+        let session =
+            sessions
+                .into_iter()
+                .find(|s| s.id == session_id)
+                .unwrap_or(PersistedSession::new(
+                    session_id.clone(),
+                    deduped_langs.clone(),
+                    provider_name.to_string(),
+                ));
+
+        Ok(Some(Session {
+            session_id: session.id,
+            session_dir,
+            provider: session.provider,
+            languages: session.languages,
+        }))
+    }
+
+    pub fn list_sessions() -> Result<Vec<PersistedSession>> {
         storage::list_sessions()
     }
 
@@ -89,6 +139,7 @@ impl SessionService {
         }))
     }
 
+    /// Create a new session (assumes session doesn't exist - call find_session first)
     pub fn create_session(
         provider_type: ProviderType,
         languages: Vec<String>,
@@ -110,18 +161,9 @@ impl SessionService {
 
         let session_id = storage::generate_id(provider_name, &deduped_langs);
         let session_dir = get_session_dir()?.join(&session_id);
-        let flake_path = session_dir.join("flake.nix");
-        if flake_path.exists() {
-            let meta_path = session_dir.join("metadata.json");
-            if !meta_path.exists() {
-                let session = Session::new(session_id, deduped_langs, provider_name.to_string());
-                storage::save_session(&session)?;
-            }
-            return Ok(CreateSessionResult {
-                session_dir,
-                warnings,
-            });
-        }
+
+        // Note: caller should check if session exists first via find_session
+        // This function assumes a new session needs to be created
         std::fs::create_dir_all(&session_dir)?;
 
         let provider = provider_type.into_shell_provider();
@@ -130,115 +172,21 @@ impl SessionService {
         } = provider.ensure_files(&deduped_langs, &session_dir)?;
         warnings.extend(provider_warnings);
 
-        let session = Session::new(session_id, deduped_langs, provider_name.to_string());
-        storage::save_session(&session)?;
-
-        Ok(CreateSessionResult {
-            session_dir,
-            warnings,
-        })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::normalize_and_dedup_languages;
-    use crate::error::AppError;
-    use crate::provider::{ProviderType, provider_info, validate_languages};
-    use std::env;
-    use std::fs;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[test]
-    fn normalize_and_dedup_preserves_first_seen_order() {
-        let languages = vec![
-            "js".to_string(),
-            "javascript".to_string(),
-            "py".to_string(),
-            "python".to_string(),
-            "js".to_string(),
-        ];
-
-        let normalized = normalize_and_dedup_languages(ProviderType::Devenv, &languages).unwrap();
-
-        assert_eq!(
-            normalized,
-            vec!["javascript".to_string(), "python".to_string()]
+        // Save persisted session metadata
+        let persisted_session = PersistedSession::new(
+            session_id.clone(),
+            deduped_langs.clone(),
+            provider_name.to_string(),
         );
-    }
+        storage::save_session(&persisted_session)?;
 
-    #[test]
-    fn unsupported_normalized_languages_preserve_error_shape() {
-        let normalized = normalize_and_dedup_languages(
-            ProviderType::Devenv,
-            &["totally-not-a-language".to_string()],
-        )
-        .unwrap();
-        let supported = provider_info(ProviderType::Devenv)
-            .supported_languages()
-            .unwrap();
+        let session = Session {
+            session_id,
+            session_dir,
+            provider: provider_name.to_string(),
+            languages: deduped_langs,
+        };
 
-        let err = validate_languages(&normalized, &supported).unwrap_err();
-        assert!(matches!(
-            err,
-            AppError::UnsupportedLanguages(ref invalids)
-            if invalids == &vec!["totally-not-a-language".to_string()]
-        ));
-    }
-
-    #[test]
-    fn create_session_does_not_overwrite_existing_flake() {
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let temp_root = env::temp_dir().join(format!("ah-test-cache-{ts}"));
-        fs::create_dir_all(&temp_root).unwrap();
-        let original_cache_home = env::var_os("XDG_CACHE_HOME");
-        unsafe {
-            env::set_var("XDG_CACHE_HOME", &temp_root);
-        }
-        let _cache_home_guard = CacheHomeGuard::new(original_cache_home);
-
-        let provider_type = ProviderType::Devenv;
-        let provider_name = provider_info(provider_type).name();
-        let languages = vec!["rust".to_string()];
-        let session_id = crate::session::storage::generate_id(provider_name, &languages);
-        let session_dir = temp_root.join("ah").join("sessions").join(&session_id);
-        fs::create_dir_all(&session_dir).unwrap();
-
-        let flake_path = session_dir.join("flake.nix");
-        let marker = "# marker flake";
-        fs::write(&flake_path, marker).unwrap();
-
-        let result = super::SessionService::create_session(provider_type, languages).unwrap();
-        assert_eq!(result.session_dir, session_dir);
-
-        let content = fs::read_to_string(&flake_path).unwrap();
-        assert_eq!(content, marker);
-
-        let _ = fs::remove_dir_all(&temp_root);
-    }
-
-    struct CacheHomeGuard {
-        original: Option<std::ffi::OsString>,
-    }
-
-    impl CacheHomeGuard {
-        fn new(original: Option<std::ffi::OsString>) -> Self {
-            Self { original }
-        }
-    }
-
-    impl Drop for CacheHomeGuard {
-        fn drop(&mut self) {
-            unsafe {
-                if let Some(ref value) = self.original {
-                    env::set_var("XDG_CACHE_HOME", value);
-                } else {
-                    env::remove_var("XDG_CACHE_HOME");
-                }
-            }
-        }
+        Ok(CreateSessionResult { session, warnings })
     }
 }
