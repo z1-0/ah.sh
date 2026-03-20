@@ -3,7 +3,17 @@ use crate::paths::get_session_dir;
 use crate::session::types::{
     SESSION_ID_LEN, Session as PersistedSession, SessionError, SessionKey,
 };
+use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fs;
+use std::time::SystemTime;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SessionMetadata {
+    id: String,
+    languages: Vec<String>,
+    provider: String,
+}
 
 pub(crate) fn generate_id(provider: &str, languages: &[String]) -> String {
     let mut sorted_langs = languages.to_vec();
@@ -25,16 +35,32 @@ pub(crate) fn list_sessions() -> Result<Vec<PersistedSession>> {
             let meta_path = path.join("metadata.json");
             if meta_path.exists() {
                 let content = fs::read_to_string(&meta_path)?;
-                if let Ok(session) = serde_json::from_str::<PersistedSession>(&content) {
-                    sessions.push(session);
+                if let Ok(session_meta) = serde_json::from_str::<SessionMetadata>(&content) {
+                    let modified_at = path
+                        .metadata()
+                        .and_then(|meta| meta.modified())
+                        .unwrap_or(SystemTime::UNIX_EPOCH);
+
+                    sessions.push((
+                        PersistedSession {
+                            id: session_meta.id,
+                            languages: session_meta.languages,
+                            provider: session_meta.provider,
+                            created_at: 0,
+                        },
+                        modified_at,
+                    ));
                 }
             }
         }
     }
 
-    // Sort by created_at descending (newest first)
-    sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-    Ok(sessions)
+    sessions.sort_by(|(a, a_mtime), (b, b_mtime)| match b_mtime.cmp(a_mtime) {
+        Ordering::Equal => a.id.cmp(&b.id),
+        other => other,
+    });
+
+    Ok(sessions.into_iter().map(|(session, _)| session).collect())
 }
 
 pub(crate) fn save_session(session: &PersistedSession) -> Result<()> {
@@ -43,7 +69,12 @@ pub(crate) fn save_session(session: &PersistedSession) -> Result<()> {
         fs::create_dir_all(&session_path)?;
     }
     let meta_path = session_path.join("metadata.json");
-    let content = serde_json::to_string_pretty(session)?;
+    let metadata = SessionMetadata {
+        id: session.id.clone(),
+        languages: session.languages.clone(),
+        provider: session.provider.clone(),
+    };
+    let content = serde_json::to_string_pretty(&metadata)?;
     fs::write(&meta_path, content)?;
     Ok(())
 }
