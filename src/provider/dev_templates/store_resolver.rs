@@ -73,7 +73,7 @@ fn query_lock_data(lang: &str, runner: &dyn CommandRunner) -> Result<String> {
 fn prefetch(lang: &str, runner: &dyn CommandRunner) -> Result<()> {
     let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
     runner
-        .run("nix", &["prefetch", flake_ref.as_str()])
+        .run("nix", &["flake", "prefetch", flake_ref.as_str()])
         .map_err(|err| map_command_failure(lang, "prefetch flake input", err))?;
     Ok(())
 }
@@ -269,11 +269,17 @@ mod tests {
             3,
             "resolver should query, prefetch, retry before store read"
         );
-        assert!(
-            calls
-                .iter()
-                .any(|(program, args)| program == "nix" && args.iter().any(|arg| arg == "prefetch")),
-            "expected prefetch command to be invoked"
+        assert_eq!(
+            calls[1],
+            (
+                "nix".to_string(),
+                vec![
+                    "flake".to_string(),
+                    "prefetch".to_string(),
+                    "github:the-nix-way/dev-templates?dir=rust".to_string(),
+                ],
+            ),
+            "prefetch fallback should use `nix flake prefetch <ref>`"
         );
     }
 
