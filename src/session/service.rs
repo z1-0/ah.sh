@@ -204,11 +204,7 @@ mod tests {
         let provider_name = provider_info(provider_type).name();
         let languages = vec!["rust".to_string()];
         let session_id = crate::session::storage::generate_id(provider_name, &languages);
-        let session_dir = temp_root
-            .join("ah")
-            .join("ah")
-            .join("sessions")
-            .join(&session_id);
+        let session_dir = temp_root.join("ah").join("sessions").join(&session_id);
         fs::create_dir_all(&session_dir).unwrap();
 
         let flake_path = session_dir.join("flake.nix");
