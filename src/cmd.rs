@@ -4,7 +4,7 @@ use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn exec_cmd(mut cmd: Command) -> Result<Infallible> {
+fn run(mut cmd: Command) -> Result<Infallible> {
     if cfg!(debug_assertions) {
         eprintln!(
             "exec: {} {}",
@@ -19,7 +19,7 @@ fn exec_cmd(mut cmd: Command) -> Result<Infallible> {
     Err(AppError::Io(err))
 }
 
-pub fn execute_nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<Infallible> {
+pub fn cmd_nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<Infallible> {
     let profile_path = flake_dir.join("nix-profile");
 
     let mut cmd = Command::new("nix");
@@ -31,5 +31,5 @@ pub fn execute_nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<Infa
         cmd.arg(&flake_dir).arg("--profile").arg(profile_path);
     }
 
-    exec_cmd(cmd)
+    run(cmd)
 }
