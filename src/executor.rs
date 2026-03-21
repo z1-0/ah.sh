@@ -6,7 +6,14 @@ use std::process::Command;
 
 fn exec_cmd(mut cmd: Command) -> Result<Infallible> {
     if cfg!(debug_assertions) {
-        eprintln!("Executing: {:?}", cmd);
+        eprintln!(
+            "exec: {} {}",
+            cmd.get_program().to_string_lossy(),
+            cmd.get_args()
+                .map(|a| a.to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
     }
     let err = cmd.exec();
     Err(AppError::Io(err))
