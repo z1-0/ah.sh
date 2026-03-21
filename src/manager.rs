@@ -1,8 +1,8 @@
 use crate::error::Result;
 use crate::executor::execute_nix_develop;
 use crate::provider::{ProviderType, all_providers, provider_info};
-use crate::session::SessionKey;
 use crate::session::SessionService;
+use crate::session::{self, Session, SessionKey};
 use crate::warning::AppWarning;
 use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
@@ -100,14 +100,14 @@ impl Manager {
         // First try to find an existing session
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
-                println!("Restoring existing session: {}", session.id);
-                execute_nix_develop(session.session_dir, false)
+                println!("Restoring develop shell...: {}", session.id);
+                execute_nix_develop(session.session_dir, true)
             }
             None => {
-                println!("Creating new session...");
+                println!("Creating develop shell...");
                 let result = SessionService::create_session(provider_type, languages)?;
                 print_warnings(&result.warnings);
-                execute_nix_develop(result.session.session_dir, true)
+                execute_nix_develop(result.session.session_dir, false)
             }
         }
     }

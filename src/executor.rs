@@ -5,23 +5,23 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn exec_cmd(mut cmd: Command) -> Result<Infallible> {
+    if cfg!(debug_assertions) {
+        eprintln!("Executing: {:?}", cmd);
+    }
     let err = cmd.exec();
     Err(AppError::Io(err))
 }
 
-pub fn execute_nix_develop(session_dir: PathBuf, new_session: bool) -> Result<Infallible> {
-    let profile_path = session_dir.join("nix-profile");
+pub fn execute_nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<Infallible> {
+    let profile_path = flake_dir.join("nix-profile");
 
     let mut cmd = Command::new("nix");
-    cmd.arg("develop");
-    cmd.arg("--profile").arg(profile_path);
+    cmd.arg("develop").arg("--no-pure-eval");
 
-    if new_session {
-        cmd.arg("--no-pure-eval").arg(&session_dir);
-    }
-
-    if cfg!(debug_assertions) {
-        eprintln!("Executing: {:?}", cmd);
+    if use_profile {
+        cmd.arg(profile_path);
+    } else {
+        cmd.arg(&flake_dir).arg("--profile").arg(profile_path);
     }
 
     exec_cmd(cmd)
