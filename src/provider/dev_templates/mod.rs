@@ -7,7 +7,6 @@ use crate::error::{AppError, Result};
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
 use crate::provider::{EnsureFilesResult, ShellProvider};
 use crate::warning::AppWarning;
-use serde_json::Value;
 use std::collections::HashSet;
 use std::path::Path;
 use std::process::Command;
@@ -18,7 +17,6 @@ pub struct DevTemplatesProvider;
 
 const MAX_PIPELINE_CONCURRENCY: usize = 8;
 
-type ProbeLockedKeyFn = dyn Fn(&str) -> Result<String> + Send + Sync;
 type ResolveStoreSourceFn =
     dyn Fn(&str) -> Result<store_resolver::ResolvedStoreSource> + Send + Sync;
 type LoadCachedAttrsFn =
@@ -29,7 +27,6 @@ type WriteFlakeFn = dyn Fn(&Path, &str) -> Result<()> + Send + Sync;
 
 #[derive(Clone)]
 struct PipelineDeps {
-    probe_locked_key: Arc<ProbeLockedKeyFn>,
     resolve_store_source: Arc<ResolveStoreSourceFn>,
     load_cached_attrs: Arc<LoadCachedAttrsFn>,
     save_cached_attrs: Arc<SaveCachedAttrsFn>,
@@ -41,7 +38,6 @@ impl PipelineDeps {
     fn production() -> Self {
         let runner = Arc::new(SystemCommandRunner);
         Self {
-            probe_locked_key: Arc::new(probe_locked_key),
             resolve_store_source: Arc::new({
                 let runner = Arc::clone(&runner);
                 move |lang| store_resolver::resolve_store_source(lang, runner.as_ref())
@@ -149,113 +145,56 @@ struct LanguageOutcome {
 fn ensure_language_attrs(language: &str, deps: &PipelineDeps) -> LanguageOutcome {
     let mut warnings = Vec::new();
 
-    let probed_locked_key = match (deps.probe_locked_key)(language) {
-        Ok(key) => Some(key),
-        Err(err) => {
-            warnings.push(
-                AppWarning::new("dev_templates.lock_probe_failed", err.to_string())
-                    .with_context("language", language.to_string()),
-            );
-            None
-        }
-    };
-
-    if let Some(locked_key) = probed_locked_key {
-        match (deps.load_cached_attrs)(language, &locked_key) {
-            Ok((Some(attrs), maybe_warning)) => {
-                if let Some(warning) = maybe_warning {
-                    warnings.push(warning);
-                }
-                return LanguageOutcome {
-                    language: language.to_string(),
-                    attrs: Some(attrs),
-                    warnings,
-                };
-            }
-            Ok((None, maybe_warning)) => {
-                if let Some(warning) = maybe_warning {
-                    warnings.push(warning);
-                }
-            }
-            Err(err) => {
-                warnings.push(
-                    AppWarning::new("dev_templates.attrs_cache_load_failed", err.to_string())
-                        .with_context("language", language.to_string()),
-                );
-            }
-        }
-    }
-
-    match (deps.resolve_store_source)(language) {
-        Ok(resolved) => {
-            let attrs = (deps.parse_flake_shell)(&resolved.flake_source);
-            if let Some(warning) = (deps.save_cached_attrs)(language, &resolved.locked_key, &attrs)
-            {
-                warnings.push(warning);
-            }
-
-            LanguageOutcome {
-                language: language.to_string(),
-                attrs: Some(attrs),
-                warnings,
-            }
-        }
+    let resolved = match (deps.resolve_store_source)(language) {
+        Ok(resolved) => resolved,
         Err(err) => {
             warnings.push(
                 AppWarning::new("dev_templates.resolve_failed", err.to_string())
                     .with_context("language", language.to_string()),
             );
 
-            LanguageOutcome {
+            return LanguageOutcome {
                 language: language.to_string(),
                 attrs: None,
                 warnings,
+            };
+        }
+    };
+
+    match (deps.load_cached_attrs)(language, &resolved.locked_key) {
+        Ok((Some(attrs), maybe_warning)) => {
+            if let Some(warning) = maybe_warning {
+                warnings.push(warning);
+            }
+            return LanguageOutcome {
+                language: language.to_string(),
+                attrs: Some(attrs),
+                warnings,
+            };
+        }
+        Ok((None, maybe_warning)) => {
+            if let Some(warning) = maybe_warning {
+                warnings.push(warning);
             }
         }
-    }
-}
-
-fn probe_locked_key(lang: &str) -> Result<String> {
-    let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
-    let output = Command::new("nix")
-        .args(["flake", "prefetch", "--json", flake_ref.as_str()])
-        .output()
-        .map_err(|err| {
-            AppError::Provider(format!(
-                "failed to probe lock key for language `{lang}`: {err}"
-            ))
-        })?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(AppError::Provider(format!(
-            "failed to probe lock key for language `{lang}`: {}",
-            stderr.trim()
-        )));
+        Err(err) => {
+            warnings.push(
+                AppWarning::new("dev_templates.attrs_cache_load_failed", err.to_string())
+                    .with_context("language", language.to_string()),
+            );
+        }
     }
 
-    let raw = String::from_utf8(output.stdout)
-        .map_err(|err| AppError::Provider(format!("invalid UTF-8 in lock probe output: {err}")))?;
+    let attrs = (deps.parse_flake_shell)(&resolved.flake_source);
+    if let Some(warning) = (deps.save_cached_attrs)(language, &resolved.locked_key, &attrs) {
+        warnings.push(warning);
+    }
 
-    extract_locked_key_from_prefetch_json(&raw)
-}
-
-fn extract_locked_key_from_prefetch_json(raw: &str) -> Result<String> {
-    let parsed: Value = serde_json::from_str(raw)?;
-
-    parsed
-        .get("locked")
-        .and_then(Value::as_object)
-        .and_then(|locked| {
-            locked
-                .get("narHash")
-                .and_then(Value::as_str)
-                .or_else(|| locked.get("rev").and_then(Value::as_str))
-        })
-        .or_else(|| parsed.get("narHash").and_then(Value::as_str))
-        .or_else(|| parsed.get("rev").and_then(Value::as_str))
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| AppError::Provider("lock key missing".to_string()))
+    LanguageOutcome {
+        language: language.to_string(),
+        attrs: Some(attrs),
+        warnings,
+    }
 }
 
 fn write_flake_to_target(target_dir: &Path, content: &str) -> Result<()> {

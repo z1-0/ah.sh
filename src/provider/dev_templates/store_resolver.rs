@@ -1,5 +1,4 @@
 use crate::error::{AppError, Result};
-use serde_json::Value;
 use std::fs;
 
 pub trait CommandRunner {
@@ -24,15 +23,34 @@ pub struct ResolvedStoreSource {
     pub flake_source: String,
 }
 
-pub fn extract_locked_key(raw: &str) -> Result<String> {
-    let parsed: Value = serde_json::from_str(raw)?;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+struct PrefetchResponse {
+    hash: String,
+    locked: PrefetchLocked,
+    original: PrefetchOriginal,
+    #[serde(rename = "storePath")]
+    store_path: String,
+}
 
-    parsed
-        .get("narHash")
-        .and_then(Value::as_str)
-        .or_else(|| parsed.get("rev").and_then(Value::as_str))
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| AppError::Provider("lock key missing".to_string()))
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+struct PrefetchLocked {
+    #[serde(rename = "lastModified")]
+    last_modified: i64,
+    owner: String,
+    repo: String,
+    rev: String,
+    #[serde(rename = "type")]
+    source_type: String,
+    dir: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+struct PrefetchOriginal {
+    owner: String,
+    repo: String,
+    #[serde(rename = "type")]
+    source_type: String,
+    dir: Option<String>,
 }
 
 pub fn resolve_store_source(lang: &str, runner: &dyn CommandRunner) -> Result<ResolvedStoreSource> {
@@ -45,20 +63,12 @@ fn resolve_store_source_with_reader(
     reader: &dyn FlakeReader,
 ) -> Result<ResolvedStoreSource> {
     let lock_raw = query_lock_data(lang, runner)?;
+    let prefetch = parse_prefetch_response(&lock_raw)?;
 
-    let (locked_key, store_path) = match extract_lock_and_store_path(&lock_raw) {
-        Ok(parts) => parts,
-        Err(_) => {
-            prefetch(lang, runner)?;
-            let retried_lock_raw = query_lock_data(lang, runner)?;
-            extract_lock_and_store_path(&retried_lock_raw)?
-        }
-    };
-
-    let flake_source = read_store_flake_with_reader(&store_path, lang, reader)?;
+    let flake_source = read_store_flake_with_reader(&prefetch.store_path, lang, reader)?;
 
     Ok(ResolvedStoreSource {
-        locked_key,
+        locked_key: prefetch.hash,
         flake_source,
     })
 }
@@ -70,12 +80,8 @@ fn query_lock_data(lang: &str, runner: &dyn CommandRunner) -> Result<String> {
         .map_err(|err| map_command_failure(lang, "query lock data", err))
 }
 
-fn prefetch(lang: &str, runner: &dyn CommandRunner) -> Result<()> {
-    let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
-    runner
-        .run("nix", &["flake", "prefetch", flake_ref.as_str()])
-        .map_err(|err| map_command_failure(lang, "prefetch flake input", err))?;
-    Ok(())
+fn parse_prefetch_response(raw: &str) -> Result<PrefetchResponse> {
+    serde_json::from_str(raw).map_err(Into::into)
 }
 
 fn read_store_flake_with_reader(
@@ -105,31 +111,4 @@ fn summarize_error(err: &AppError) -> String {
             .unwrap_or_else(|| "unknown provider error".to_string()),
         _ => err.to_string(),
     }
-}
-
-fn extract_lock_and_store_path(raw: &str) -> Result<(String, String)> {
-    let parsed: Value = serde_json::from_str(raw)?;
-
-    let key = parsed
-        .get("locked")
-        .and_then(Value::as_object)
-        .and_then(|locked| {
-            locked
-                .get("narHash")
-                .and_then(Value::as_str)
-                .or_else(|| locked.get("rev").and_then(Value::as_str))
-        })
-        .or_else(|| parsed.get("narHash").and_then(Value::as_str))
-        .or_else(|| parsed.get("rev").and_then(Value::as_str))
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| AppError::Provider("lock key missing".to_string()))?;
-
-    let path = parsed
-        .get("path")
-        .and_then(Value::as_str)
-        .or_else(|| parsed.get("storePath").and_then(Value::as_str))
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| AppError::Provider("store path missing".to_string()))?;
-
-    Ok((key, path))
 }
