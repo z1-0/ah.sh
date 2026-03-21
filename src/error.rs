@@ -1,3 +1,4 @@
+use crate::cmd::CommandError;
 use crate::session::SessionError;
 use std::path::PathBuf;
 
@@ -20,6 +21,9 @@ pub enum AppError {
 
     #[error("Provider error: {0}")]
     Provider(String),
+
+    #[error(transparent)]
+    Command(#[from] CommandError),
 
     #[error(transparent)]
     Session(#[from] SessionError),

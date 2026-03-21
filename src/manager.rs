@@ -1,4 +1,4 @@
-use crate::cmd::cmd_nix_develop;
+use crate::cmd::nix_develop;
 use crate::error::Result;
 use crate::provider::{ProviderType, all_providers, provider_info};
 use crate::session::SessionKey;
@@ -50,7 +50,7 @@ impl Manager {
 
     pub fn restore_session(key: &SessionKey) -> Result<Infallible> {
         let session_dir = SessionService::resolve_session_dir(key)?;
-        cmd_nix_develop(session_dir, false)
+        nix_develop(session_dir, false)
     }
 
     pub fn clear_sessions() -> Result<()> {
@@ -101,13 +101,13 @@ impl Manager {
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
                 println!("Restoring develop shell...");
-                cmd_nix_develop(session.session_dir, true)
+                nix_develop(session.session_dir, true)
             }
             None => {
                 println!("Creating develop shell...");
                 let result = SessionService::create_session(provider_type, languages)?;
                 print_warnings(&result.warnings);
-                cmd_nix_develop(result.session.session_dir, false)
+                nix_develop(result.session.session_dir, false)
             }
         }
     }

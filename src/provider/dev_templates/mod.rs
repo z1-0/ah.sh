@@ -3,13 +3,12 @@ pub mod flake_generator;
 pub mod nix_parser;
 pub mod store_resolver;
 
-use crate::error::{AppError, Result};
+use crate::error::Result;
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
 use crate::provider::{EnsureFilesResult, ShellProvider};
 use crate::warning::AppWarning;
 use std::collections::HashSet;
 use std::path::Path;
-use std::process::Command;
 use std::sync::Arc;
 use std::thread;
 
@@ -36,36 +35,12 @@ struct PipelineDeps {
 
 impl PipelineDeps {
     fn production() -> Self {
-        let runner = Arc::new(SystemCommandRunner);
         Self {
-            resolve_store_source: Arc::new({
-                let runner = Arc::clone(&runner);
-                move |lang| store_resolver::resolve_store_source(lang, runner.as_ref())
-            }),
+            resolve_store_source: Arc::new(store_resolver::resolve_store_source),
             load_cached_attrs: Arc::new(attrs_cache::load_cached_attrs),
             save_cached_attrs: Arc::new(attrs_cache::save_cached_attrs),
             parse_flake_shell: Arc::new(nix_parser::parse_flake_shell),
             write_flake: Arc::new(write_flake_to_target),
-        }
-    }
-}
-
-struct SystemCommandRunner;
-
-impl store_resolver::CommandRunner for SystemCommandRunner {
-    fn run(&self, program: &str, args: &[&str]) -> Result<String> {
-        let output = Command::new(program)
-            .args(args)
-            .output()
-            .map_err(|err| AppError::Provider(format!("failed to execute `{program}`: {err}")))?;
-
-        if output.status.success() {
-            String::from_utf8(output.stdout).map_err(|err| {
-                AppError::Provider(format!("invalid UTF-8 in `{program}` output: {err}"))
-            })
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(AppError::Provider(stderr.trim().to_string()))
         }
     }
 }

@@ -1,9 +1,6 @@
+use crate::cmd;
 use crate::error::{AppError, Result};
 use std::fs;
-
-pub trait CommandRunner {
-    fn run(&self, program: &str, args: &[&str]) -> Result<String>;
-}
 
 trait FlakeReader {
     fn read_to_string(&self, path: &str) -> std::io::Result<String>;
@@ -53,16 +50,15 @@ struct PrefetchOriginal {
     dir: Option<String>,
 }
 
-pub fn resolve_store_source(lang: &str, runner: &dyn CommandRunner) -> Result<ResolvedStoreSource> {
-    resolve_store_source_with_reader(lang, runner, &FsFlakeReader)
+pub fn resolve_store_source(lang: &str) -> Result<ResolvedStoreSource> {
+    resolve_store_source_with_reader(lang, &FsFlakeReader)
 }
 
 fn resolve_store_source_with_reader(
     lang: &str,
-    runner: &dyn CommandRunner,
     reader: &dyn FlakeReader,
 ) -> Result<ResolvedStoreSource> {
-    let lock_raw = query_lock_data(lang, runner)?;
+    let lock_raw = cmd::nix_flake_prefetch(lang)?;
     let prefetch = parse_prefetch_response(&lock_raw)?;
 
     let flake_source = read_store_flake_with_reader(&prefetch.store_path, lang, reader)?;
@@ -71,13 +67,6 @@ fn resolve_store_source_with_reader(
         locked_key: prefetch.hash,
         flake_source,
     })
-}
-
-fn query_lock_data(lang: &str, runner: &dyn CommandRunner) -> Result<String> {
-    let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
-    runner
-        .run("nix", &["flake", "prefetch", "--json", flake_ref.as_str()])
-        .map_err(|err| map_command_failure(lang, "query lock data", err))
 }
 
 fn parse_prefetch_response(raw: &str) -> Result<PrefetchResponse> {
@@ -93,22 +82,4 @@ fn read_store_flake_with_reader(
     reader
         .read_to_string(&flake_path)
         .map_err(|err| AppError::Provider(format!("failed to read {flake_path}: {err}")))
-}
-
-fn map_command_failure(lang: &str, action: &str, err: AppError) -> AppError {
-    let summary = summarize_error(&err);
-    AppError::Provider(format!(
-        "failed to {action} for language `{lang}`: {summary}"
-    ))
-}
-
-fn summarize_error(err: &AppError) -> String {
-    match err {
-        AppError::Provider(message) => message
-            .lines()
-            .find(|line| !line.trim().is_empty())
-            .map(|line| line.trim().to_string())
-            .unwrap_or_else(|| "unknown provider error".to_string()),
-        _ => err.to_string(),
-    }
 }
