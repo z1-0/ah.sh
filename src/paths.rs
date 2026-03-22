@@ -30,11 +30,3 @@ pub fn get_session_dir() -> Result<PathBuf> {
     }
     Ok(dir)
 }
-
-pub fn get_attrs_cache_dir() -> Result<PathBuf> {
-    let dir = get_cache_dir()?.join("dev-templates").join("attrs");
-    if !dir.exists() {
-        fs::create_dir_all(&dir)?;
-    }
-    Ok(dir)
-}

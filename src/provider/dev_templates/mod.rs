@@ -1,4 +1,3 @@
-pub mod attrs_cache;
 pub mod flake_generator;
 pub mod nix_parser;
 pub mod store_resolver;
@@ -29,10 +28,13 @@ fn ensure_files_impl(languages: &[String], target_dir: &Path) -> Result<EnsureFi
         .cloned()
         .collect();
 
+    // Single prefetch for the main dev-templates repo
+    let store_path = store_resolver::prefetch_dev_templates()?;
+
     let results: Vec<LanguageOutcome> = deduped_languages
         .par_iter()
         .filter(|lang| **lang != EMPTY_LANGUAGE)
-        .map(|lang| resolve_language(lang))
+        .map(|lang| resolve_language(&store_path, lang))
         .collect();
 
     let mut parsed_attrs = Vec::new();
@@ -58,11 +60,11 @@ struct LanguageOutcome {
     warnings: Vec<AppWarning>,
 }
 
-fn resolve_language(language: &str) -> LanguageOutcome {
+fn resolve_language(store_path: &str, language: &str) -> LanguageOutcome {
     let mut warnings = Vec::new();
 
-    let resolved = match store_resolver::resolve_store_source(language) {
-        Ok(resolved) => resolved,
+    let flake_source = match store_resolver::resolve_language(store_path, language) {
+        Ok(source) => source,
         Err(err) => {
             warnings.push(
                 AppWarning::new("dev_templates.resolve_failed", err.to_string())
@@ -77,29 +79,7 @@ fn resolve_language(language: &str) -> LanguageOutcome {
         }
     };
 
-    match attrs_cache::load_cached_attrs(language, &resolved.locked_key) {
-        Ok((Some(attrs), warning)) => {
-            warnings.extend(warning);
-            return LanguageOutcome {
-                language: language.to_string(),
-                attrs: Some(attrs),
-                warnings,
-            };
-        }
-        Ok((None, warning)) => warnings.extend(warning),
-        Err(err) => {
-            warnings.push(
-                AppWarning::new("dev_templates.attrs_cache_load_failed", err.to_string())
-                    .with_context("language", language.to_string()),
-            );
-        }
-    }
-
-    let attrs = nix_parser::parse_flake_shell(&resolved.flake_source);
-
-    if let Some(warning) = attrs_cache::save_cached_attrs(language, &resolved.locked_key, &attrs) {
-        warnings.push(warning);
-    }
+    let attrs: ShellAttrs = nix_parser::parse_flake_shell(&flake_source);
 
     LanguageOutcome {
         language: language.to_string(),

@@ -79,6 +79,16 @@ pub fn nix_flake_prefetch(lang: &str) -> Result<String> {
     run(cmd)
 }
 
+pub fn nix_flake_prefetch_dev_templates() -> Result<String> {
+    let mut cmd = Command::new("nix");
+    cmd.arg("flake")
+        .arg("prefetch")
+        .arg("--json")
+        .arg("github:the-nix-way/dev-templates");
+
+    run(cmd)
+}
+
 fn command_to_string(cmd: &Command) -> String {
     let mut parts = vec![cmd.get_program().to_string_lossy().into_owned()];
     parts.extend(
