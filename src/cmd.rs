@@ -67,18 +67,6 @@ pub fn nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<Infallible> 
     exec(cmd)
 }
 
-pub fn nix_flake_prefetch(lang: &str) -> Result<String> {
-    let flake_ref = format!("github:the-nix-way/dev-templates?dir={lang}");
-
-    let mut cmd = Command::new("nix");
-    cmd.arg("flake")
-        .arg("prefetch")
-        .arg("--json")
-        .arg(&flake_ref);
-
-    run(cmd)
-}
-
 pub fn nix_flake_prefetch_dev_templates() -> Result<String> {
     let mut cmd = Command::new("nix");
     cmd.arg("flake")

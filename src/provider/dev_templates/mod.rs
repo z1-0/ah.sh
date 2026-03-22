@@ -1,13 +1,14 @@
 pub mod flake_generator;
 pub mod nix_parser;
-pub mod store_resolver;
 
-use crate::error::Result;
+use crate::cmd;
+use crate::error::{AppError, Result};
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
 use crate::provider::{EnsureFilesResult, ShellProvider};
 use crate::warning::AppWarning;
 use rayon::prelude::*;
 use std::collections::HashSet;
+use std::fs;
 use std::path::Path;
 
 const EMPTY_LANGUAGE: &str = "empty";
@@ -29,7 +30,7 @@ fn ensure_files_impl(languages: &[String], target_dir: &Path) -> Result<EnsureFi
         .collect();
 
     // Single prefetch for the main dev-templates repo
-    let store_path = store_resolver::prefetch_dev_templates()?;
+    let store_path = prefetch_dev_templates()?;
 
     let results: Vec<LanguageOutcome> = deduped_languages
         .par_iter()
@@ -54,6 +55,21 @@ fn ensure_files_impl(languages: &[String], target_dir: &Path) -> Result<EnsureFi
     Ok(EnsureFilesResult { warnings })
 }
 
+fn prefetch_dev_templates() -> Result<String> {
+    let prefetch_raw = cmd::nix_flake_prefetch_dev_templates()?;
+    serde_json::from_str::<serde_json::Value>(&prefetch_raw)
+        .ok()
+        .and_then(|mut v| v["storePath"].take().as_str().map(String::from))
+        .ok_or_else(|| AppError::Provider("missing storePath in prefetch response".into()))
+}
+
+/// Read the flake.nix file for a language from the Nix store.
+fn read_flake_file(store_path: &str, lang: &str) -> Result<String> {
+    let flake_path = format!("{store_path}/{lang}/flake.nix");
+    fs::read_to_string(&flake_path)
+        .map_err(|err| AppError::Provider(format!("failed to read {flake_path}: {err}")))
+}
+
 struct LanguageOutcome {
     language: String,
     attrs: Option<ShellAttrs>,
@@ -63,7 +79,7 @@ struct LanguageOutcome {
 fn resolve_language(store_path: &str, language: &str) -> LanguageOutcome {
     let mut warnings = Vec::new();
 
-    let flake_source = match store_resolver::resolve_language(store_path, language) {
+    let flake_source = match read_flake_file(store_path, language) {
         Ok(source) => source,
         Err(err) => {
             warnings.push(
