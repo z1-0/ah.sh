@@ -1,6 +1,6 @@
-use crate::error::{AppError, Result};
 use crate::provider::ProviderType;
 use crate::provider::registry::provider_name;
+use anyhow::{Context, Result};
 use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -44,8 +44,8 @@ impl LanguageMaps {
             let inputs = Self::language_map_to_input_map(&parsed_map);
             let mut all_inputs = inputs;
 
-            let supported: Vec<String> = from_str(supported_json)
-                .map_err(|e| AppError::Generic(format!("Failed to parse supported_langs: {e}")))?;
+            let supported: Vec<String> =
+                from_str(supported_json).context("Failed to parse supported_langs")?;
             for lang in &supported {
                 all_inputs
                     .entry(lang.clone())
@@ -66,7 +66,8 @@ impl LanguageMaps {
 
     fn global() -> Result<&'static Self> {
         let maps = LANGUAGE_MAPS.get_or_init(Self::load);
-        maps.as_ref().map_err(|e| AppError::Generic(e.to_string()))
+        maps.as_ref()
+            .map_err(|e| anyhow::anyhow!("Language maps not loaded: {}", e))
     }
 
     fn normalize(&self, provider_name: &str, input: &str) -> Result<String> {
@@ -77,20 +78,20 @@ impl LanguageMaps {
     fn input_map(&self, provider_name: &str) -> Result<&ProviderInputMap> {
         self.input_map
             .get(provider_name)
-            .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider_name}"))
     }
 
     fn raw_map(&self, provider_name: &str) -> Result<&ProviderLanguageMap> {
         self.by_provider
             .get(provider_name)
-            .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider_name}"))
     }
 
     fn supported_languages(&self, provider_name: &str) -> Result<Vec<String>> {
         self.supported_languages
             .get(provider_name)
             .cloned()
-            .ok_or_else(|| AppError::Generic(format!("Unsupported provider: {provider_name}")))
+            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider_name}"))
     }
 
     fn display_map(&self, provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
@@ -116,7 +117,7 @@ impl LanguageMaps {
     }
 
     fn parse_language_map(json: &str) -> Result<ProviderLanguageMap> {
-        from_str(json).map_err(|e| AppError::Generic(format!("Failed to parse language map: {e}")))
+        from_str(json).context("Failed to parse language map")
     }
 
     fn language_map_to_input_map(map: &ProviderLanguageMap) -> ProviderInputMap {
