@@ -1,12 +1,10 @@
-use crate::error::{AppError, Result};
 use crate::paths::get_session_dir;
 use crate::provider::{EnsureFilesResult, ProviderType, provider_info, validate_languages};
 use crate::session::storage;
-use crate::session::types::{
-    CreateSessionResult, Session, SessionError, SessionKey, SessionRemoveResult,
-};
-use crate::warning::AppWarning;
+use crate::session::types::{CreateSessionResult, Session, SessionKey, SessionRemoveResult};
+use anyhow::Result;
 use std::collections::HashSet;
+use tracing::warn;
 
 pub struct SessionService;
 
@@ -22,7 +20,7 @@ fn normalize_and_dedup_languages(
 
     let mut deduped_langs = mapped_langs;
     let mut seen = HashSet::new();
-    deduped_langs.retain(|language| seen.insert(language.clone()));
+    deduped_langs.retain(|language: &String| seen.insert(language.clone()));
 
     Ok(deduped_langs)
 }
@@ -103,10 +101,10 @@ impl SessionService {
                         }
                     }
                 }
-                Err(AppError::Session(SessionError::NotFound(missing_input))) => {
-                    missing_keys.push(missing_input)
+                Err(e) => {
+                    warn!("failed to resolve session: {}", e);
+                    missing_keys.push(key.to_string());
                 }
-                Err(e) => return Err(e),
             }
         }
 
@@ -126,12 +124,8 @@ impl SessionService {
         let deduped_langs = normalize_and_dedup_languages(provider_type, &languages)?;
 
         if deduped_langs.is_empty() {
-            return Err(AppError::Generic(
-                "No languages specified. Use 'ah use <langs>' or 'ah session list'".to_string(),
-            ));
+            anyhow::bail!("No languages specified. Use 'ah use <langs>' or 'ah session list'");
         }
-
-        let mut warnings: Vec<AppWarning> = Vec::new();
 
         let supported_langs = provider_metadata.supported_languages()?;
         validate_languages(&deduped_langs, &supported_langs)?;
@@ -147,7 +141,10 @@ impl SessionService {
         let EnsureFilesResult {
             warnings: provider_warnings,
         } = provider.ensure_files(&deduped_langs, &session_dir)?;
-        warnings.extend(provider_warnings);
+
+        for warning in provider_warnings {
+            warn!("{}", warning);
+        }
 
         // Save persisted session metadata
         let session = Session {
@@ -158,6 +155,6 @@ impl SessionService {
         };
         storage::save_session(&session)?;
 
-        Ok(CreateSessionResult { session, warnings })
+        Ok(CreateSessionResult { session })
     }
 }
