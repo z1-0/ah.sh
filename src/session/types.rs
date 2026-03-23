@@ -1,19 +1,8 @@
-use crate::error::AppError;
-use crate::warning::AppWarning;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 pub const SESSION_ID_LEN: usize = 8;
-
-#[derive(Debug, thiserror::Error)]
-pub enum SessionError {
-    #[error("invalid session key: {0}")]
-    InvalidSelector(String),
-
-    #[error("session '{0}' not found")]
-    NotFound(String),
-}
 
 #[derive(Debug, Clone)]
 pub struct Session {
@@ -25,7 +14,6 @@ pub struct Session {
 
 pub struct CreateSessionResult {
     pub session: Session,
-    pub warnings: Vec<AppWarning>,
 }
 
 pub struct SessionRemoveResult {
@@ -49,42 +37,38 @@ impl fmt::Display for SessionKey {
 }
 
 impl FromStr for SessionKey {
-    type Err = AppError;
+    type Err = anyhow::Error;
 
     fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
         if input.is_empty() {
-            return Err(SessionError::InvalidSelector(
-                "session target cannot be empty".to_string(),
-            )
-            .into());
+            return Err(anyhow::anyhow!(
+                "invalid session key: session target cannot be empty"
+            ));
         }
 
         if input.chars().all(|c| c.is_ascii_digit()) {
             let index = input
                 .parse::<usize>()
-                .map_err(|_| SessionError::InvalidSelector("invalid session index".to_string()))?;
+                .map_err(|_| anyhow::anyhow!("invalid session key: invalid session index"))?;
             if index == 0 {
-                return Err(SessionError::InvalidSelector(
-                    "session index must be greater than 0".to_string(),
-                )
-                .into());
+                return Err(anyhow::anyhow!(
+                    "invalid session key: session index must be greater than 0"
+                ));
             }
             return Ok(SessionKey::Index(index));
         }
 
         if !input.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err(SessionError::InvalidSelector(
-                "session id must contain only hexadecimal characters".to_string(),
-            )
-            .into());
+            return Err(anyhow::anyhow!(
+                "invalid session key: session id must contain only hexadecimal characters"
+            ));
         }
 
         if input.len() != SESSION_ID_LEN {
-            return Err(SessionError::InvalidSelector(format!(
-                "session id must be exactly {} hexadecimal characters",
+            return Err(anyhow::anyhow!(
+                "invalid session key: session id must be exactly {} hexadecimal characters",
                 SESSION_ID_LEN
-            ))
-            .into());
+            ));
         }
 
         Ok(SessionKey::Id(input.to_string()))
