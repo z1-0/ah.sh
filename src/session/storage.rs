@@ -42,7 +42,6 @@ pub(crate) fn list_sessions() -> Result<Vec<Session>> {
                     sessions.push((
                         Session {
                             id: session_meta.id,
-                            session_dir: path.clone(),
                             provider: session_meta.provider,
                             languages: session_meta.languages,
                         },
@@ -99,7 +98,7 @@ pub(crate) fn find_session(key: &SessionKey) -> Result<Session> {
     resolve_session(&sessions, key)
 }
 
-pub(crate) fn delete_session(session_id: &str) -> Result<bool> {
+pub(crate) fn remove_session(session_id: &str) -> Result<bool> {
     let session_path = get_session_dir()?.join(session_id);
     if !session_path.exists() {
         return Ok(false);

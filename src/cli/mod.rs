@@ -29,17 +29,11 @@ fn handle_command(command: Commands) -> Result<()> {
         Commands::Use {
             languages,
             provider,
-        } => {
-            let never = Manager::use_languages(provider, languages)?;
-            match never {}
-        }
+        } => Manager::use_languages(provider, languages),
 
         Commands::Session { command } => match command {
             SessionCommands::List => Manager::list_sessions(),
-            SessionCommands::Restore { key } => {
-                let never = Manager::restore_session(&key)?;
-                match never {}
-            }
+            SessionCommands::Restore { key } => Manager::restore_session(&key),
             SessionCommands::Clear => Manager::clear_sessions(),
             SessionCommands::Remove { keys } => Manager::remove_sessions(&keys),
         },

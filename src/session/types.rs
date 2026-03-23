@@ -1,19 +1,23 @@
+use anyhow::Result;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use crate::paths::get_session_dir;
 
 pub const SESSION_ID_LEN: usize = 8;
 
 #[derive(Debug, Clone)]
 pub struct Session {
     pub id: String,
-    pub session_dir: PathBuf,
     pub provider: String,
     pub languages: Vec<String>,
 }
 
-pub struct CreateSessionResult {
-    pub session: Session,
+impl Session {
+    pub fn get_dir(&self) -> Result<PathBuf> {
+        Ok(get_session_dir()?.join(&self.id))
+    }
 }
 
 pub struct SessionRemoveResult {

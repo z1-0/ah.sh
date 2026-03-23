@@ -4,7 +4,7 @@ use crate::provider::{
     validate_languages,
 };
 use crate::session::storage;
-use crate::session::types::{CreateSessionResult, Session, SessionKey, SessionRemoveResult};
+use crate::session::types::{Session, SessionKey, SessionRemoveResult};
 use anyhow::Result;
 use std::collections::HashSet;
 
@@ -47,17 +47,9 @@ impl SessionService {
             return Ok(None);
         }
 
-        // Session exists, read metadata
-        let sessions = storage::list_sessions()?;
-        let session = sessions
-            .into_iter()
-            .find(|s| s.id == session_id)
-            .unwrap_or(Session {
-                id: session_id,
-                session_dir: session_dir.clone(),
-                provider: provider_name.to_string(),
-                languages: deduped_langs,
-            });
+        let key = SessionKey::Id(session_id);
+
+        let session = storage::find_session(&key)?;
 
         Ok(Some(session))
     }
@@ -68,7 +60,7 @@ impl SessionService {
 
     pub fn resolve_session_dir(key: &SessionKey) -> Result<std::path::PathBuf> {
         let session = storage::find_session(key)?;
-        Ok(session.session_dir)
+        session.get_dir()
     }
 
     pub fn clear_sessions() -> Result<usize> {
@@ -93,8 +85,8 @@ impl SessionService {
             match storage::resolve_session(&sessions, key) {
                 Ok(session) => {
                     if deduped_session_ids.insert(session.id.clone()) {
-                        let session_id = session.id;
-                        if storage::delete_session(&session_id)? {
+                        let session_id = session.id.clone();
+                        if storage::remove_session(&session_id)? {
                             removed_ids.push(session_id);
                         } else {
                             missing_keys.push(session_id);
@@ -115,10 +107,7 @@ impl SessionService {
     }
 
     /// Create a new session (assumes session doesn't exist - call find_session first)
-    pub fn create_session(
-        provider_type: ProviderType,
-        languages: Vec<String>,
-    ) -> Result<CreateSessionResult> {
+    pub fn create_session(provider_type: ProviderType, languages: Vec<String>) -> Result<Session> {
         let provider_name = provider_name(provider_type);
         let deduped_langs = normalize_and_dedup_languages(provider_type, &languages)?;
 
@@ -141,12 +130,11 @@ impl SessionService {
         // Save persisted session metadata
         let session = Session {
             id: session_id,
-            session_dir,
             provider: provider_name.to_string(),
             languages: deduped_langs,
         };
         storage::save_session(&session)?;
 
-        Ok(CreateSessionResult { session })
+        Ok(session)
     }
 }

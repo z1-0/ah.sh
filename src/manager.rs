@@ -6,7 +6,6 @@ use crate::provider::{
 use crate::session::SessionKey;
 use crate::session::SessionService;
 use anyhow::Result;
-use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
 
 pub struct Manager;
@@ -50,7 +49,7 @@ impl Manager {
         Ok(())
     }
 
-    pub fn restore_session(key: &SessionKey) -> Result<Infallible> {
+    pub fn restore_session(key: &SessionKey) -> Result<()> {
         let session_dir = SessionService::resolve_session_dir(key)?;
         nix_develop(session_dir, false)
     }
@@ -95,20 +94,17 @@ impl Manager {
         Ok(())
     }
 
-    pub fn use_languages(
-        provider_type: ProviderType,
-        languages: Vec<String>,
-    ) -> Result<Infallible> {
+    pub fn use_languages(provider_type: ProviderType, languages: Vec<String>) -> Result<()> {
         // First try to find an existing session
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
                 tracing::info!("Restoring develop shell...");
-                nix_develop(session.session_dir, true)
+                nix_develop(session.get_dir()?, true)
             }
             None => {
                 tracing::info!("Creating develop shell...");
-                let result = SessionService::create_session(provider_type, languages)?;
-                nix_develop(result.session.session_dir, false)
+                let session = SessionService::create_session(provider_type, languages)?;
+                nix_develop(session.get_dir()?, false)
             }
         }
     }

@@ -54,7 +54,7 @@ fn prepare_shell(languages: &[String], target_dir: &Path) -> Result<()> {
 }
 
 fn prefetch_dev_templates() -> Result<String> {
-    let prefetch_raw = cmd::nix_flake_prefetch_dev_templates()?;
+    let prefetch_raw = cmd::prefetch_dev_templates()?;
     serde_json::from_str::<serde_json::Value>(&prefetch_raw)
         .ok()
         .and_then(|mut v| v["storePath"].take().as_str().map(String::from))
