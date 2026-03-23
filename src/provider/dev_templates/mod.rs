@@ -2,14 +2,14 @@ pub mod flake_generator;
 pub mod nix_parser;
 
 use crate::cmd;
-use crate::error::{AppError, Result};
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
 use crate::provider::{EnsureFilesResult, ShellProvider};
-use crate::warning::AppWarning;
+use anyhow::{Context, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
+use tracing;
 
 const EMPTY_LANGUAGE: &str = "empty";
 
@@ -60,20 +60,19 @@ fn prefetch_dev_templates() -> Result<String> {
     serde_json::from_str::<serde_json::Value>(&prefetch_raw)
         .ok()
         .and_then(|mut v| v["storePath"].take().as_str().map(String::from))
-        .ok_or_else(|| AppError::Provider("missing storePath in prefetch response".into()))
+        .ok_or_else(|| anyhow::anyhow!("missing storePath in prefetch response"))
 }
 
 /// Read the flake.nix file for a language from the Nix store.
 fn read_flake_file(store_path: &str, lang: &str) -> Result<String> {
     let flake_path = format!("{store_path}/{lang}/flake.nix");
-    fs::read_to_string(&flake_path)
-        .map_err(|err| AppError::Provider(format!("failed to read {flake_path}: {err}")))
+    fs::read_to_string(&flake_path).context(format!("failed to read {flake_path}"))
 }
 
 struct LanguageOutcome {
     language: String,
     attrs: Option<ShellAttrs>,
-    warnings: Vec<AppWarning>,
+    warnings: Vec<String>,
 }
 
 fn resolve_language(store_path: &str, language: &str) -> LanguageOutcome {
@@ -82,10 +81,9 @@ fn resolve_language(store_path: &str, language: &str) -> LanguageOutcome {
     let flake_source = match read_flake_file(store_path, language) {
         Ok(source) => source,
         Err(err) => {
-            warnings.push(
-                AppWarning::new("dev_templates.resolve_failed", err.to_string())
-                    .with_context("language", language.to_string()),
-            );
+            let warning_msg = format!("failed to resolve language {}: {}", language, err);
+            tracing::warn!(language = %language, error = %err, "dev_templates.resolve_failed");
+            warnings.push(warning_msg);
 
             return LanguageOutcome {
                 language: language.to_string(),
