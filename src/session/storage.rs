@@ -1,6 +1,6 @@
-use crate::error::Result;
 use crate::paths::get_session_dir;
-use crate::session::types::{SESSION_ID_LEN, Session, SessionError, SessionKey};
+use crate::session::types::{SESSION_ID_LEN, Session, SessionKey};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fs;
@@ -83,14 +83,14 @@ pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<
             if *idx > 0 && *idx <= sessions.len() {
                 Ok(sessions[idx - 1].clone())
             } else {
-                Err(SessionError::NotFound(key.to_string()).into())
+                Err(anyhow::anyhow!("session '{}' not found", key))
             }
         }
         SessionKey::Id(id) => sessions
             .iter()
             .find(|s| s.id == *id)
             .cloned()
-            .ok_or_else(|| SessionError::NotFound(id.clone()).into()),
+            .ok_or_else(|| anyhow::anyhow!("session '{}' not found", id)),
     }
 }
 
