@@ -1,27 +1,14 @@
-use crate::error::{AppError, Result};
+use anyhow::{Context, Result};
 use std::convert::Infallible;
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 
-#[derive(Debug, thiserror::Error)]
-pub enum CommandError {
-    #[error("Failed to start command `{command}`: {source}")]
-    Io {
-        command: String,
-        source: std::io::Error,
-    },
-
-    #[error("Command `{command}` failed: {details}")]
-    Failed { command: String, details: String },
-}
-
 fn run(mut cmd: Command) -> Result<String> {
     let command = command_to_string(&cmd);
-    let output = cmd.output().map_err(|source| CommandError::Io {
-        command: command.clone(),
-        source,
-    })?;
+    let output = cmd
+        .output()
+        .context(format!("failed to start command: {}", command))?;
 
     if !output.status.success() {
         let details = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -31,25 +18,24 @@ fn run(mut cmd: Command) -> Result<String> {
             details
         };
 
-        return Err(CommandError::Failed { command, details }.into());
+        anyhow::bail!("command `{}` failed: {}", command, details);
     }
 
     let command_for_decode_error = command.clone();
-    String::from_utf8(output.stdout).map_err(|err| {
-        AppError::Generic(format!(
-            "invalid UTF-8 output from `{command_for_decode_error}`: {err}"
-        ))
-    })
+    String::from_utf8(output.stdout).context(format!(
+        "invalid UTF-8 output from `{}`",
+        command_for_decode_error
+    ))
 }
 
 fn exec(mut cmd: Command) -> Result<Infallible> {
     if cfg!(debug_assertions) {
-        eprintln!("exec: {}", command_to_string(&cmd));
+        tracing::debug!(exec = %command_to_string(&cmd), "executing command");
     }
 
     let command = command_to_string(&cmd);
     let source = cmd.exec();
-    Err(CommandError::Io { command, source }.into())
+    Err(anyhow::anyhow!("failed to exec: {}: {}", command, source))
 }
 
 pub fn nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<Infallible> {
