@@ -1,9 +1,8 @@
 use crate::cmd::nix_develop;
-use crate::error::Result;
 use crate::provider::{ProviderType, all_providers, provider_info};
 use crate::session::SessionKey;
 use crate::session::SessionService;
-use crate::warning::AppWarning;
+use anyhow::Result;
 use std::convert::Infallible;
 use std::io::{self, IsTerminal, Write};
 
@@ -87,7 +86,7 @@ impl Manager {
             );
         }
         if !result.missing_keys.is_empty() {
-            println!("Not found: {}", result.missing_keys.join(", "));
+            tracing::warn!("Not found: {}", result.missing_keys.join(", "));
         }
 
         Ok(())
@@ -100,13 +99,12 @@ impl Manager {
         // First try to find an existing session
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
-                println!("Restoring develop shell...");
+                tracing::info!("Restoring develop shell...");
                 nix_develop(session.session_dir, true)
             }
             None => {
-                println!("Creating develop shell...");
+                tracing::info!("Creating develop shell...");
                 let result = SessionService::create_session(provider_type, languages)?;
-                print_warnings(&result.warnings);
                 nix_develop(result.session.session_dir, false)
             }
         }
@@ -177,28 +175,5 @@ impl Manager {
         }
 
         Ok(())
-    }
-}
-
-fn format_warning_line(w: &AppWarning, color: bool) -> String {
-    if !color {
-        return format!("warning[{}]: {}", w.code, w.message);
-    }
-
-    format!("\x1b[33mwarning[{}]\x1b[0m: {}", w.code, w.message)
-}
-
-fn sorted_warnings_for_print(warnings: &[AppWarning]) -> Vec<&AppWarning> {
-    let mut warnings: Vec<(usize, &AppWarning)> = warnings.iter().enumerate().collect();
-    warnings.sort_by(|(ia, a), (ib, b)| (a.code, &a.message, ia).cmp(&(b.code, &b.message, ib)));
-
-    warnings.into_iter().map(|(_, w)| w).collect()
-}
-
-fn print_warnings(warnings: &[AppWarning]) {
-    let color = io::stderr().is_terminal();
-
-    for w in sorted_warnings_for_print(warnings) {
-        eprintln!("{}", format_warning_line(w, color));
     }
 }
