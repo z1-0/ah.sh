@@ -1,10 +1,9 @@
 use crate::paths::get_session_dir;
-use crate::provider::{EnsureFilesResult, ProviderType, provider_info, validate_languages};
+use crate::provider::{ProviderType, provider_info, validate_languages};
 use crate::session::storage;
 use crate::session::types::{CreateSessionResult, Session, SessionKey, SessionRemoveResult};
 use anyhow::Result;
 use std::collections::HashSet;
-use tracing::warn;
 
 pub struct SessionService;
 
@@ -102,7 +101,7 @@ impl SessionService {
                     }
                 }
                 Err(e) => {
-                    warn!("failed to resolve session: {}", e);
+                    tracing::warn!("failed to resolve session: {}", e);
                     missing_keys.push(key.to_string());
                 }
             }
@@ -138,13 +137,7 @@ impl SessionService {
         std::fs::create_dir_all(&session_dir)?;
 
         let provider = provider_type.into_shell_provider();
-        let EnsureFilesResult {
-            warnings: provider_warnings,
-        } = provider.ensure_files(&deduped_langs, &session_dir)?;
-
-        for warning in provider_warnings {
-            warn!("{}", warning);
-        }
+        provider.ensure_files(&deduped_langs, &session_dir)?;
 
         // Save persisted session metadata
         let session = Session {

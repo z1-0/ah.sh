@@ -25,12 +25,8 @@ impl ProviderKeyOrAll {
     }
 }
 
-pub struct EnsureFilesResult {
-    pub warnings: Vec<String>,
-}
-
 pub trait ShellProvider {
-    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<EnsureFilesResult>;
+    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()>;
 }
 
 pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
