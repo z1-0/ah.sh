@@ -1,5 +1,4 @@
 use anyhow::Result;
-use std::path::Path;
 
 #[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ProviderType {
@@ -23,10 +22,6 @@ impl ProviderKeyOrAll {
             ProviderKeyOrAll::All => None,
         }
     }
-}
-
-pub trait ShellProvider {
-    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()>;
 }
 
 pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {

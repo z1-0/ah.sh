@@ -2,7 +2,6 @@ pub mod flake_generator;
 pub mod nix_parser;
 
 use crate::cmd;
-use crate::provider::ShellProvider;
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
 use anyhow::{Context, Result};
 use rayon::prelude::*;
@@ -12,15 +11,11 @@ use std::path::Path;
 
 const EMPTY_LANGUAGE: &str = "empty";
 
-pub struct DevTemplatesProvider;
-
-impl ShellProvider for DevTemplatesProvider {
-    fn ensure_files(&self, languages: &[String], target_dir: &Path) -> Result<()> {
-        ensure_files_impl(languages, target_dir)
-    }
+pub fn ensure_files(languages: &[String], target_dir: &Path) -> Result<()> {
+    prepare_shell(languages, target_dir)
 }
 
-fn ensure_files_impl(languages: &[String], target_dir: &Path) -> Result<()> {
+fn prepare_shell(languages: &[String], target_dir: &Path) -> Result<()> {
     let mut seen = HashSet::new();
     let deduped_languages: Vec<String> = languages
         .iter()

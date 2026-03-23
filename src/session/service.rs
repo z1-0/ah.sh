@@ -1,6 +1,7 @@
 use crate::paths::get_session_dir;
 use crate::provider::{
-    ProviderType, normalize_language, provider_name, supported_languages, validate_languages,
+    ProviderType, ensure_files, normalize_language, provider_name, supported_languages,
+    validate_languages,
 };
 use crate::session::storage;
 use crate::session::types::{CreateSessionResult, Session, SessionKey, SessionRemoveResult};
@@ -135,8 +136,7 @@ impl SessionService {
         // This function assumes a new session needs to be created
         std::fs::create_dir_all(&session_dir)?;
 
-        let provider = provider_type.into_shell_provider();
-        provider.ensure_files(&deduped_langs, &session_dir)?;
+        ensure_files(provider_type, &deduped_langs, &session_dir)?;
 
         // Save persisted session metadata
         let session = Session {

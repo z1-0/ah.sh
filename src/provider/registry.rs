@@ -1,22 +1,33 @@
-use crate::provider::dev_templates::DevTemplatesProvider;
-use crate::provider::devenv::DevenvProvider;
+use crate::provider::dev_templates;
+use crate::provider::devenv;
 use crate::provider::language_maps::{
     language_map_for_display, map_language_for_provider, supported_languages_for_provider,
 };
 use anyhow::Result;
+use std::path::Path;
 
-use super::{ProviderType, ShellProvider};
+use super::ProviderType;
 
 const PROVIDERS: [ProviderType; 2] = [ProviderType::Devenv, ProviderType::DevTemplates];
+
+type EnsureFilesFn = fn(&[String], &Path) -> Result<()>;
 
 pub fn all_provider_types() -> &'static [ProviderType] {
     &PROVIDERS
 }
 
-pub fn into_shell_provider(provider_type: ProviderType) -> Box<dyn ShellProvider> {
+pub fn ensure_files(
+    provider_type: ProviderType,
+    languages: &[String],
+    target_dir: &Path,
+) -> Result<()> {
+    provider_ensure_files(provider_type)(languages, target_dir)
+}
+
+fn provider_ensure_files(provider_type: ProviderType) -> EnsureFilesFn {
     match provider_type {
-        ProviderType::Devenv => Box::new(DevenvProvider),
-        ProviderType::DevTemplates => Box::new(DevTemplatesProvider),
+        ProviderType::Devenv => devenv::ensure_files,
+        ProviderType::DevTemplates => dev_templates::ensure_files,
     }
 }
 
