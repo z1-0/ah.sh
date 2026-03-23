@@ -1,4 +1,4 @@
-use crate::error::Result;
+use anyhow::Result;
 use directories::ProjectDirs;
 use std::fs;
 use std::path::PathBuf;
@@ -6,9 +6,8 @@ use std::path::PathBuf;
 const PROGRAM_NAME: &str = env!("CARGO_PKG_NAME");
 
 fn get_project_dirs() -> Result<ProjectDirs> {
-    ProjectDirs::from("", "", PROGRAM_NAME).ok_or_else(|| {
-        crate::error::AppError::Generic("Could not determine project directories".to_string())
-    })
+    ProjectDirs::from("", "", PROGRAM_NAME)
+        .ok_or_else(|| anyhow::anyhow!("Could not determine project directories"))
 }
 
 pub fn get_data_dir() -> Result<PathBuf> {
