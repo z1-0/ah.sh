@@ -1,7 +1,7 @@
 pub mod flake_generator;
 
-use crate::error::Result;
 use crate::provider::{EnsureFilesResult, ShellProvider};
+use anyhow::Result;
 use std::path::Path;
 
 pub struct DevenvProvider;
