@@ -2,8 +2,8 @@ mod implicit_use;
 mod types;
 
 use crate::cli::implicit_use::maybe_implicit_use_command;
-use crate::error::Result;
 use crate::manager::Manager;
+use anyhow::Result;
 use clap::CommandFactory;
 use clap::Parser;
 
