@@ -1,5 +1,8 @@
 use crate::cmd::nix_develop;
-use crate::provider::{ProviderType, all_providers, provider_info};
+use crate::provider::{
+    ProviderType, all_provider_types, provider_language_map_for_display, provider_name,
+    supported_languages,
+};
 use crate::session::SessionKey;
 use crate::session::SessionService;
 use anyhow::Result;
@@ -118,40 +121,40 @@ impl Manager {
             width = PROVIDER_TABLE_NAME_WIDTH
         );
 
-        for (i, provider) in all_providers().iter().enumerate() {
-            println!("{}", format_provider_row(i + 1, provider.name()));
+        for (i, provider_type) in all_provider_types().iter().enumerate() {
+            println!(
+                "{}",
+                format_provider_row(i + 1, provider_name(*provider_type))
+            );
         }
 
         Ok(())
     }
 
     pub fn show_provider(provider_type: ProviderType) -> Result<()> {
-        Self::write_provider_languages(provider_info(provider_type), false)
+        Self::write_provider_languages(provider_type, false)
     }
 
     pub fn show_all_providers() -> Result<()> {
-        for (i, provider) in all_providers().iter().enumerate() {
+        for (i, provider_type) in all_provider_types().iter().enumerate() {
             if i > 0 {
                 println!();
             }
-            Self::write_provider_languages(provider, true)?;
+            Self::write_provider_languages(*provider_type, true)?;
         }
 
         Ok(())
     }
 
-    fn write_provider_languages(
-        provider: &crate::provider::ProviderInfo,
-        include_header: bool,
-    ) -> Result<()> {
+    fn write_provider_languages(provider_type: ProviderType, include_header: bool) -> Result<()> {
         use std::io::{ErrorKind, Write};
 
-        let provider_name = provider.name();
+        let provider_name = provider_name(provider_type);
 
-        let mut languages = provider.supported_languages()?;
+        let mut languages = supported_languages(provider_type)?;
         languages.sort();
 
-        let map_by_language = provider.display_language_map()?;
+        let map_by_language = provider_language_map_for_display(provider_type)?;
 
         let mut out = std::io::stdout().lock();
 

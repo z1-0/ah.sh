@@ -7,7 +7,10 @@ pub mod registry;
 pub mod types;
 
 pub use language_maps::{is_maybe_language, language_map_for_display, map_language_for_provider};
-pub use registry::{ProviderInfo, all_providers, provider_info, provider_name};
+pub use registry::{
+    all_provider_types, normalize_language, provider_language_map_for_display, provider_name,
+    supported_languages,
+};
 pub use types::{ProviderKeyOrAll, ProviderType, ShellProvider, validate_languages};
 
 impl ProviderType {

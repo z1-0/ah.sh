@@ -7,46 +7,10 @@ use anyhow::Result;
 
 use super::{ProviderType, ShellProvider};
 
-pub struct ProviderInfo {
-    name: &'static str,
-}
+const PROVIDERS: [ProviderType; 2] = [ProviderType::Devenv, ProviderType::DevTemplates];
 
-const PROVIDERS: [ProviderInfo; 2] = [
-    ProviderInfo::new("devenv"),
-    ProviderInfo::new("dev-templates"),
-];
-
-impl ProviderInfo {
-    pub const fn new(name: &'static str) -> Self {
-        Self { name }
-    }
-
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    pub fn supported_languages(&self) -> Result<Vec<String>> {
-        supported_languages_for_provider(self.name)
-    }
-
-    pub fn normalize_language(&self, input: &str) -> Result<String> {
-        map_language_for_provider(self.name, input)
-    }
-
-    pub fn display_language_map(&self) -> Result<std::collections::HashMap<String, Vec<String>>> {
-        language_map_for_display(self.name)
-    }
-}
-
-pub fn all_providers() -> &'static [ProviderInfo] {
+pub fn all_provider_types() -> &'static [ProviderType] {
     &PROVIDERS
-}
-
-pub fn provider_info(provider_type: ProviderType) -> &'static ProviderInfo {
-    match provider_type {
-        ProviderType::Devenv => &PROVIDERS[0],
-        ProviderType::DevTemplates => &PROVIDERS[1],
-    }
 }
 
 pub fn into_shell_provider(provider_type: ProviderType) -> Box<dyn ShellProvider> {
@@ -57,5 +21,22 @@ pub fn into_shell_provider(provider_type: ProviderType) -> Box<dyn ShellProvider
 }
 
 pub fn provider_name(provider_type: ProviderType) -> &'static str {
-    provider_info(provider_type).name()
+    match provider_type {
+        ProviderType::Devenv => "devenv",
+        ProviderType::DevTemplates => "dev-templates",
+    }
+}
+
+pub fn supported_languages(provider_type: ProviderType) -> Result<Vec<String>> {
+    supported_languages_for_provider(provider_name(provider_type))
+}
+
+pub fn normalize_language(provider_type: ProviderType, input: &str) -> Result<String> {
+    map_language_for_provider(provider_name(provider_type), input)
+}
+
+pub fn provider_language_map_for_display(
+    provider_type: ProviderType,
+) -> Result<std::collections::HashMap<String, Vec<String>>> {
+    language_map_for_display(provider_name(provider_type))
 }
