@@ -1,9 +1,9 @@
-use crate::error::Result;
 use crate::provider::dev_templates::DevTemplatesProvider;
 use crate::provider::devenv::DevenvProvider;
 use crate::provider::language_maps::{
     language_map_for_display, map_language_for_provider, supported_languages_for_provider,
 };
+use anyhow::Result;
 
 use super::{ProviderType, ShellProvider};
 
