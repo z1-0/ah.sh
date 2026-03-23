@@ -1,5 +1,4 @@
-use crate::error::Result;
-use crate::warning::AppWarning;
+use anyhow::Result;
 use std::path::Path;
 
 #[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
@@ -27,7 +26,7 @@ impl ProviderKeyOrAll {
 }
 
 pub struct EnsureFilesResult {
-    pub warnings: Vec<AppWarning>,
+    pub warnings: Vec<String>,
 }
 
 pub trait ShellProvider {
@@ -45,6 +44,6 @@ pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<
     if invalids.is_empty() {
         Ok(())
     } else {
-        Err(crate::error::AppError::UnsupportedLanguages(invalids))
+        Err(anyhow::anyhow!("unsupported languages: {:?}", invalids))
     }
 }
