@@ -4,6 +4,7 @@ use anyhow::Result;
     Clone,
     Copy,
     Debug,
+    Hash,
     strum::Display,
     strum::EnumString,
     Eq,
