@@ -48,6 +48,6 @@ pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<
     if invalids.is_empty() {
         Ok(())
     } else {
-        Err(anyhow::anyhow!("unsupported languages: {:?}", invalids))
+        anyhow::bail!("unsupported languages: {:?}", invalids)
     }
 }

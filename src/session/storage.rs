@@ -76,7 +76,7 @@ pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<
             if *idx > 0 && *idx <= sessions.len() {
                 Ok(sessions[idx - 1].clone())
             } else {
-                Err(anyhow::anyhow!("session '{}' not found", key))
+                anyhow::bail!("session '{}' not found", key)
             }
         }
         SessionKey::Id(id) => sessions

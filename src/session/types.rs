@@ -47,9 +47,7 @@ impl FromStr for SessionKey {
 
     fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
         if input.is_empty() {
-            return Err(anyhow::anyhow!(
-                "invalid session key: session target cannot be empty"
-            ));
+            anyhow::bail!("invalid session key: session target cannot be empty");
         }
 
         if input.chars().all(|c| c.is_ascii_digit()) {
@@ -57,24 +55,22 @@ impl FromStr for SessionKey {
                 .parse::<usize>()
                 .map_err(|_| anyhow::anyhow!("invalid session key: invalid session index"))?;
             if index == 0 {
-                return Err(anyhow::anyhow!(
-                    "invalid session key: session index must be greater than 0"
-                ));
+                anyhow::bail!("invalid session key: session index must be greater than 0");
             }
             return Ok(SessionKey::Index(index));
         }
 
         if !input.chars().all(|c| c.is_ascii_hexdigit()) {
-            return Err(anyhow::anyhow!(
+            anyhow::bail!(
                 "invalid session key: session id must contain only hexadecimal characters"
-            ));
+            );
         }
 
         if input.len() != SESSION_ID_LEN {
-            return Err(anyhow::anyhow!(
+            anyhow::bail!(
                 "invalid session key: session id must be exactly {} hexadecimal characters",
                 SESSION_ID_LEN
-            ));
+            );
         }
 
         Ok(SessionKey::Id(input.to_string()))

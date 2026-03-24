@@ -1,5 +1,6 @@
 {
   "c-cpp": ["c", "c++", "cpp"],
-  "node": ["javascript", "js", "typescript", "ts"],
-  "python": ["py"]
+  "node": ["javascript", "js"],
+  "python": ["py"],
+  "ruby": ["rb"]
 }

@@ -68,7 +68,7 @@ fn exec(mut cmd: Command) -> Result<()> {
 
     let command = command_to_string(&cmd);
     let source = cmd.exec();
-    Err(anyhow::anyhow!("failed to exec: {}: {}", command, source))
+    anyhow::bail!("failed to exec: {}: {}", command, source)
 }
 
 fn command_to_string(cmd: &Command) -> String {
