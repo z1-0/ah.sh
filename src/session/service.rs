@@ -11,16 +11,15 @@ fn normalize_and_dedup_languages(
     provider: ProviderType,
     languages: &[String],
 ) -> Result<Vec<String>> {
-    let mapped_langs = languages
+    let mut mapped_langs = languages
         .iter()
         .map(|language| normalize_language(provider, language))
         .collect::<Result<Vec<_>>>()?;
 
-    let mut deduped_langs = mapped_langs;
-    let mut seen = HashSet::new();
-    deduped_langs.retain(|language: &String| seen.insert(language.clone()));
+    mapped_langs.sort_unstable();
+    mapped_langs.dedup();
 
-    Ok(deduped_langs)
+    Ok(mapped_langs)
 }
 
 fn get_provider_supported_langs(provider: ProviderType) -> Result<Vec<String>> {
@@ -37,16 +36,17 @@ impl SessionService {
         }
 
         let session_id = storage::generate_id(provider, &deduped_langs);
-        let session_dir = get_session_dir()?.join(&session_id);
-        let flake_path = session_dir.join("flake.nix");
+        let meta_path = get_session_dir()?.join(&session_id).join("metadata.json");
 
-        if !flake_path.exists() {
-            return Ok(None);
-        }
+        let content = match std::fs::read_to_string(&meta_path) {
+            Ok(c) => c,
+            Err(_) => return Ok(None),
+        };
 
-        let key = SessionKey::Id(session_id);
-
-        let session = storage::find_session(&key)?;
+        let session = match serde_json::from_str::<Session>(&content) {
+            Ok(s) => s,
+            Err(_) => return Ok(None),
+        };
 
         Ok(Some(session))
     }

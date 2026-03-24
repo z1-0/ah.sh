@@ -162,8 +162,11 @@ impl Manager {
         }
 
         for lang in languages {
-            let mapped_inputs = map_by_language.get(&lang).cloned().unwrap_or_default();
-            let line = format_provider_language_line(lang, mapped_inputs);
+            let mapped_inputs = map_by_language
+                .get(&lang)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
+            let line = format_provider_language_line(lang, mapped_inputs.to_vec());
 
             if let Err(e) = writeln!(out, "{line}") {
                 if e.kind() == ErrorKind::BrokenPipe {
