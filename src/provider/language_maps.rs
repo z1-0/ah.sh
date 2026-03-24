@@ -69,32 +69,32 @@ impl LanguageMaps {
             .map_err(|e| anyhow::anyhow!("Language maps not loaded: {}", e))
     }
 
-    fn normalize(&self, provider_name: &str, input: &str) -> Result<String> {
-        let map = self.input_map(provider_name)?;
+    fn normalize(&self, provider: ProviderType, input: &str) -> Result<String> {
+        let map = self.input_map(provider)?;
         Ok(Self::map_language_with_input_map(input, map))
     }
 
-    fn input_map(&self, provider_name: &str) -> Result<&ProviderInputMap> {
+    fn input_map(&self, provider: ProviderType) -> Result<&ProviderInputMap> {
         self.input_map
-            .get(provider_name)
-            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider_name}"))
+            .get(provider.to_string().as_str())
+            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider}"))
     }
 
-    fn raw_map(&self, provider_name: &str) -> Result<&ProviderLanguageMap> {
+    fn raw_map(&self, provider: ProviderType) -> Result<&ProviderLanguageMap> {
         self.by_provider
-            .get(provider_name)
-            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider_name}"))
+            .get(provider.to_string().as_str())
+            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider}"))
     }
 
-    fn supported_languages(&self, provider_name: &str) -> Result<Vec<String>> {
+    fn supported_languages(&self, provider: ProviderType) -> Result<Vec<String>> {
         self.supported_languages
-            .get(provider_name)
+            .get(provider.to_string().as_str())
             .cloned()
-            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider_name}"))
+            .ok_or_else(|| anyhow::anyhow!("Unsupported provider: {provider}"))
     }
 
-    fn display_map(&self, provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
-        let map = self.raw_map(provider_name)?;
+    fn display_map(&self, provider: ProviderType) -> Result<HashMap<String, Vec<String>>> {
+        let map = self.raw_map(provider)?;
         Ok(Self::display_map_with_map(map))
     }
 
@@ -147,14 +147,14 @@ pub fn is_maybe_language(input: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn supported_languages_for_provider(provider_name: &str) -> Result<Vec<String>> {
-    LanguageMaps::global()?.supported_languages(provider_name)
+pub fn supported_languages_for_provider(provider: ProviderType) -> Result<Vec<String>> {
+    LanguageMaps::global()?.supported_languages(provider)
 }
 
-pub fn map_language_for_provider(provider_name: &str, input: &str) -> Result<String> {
-    LanguageMaps::global()?.normalize(provider_name, input)
+pub fn map_language_for_provider(provider: ProviderType, input: &str) -> Result<String> {
+    LanguageMaps::global()?.normalize(provider, input)
 }
 
-pub fn language_map_for_display(provider_name: &str) -> Result<HashMap<String, Vec<String>>> {
-    LanguageMaps::global()?.display_map(provider_name)
+pub fn language_map_for_display(provider: ProviderType) -> Result<HashMap<String, Vec<String>>> {
+    LanguageMaps::global()?.display_map(provider)
 }

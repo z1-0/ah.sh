@@ -23,6 +23,10 @@ fn normalize_and_dedup_languages(
     Ok(deduped_langs)
 }
 
+fn get_provider_supported_langs(provider: ProviderType) -> Result<Vec<String>> {
+    supported_languages(provider)
+}
+
 impl SessionService {
     /// Find an existing session by provider + language list
     pub fn find_session(provider: ProviderType, languages: &[String]) -> Result<Option<Session>> {
@@ -106,7 +110,7 @@ impl SessionService {
             anyhow::bail!("No languages specified. Use 'ah use <langs>' or 'ah session list'");
         }
 
-        let supported_langs = supported_languages(provider)?;
+        let supported_langs = get_provider_supported_langs(provider)?;
         validate_languages(&deduped_langs, &supported_langs)?;
 
         let session_id = storage::generate_id(provider, &deduped_langs);

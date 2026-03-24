@@ -4,17 +4,17 @@ use std::process::Command;
 
 use crate::{provider::ProviderType, session::Session};
 
-pub fn nix_develop(session: Session, use_profile: bool) -> Result<()> {
+pub fn nix_develop(session: Session, use_existing_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
     let profile_path = flake_dir.join("nix-profile");
 
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
 
-    if use_profile {
-        cmd.arg(profile_path);
+    if use_existing_profile {
+        cmd.arg(&profile_path);
     } else {
-        cmd.arg(&flake_dir).arg("--profile").arg(profile_path);
+        cmd.arg(&flake_dir).arg("--profile").arg(&profile_path);
     }
 
     if session.provider == ProviderType::Devenv {

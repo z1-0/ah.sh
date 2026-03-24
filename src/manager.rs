@@ -1,9 +1,8 @@
-use crate::cmd::nix_develop;
 use crate::provider::{
     ProviderType, all_provider_types, provider_language_map_for_display, supported_languages,
 };
-use crate::session::SessionKey;
 use crate::session::SessionService;
+use crate::session::{Session, SessionKey};
 use anyhow::Result;
 use std::io::{self, IsTerminal, Write};
 
@@ -28,6 +27,14 @@ fn format_provider_language_line(lang: String, mapped_inputs: Vec<String>) -> St
     }
 }
 
+fn nix_develop_new_session(session: Session) -> Result<()> {
+    crate::cmd::nix_develop(session, false)
+}
+
+fn nix_develop_existing_session(session: Session) -> Result<()> {
+    crate::cmd::nix_develop(session, true)
+}
+
 impl Manager {
     pub fn list_sessions() -> Result<()> {
         let sessions = SessionService::list_sessions()?;
@@ -50,7 +57,7 @@ impl Manager {
 
     pub fn restore_session(key: &SessionKey) -> Result<()> {
         let session = SessionService::resolve_session_dir(key)?;
-        nix_develop(session, true)
+        nix_develop_existing_session(session)
     }
 
     pub fn clear_sessions() -> Result<()> {
@@ -94,16 +101,15 @@ impl Manager {
     }
 
     pub fn use_languages(provider_type: ProviderType, languages: Vec<String>) -> Result<()> {
-        // First try to find an existing session
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
                 tracing::info!("Restoring develop shell...");
-                nix_develop(session, true)
+                nix_develop_existing_session(session)
             }
             None => {
                 tracing::info!("Creating develop shell...");
                 let session = SessionService::create_session(provider_type, languages)?;
-                nix_develop(session, false)
+                nix_develop_new_session(session)
             }
         }
     }

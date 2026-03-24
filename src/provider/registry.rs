@@ -13,7 +13,7 @@ pub fn all_provider_types() -> &'static [ProviderType] {
     &PROVIDERS
 }
 
-pub fn get_flake_contents(provider: ProviderType) -> fn(&[String]) -> Result<String> {
+pub(crate) fn get_flake_contents(provider: ProviderType) -> fn(&[String]) -> Result<String> {
     match provider {
         ProviderType::Devenv => devenv::get_flake_contents,
         ProviderType::DevTemplates => dev_templates::get_flake_contents,
@@ -21,15 +21,15 @@ pub fn get_flake_contents(provider: ProviderType) -> fn(&[String]) -> Result<Str
 }
 
 pub fn supported_languages(provider: ProviderType) -> Result<Vec<String>> {
-    supported_languages_for_provider(provider.to_string().as_str())
+    supported_languages_for_provider(provider)
 }
 
 pub fn normalize_language(provider: ProviderType, input: &str) -> Result<String> {
-    map_language_for_provider(provider.to_string().as_str(), input)
+    map_language_for_provider(provider, input)
 }
 
 pub fn provider_language_map_for_display(
     provider: ProviderType,
 ) -> Result<std::collections::HashMap<String, Vec<String>>> {
-    language_map_for_display(provider.to_string().as_str())
+    language_map_for_display(provider)
 }
