@@ -1,7 +1,6 @@
 use crate::cmd::nix_develop;
 use crate::provider::{
-    ProviderType, all_provider_types, provider_language_map_for_display, provider_name,
-    supported_languages,
+    ProviderType, all_provider_types, provider_language_map_for_display, supported_languages,
 };
 use crate::session::SessionKey;
 use crate::session::SessionService;
@@ -12,11 +11,11 @@ pub struct Manager;
 
 const PROVIDER_TABLE_NAME_WIDTH: usize = 15;
 
-fn format_provider_row(index: usize, provider_name: &str) -> String {
+fn format_provider_row(index: usize, provider: ProviderType) -> String {
     format!(
         "{:<5} {:<width$}",
         index,
-        provider_name,
+        provider,
         width = PROVIDER_TABLE_NAME_WIDTH
     )
 }
@@ -50,8 +49,8 @@ impl Manager {
     }
 
     pub fn restore_session(key: &SessionKey) -> Result<()> {
-        let session_dir = SessionService::resolve_session_dir(key)?;
-        nix_develop(session_dir, false)
+        let session = SessionService::resolve_session_dir(key)?;
+        nix_develop(session, true)
     }
 
     pub fn clear_sessions() -> Result<()> {
@@ -99,12 +98,12 @@ impl Manager {
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
                 tracing::info!("Restoring develop shell...");
-                nix_develop(session.get_dir()?, true)
+                nix_develop(session, true)
             }
             None => {
                 tracing::info!("Creating develop shell...");
                 let session = SessionService::create_session(provider_type, languages)?;
-                nix_develop(session.get_dir()?, false)
+                nix_develop(session, false)
             }
         }
     }
@@ -117,18 +116,15 @@ impl Manager {
             width = PROVIDER_TABLE_NAME_WIDTH
         );
 
-        for (i, provider_type) in all_provider_types().iter().enumerate() {
-            println!(
-                "{}",
-                format_provider_row(i + 1, provider_name(*provider_type))
-            );
+        for (i, provider) in all_provider_types().iter().enumerate() {
+            println!("{}", format_provider_row(i + 1, *provider));
         }
 
         Ok(())
     }
 
-    pub fn show_provider(provider_type: ProviderType) -> Result<()> {
-        Self::write_provider_languages(provider_type, false)
+    pub fn show_provider(provider: ProviderType) -> Result<()> {
+        Self::write_provider_languages(provider, false)
     }
 
     pub fn show_all_providers() -> Result<()> {
@@ -142,19 +138,17 @@ impl Manager {
         Ok(())
     }
 
-    fn write_provider_languages(provider_type: ProviderType, include_header: bool) -> Result<()> {
+    fn write_provider_languages(provider: ProviderType, include_header: bool) -> Result<()> {
         use std::io::{ErrorKind, Write};
 
-        let provider_name = provider_name(provider_type);
-
-        let mut languages = supported_languages(provider_type)?;
+        let mut languages = supported_languages(provider)?;
         languages.sort();
 
-        let map_by_language = provider_language_map_for_display(provider_type)?;
+        let map_by_language = provider_language_map_for_display(provider)?;
 
         let mut out = std::io::stdout().lock();
 
-        if include_header && let Err(e) = writeln!(out, "Provider: {provider_name}") {
+        if include_header && let Err(e) = writeln!(out, "Provider: {provider}") {
             if e.kind() == ErrorKind::BrokenPipe {
                 return Ok(());
             }

@@ -1,5 +1,4 @@
 use crate::provider::ProviderType;
-use crate::provider::registry::provider_name;
 use anyhow::{Context, Result};
 use serde_json::from_str;
 use std::collections::HashMap;
@@ -39,7 +38,7 @@ impl LanguageMaps {
         let mut supported_languages = HashMap::new();
 
         for (provider_type, supported_json, map_json) in PROVIDER_LANGUAGE_MAPS {
-            let provider = provider_name(provider_type);
+            let provider = provider_type.to_string();
             let parsed_map = Self::parse_language_map(map_json)?;
             let inputs = Self::language_map_to_input_map(&parsed_map);
             let mut all_inputs = inputs;

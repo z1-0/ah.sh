@@ -1,6 +1,5 @@
 use anyhow::Result;
 use directories::ProjectDirs;
-use std::fs;
 use std::path::PathBuf;
 
 const PROGRAM_NAME: &str = env!("CARGO_PKG_NAME");
@@ -24,8 +23,5 @@ pub fn get_cache_dir() -> Result<PathBuf> {
 
 pub fn get_session_dir() -> Result<PathBuf> {
     let dir = get_cache_dir()?.join("sessions");
-    if !dir.exists() {
-        fs::create_dir_all(&dir)?;
-    }
     Ok(dir)
 }

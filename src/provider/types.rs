@@ -1,6 +1,19 @@
 use anyhow::Result;
 
-#[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    strum::Display,
+    strum::EnumString,
+    Eq,
+    PartialEq,
+    clap::ValueEnum,
+    serde::Deserialize,
+    serde::Serialize,
+)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ProviderType {
     Devenv,
     DevTemplates,

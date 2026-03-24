@@ -1,16 +1,18 @@
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::paths::get_session_dir;
+use crate::provider::ProviderType;
 
 pub const SESSION_ID_LEN: usize = 8;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     pub id: String,
-    pub provider: String,
+    pub provider: ProviderType,
     pub languages: Vec<String>,
 }
 

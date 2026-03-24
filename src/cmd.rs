@@ -1,13 +1,15 @@
 use anyhow::{Context, Result};
 use std::os::unix::process::CommandExt;
-use std::path::PathBuf;
 use std::process::Command;
 
-pub fn nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<()> {
+use crate::{provider::ProviderType, session::Session};
+
+pub fn nix_develop(session: Session, use_profile: bool) -> Result<()> {
+    let flake_dir = session.get_dir()?;
     let profile_path = flake_dir.join("nix-profile");
 
     let mut cmd = Command::new("nix");
-    cmd.arg("develop").arg("--no-pure-eval");
+    cmd.arg("develop");
 
     if use_profile {
         cmd.arg(profile_path);
@@ -15,7 +17,12 @@ pub fn nix_develop(flake_dir: PathBuf, use_profile: bool) -> Result<()> {
         cmd.arg(&flake_dir).arg("--profile").arg(profile_path);
     }
 
-    cmd.arg("-command").arg("$SHELL");
+    if session.provider == ProviderType::Devenv {
+        cmd.arg("--no-pure-eval");
+    }
+
+    let env_shell = std::env::var("SHELL")?;
+    cmd.arg("--command").arg(env_shell);
 
     exec(cmd)
 }

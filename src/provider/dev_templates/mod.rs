@@ -7,15 +7,10 @@ use anyhow::{Context, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fs;
-use std::path::Path;
 
 const EMPTY_LANGUAGE: &str = "empty";
 
-pub fn ensure_files(languages: &[String], target_dir: &Path) -> Result<()> {
-    prepare_shell(languages, target_dir)
-}
-
-fn prepare_shell(languages: &[String], target_dir: &Path) -> Result<()> {
+pub fn get_flake_contents(languages: &[String]) -> Result<String> {
     let mut seen = HashSet::new();
     let deduped_languages: Vec<String> = languages
         .iter()
@@ -24,12 +19,13 @@ fn prepare_shell(languages: &[String], target_dir: &Path) -> Result<()> {
         .collect();
 
     // Single prefetch for the main dev-templates repo
-    let store_path = prefetch_dev_templates()?;
+    let prefetch_raw = cmd::prefetch_dev_templates()?;
+    let nix_store_path = get_nix_store_path(prefetch_raw)?;
 
     let results: Vec<LanguageOutcome> = deduped_languages
         .par_iter()
         .filter(|lang| **lang != EMPTY_LANGUAGE)
-        .map(|lang| resolve_language(&store_path, lang))
+        .map(|lang| resolve_language(&nix_store_path, lang))
         .collect();
 
     let mut parsed_attrs = Vec::new();
@@ -44,17 +40,11 @@ fn prepare_shell(languages: &[String], target_dir: &Path) -> Result<()> {
 
     let flake_content =
         flake_generator::generate_dev_templates_flake(&deduped_languages, &parsed_attrs);
-    std::fs::write(target_dir.join("flake.nix"), flake_content)?;
 
-    for warning in warnings {
-        tracing::warn!("{}", warning);
-    }
-
-    Ok(())
+    Ok(flake_content)
 }
 
-fn prefetch_dev_templates() -> Result<String> {
-    let prefetch_raw = cmd::prefetch_dev_templates()?;
+fn get_nix_store_path(prefetch_raw: String) -> Result<String> {
     serde_json::from_str::<serde_json::Value>(&prefetch_raw)
         .ok()
         .and_then(|mut v| v["storePath"].take().as_str().map(String::from))

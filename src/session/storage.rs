@@ -1,19 +1,13 @@
 use crate::paths::get_session_dir;
+use crate::provider::ProviderType;
+use crate::provider::registry::get_flake_contents;
 use crate::session::types::{SESSION_ID_LEN, Session, SessionKey};
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fs;
 use std::time::SystemTime;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct SessionMetadata {
-    id: String,
-    languages: Vec<String>,
-    provider: String,
-}
-
-pub(crate) fn generate_id(provider: &str, languages: &[String]) -> String {
+pub(crate) fn generate_id(provider: ProviderType, languages: &[String]) -> String {
     let mut sorted_langs = languages.to_vec();
     sorted_langs.sort();
 
@@ -33,7 +27,7 @@ pub(crate) fn list_sessions() -> Result<Vec<Session>> {
             let meta_path = path.join("metadata.json");
             if meta_path.exists() {
                 let content = fs::read_to_string(&meta_path)?;
-                if let Ok(session_meta) = serde_json::from_str::<SessionMetadata>(&content) {
+                if let Ok(session_meta) = serde_json::from_str::<Session>(&content) {
                     let modified_at = path
                         .metadata()
                         .and_then(|meta| meta.modified())
@@ -61,18 +55,18 @@ pub(crate) fn list_sessions() -> Result<Vec<Session>> {
 }
 
 pub(crate) fn save_session(session: &Session) -> Result<()> {
-    let session_path = get_session_dir()?.join(&session.id);
-    if !session_path.exists() {
-        fs::create_dir_all(&session_path)?;
+    let session_dir = &session.get_dir()?;
+    if !session_dir.exists() {
+        std::fs::create_dir_all(session_dir)?;
     }
-    let meta_path = session_path.join("metadata.json");
-    let metadata = SessionMetadata {
-        id: session.id.clone(),
-        languages: session.languages.clone(),
-        provider: session.provider.clone(),
-    };
-    let content = serde_json::to_string_pretty(&metadata)?;
-    fs::write(&meta_path, content)?;
+
+    let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
+    let flake_path = session_dir.join("flake.nix");
+    std::fs::write(flake_path, flake_contents)?;
+
+    let meta_path = session.get_dir()?.join("metadata.json");
+    let content = serde_json::to_string_pretty(&session)?;
+    std::fs::write(&meta_path, content)?;
     Ok(())
 }
 
