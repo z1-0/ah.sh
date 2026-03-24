@@ -62,11 +62,9 @@ fn run(mut cmd: Command) -> Result<String> {
 }
 
 fn exec(mut cmd: Command) -> Result<()> {
-    if cfg!(debug_assertions) {
-        tracing::debug!(exec = %command_to_string(&cmd), "executing command");
-    }
-
     let command = command_to_string(&cmd);
+    println!("{command}");
+
     let source = cmd.exec();
     anyhow::bail!("failed to exec: {}: {}", command, source)
 }

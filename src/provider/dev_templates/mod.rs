@@ -69,8 +69,11 @@ fn resolve_language(store_path: &str, language: &str) -> LanguageOutcome {
     let flake_source = match read_flake_file(store_path, language) {
         Ok(source) => source,
         Err(err) => {
-            let warning_msg = format!("failed to resolve language {}: {}", language, err);
-            tracing::warn!(language = %language, error = %err, "dev_templates.resolve_failed");
+            let warning_msg = format!(
+                "dev_templates.resolve_failed for language '{}': {}",
+                language, err
+            );
+            eprintln!("{}", warning_msg);
             warnings.push(warning_msg);
 
             return LanguageOutcome {

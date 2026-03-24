@@ -6,8 +6,6 @@ edition = "2024"
 [dependencies]
 blake3 = "1.8"
 anyhow = "1.0"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4.6.0", features = ["derive"] }
 rnix = "0.14"
 rowan = "0.16"

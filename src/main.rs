@@ -1,11 +1,6 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
-
     match ah::cli::run() {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
@@ -20,7 +15,7 @@ fn main() -> ExitCode {
             } else {
                 1
             };
-            tracing::error!("{:#}", e);
+            eprintln!("{:#}", e);
             ExitCode::from(exit_code as u8)
         }
     }

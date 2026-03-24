@@ -90,7 +90,7 @@ impl SessionService {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!("failed to resolve session: {}", e);
+                    eprintln!("failed to resolve session: {}", e);
                     missing_keys.push(key.to_string());
                 }
             }

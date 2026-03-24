@@ -94,7 +94,7 @@ impl Manager {
             );
         }
         if !result.missing_keys.is_empty() {
-            tracing::warn!("Not found: {}", result.missing_keys.join(", "));
+            println!("Not found: {}", result.missing_keys.join(", "));
         }
 
         Ok(())
@@ -103,11 +103,11 @@ impl Manager {
     pub fn use_languages(provider_type: ProviderType, languages: Vec<String>) -> Result<()> {
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
-                tracing::info!("Restoring develop shell...");
+                println!("Restoring develop shell...");
                 nix_develop_existing_session(session)
             }
             None => {
-                tracing::info!("Creating develop shell...");
+                println!("Creating develop shell...");
                 let session = SessionService::create_session(provider_type, languages)?;
                 nix_develop_new_session(session)
             }
