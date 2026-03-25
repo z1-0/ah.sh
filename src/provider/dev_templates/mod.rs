@@ -39,10 +39,15 @@ pub fn get_flake_contents(languages: &[String]) -> Result<String> {
 }
 
 fn get_nix_store_path(prefetch_raw: String) -> Result<String> {
-    serde_json::from_str::<serde_json::Value>(&prefetch_raw)
-        .ok()
-        .and_then(|mut v| v["storePath"].take().as_str().map(String::from))
-        .ok_or_else(|| anyhow::anyhow!("missing storePath in prefetch response"))
+    let json: serde_json::Value =
+        serde_json::from_str(&prefetch_raw).context("failed to parse prefetch response as JSON")?;
+
+    let store_path = json
+        .get("storePath")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("missing storePath in prefetch response"))?;
+
+    Ok(store_path.to_string())
 }
 
 fn parse_flake(store_path: &str, language: &str) -> Result<ShellAttrs> {
