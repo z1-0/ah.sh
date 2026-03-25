@@ -2,10 +2,16 @@ use super::nix_parser::ShellAttrs;
 use std::collections::HashMap;
 use std::fmt::Write;
 
-pub fn generate_dev_templates_flake(
-    languages: &[String],
-    parsed_attrs: &[(String, ShellAttrs)],
-) -> String {
+/// Generates a dev-templates flake.nix that combines multiple language shells.
+///
+/// # Parameters
+/// - `languages`: Deduplicated language names in requested order
+/// - `parsed_attrs`: Shell attributes for each language at the same index
+///
+/// # Important
+/// The two slices must have the same length, and `parsed_attrs[i]` must
+/// correspond to `languages[i]`. This is enforced by the caller in `mod.rs`.
+pub fn generate_dev_templates_flake(languages: &[String], parsed_attrs: &[ShellAttrs]) -> String {
     let input_names: Vec<String> = languages
         .iter()
         .map(|lang| format!("dev-templates_{}", lang))
@@ -36,14 +42,10 @@ pub fn generate_dev_templates_flake(
     // Group by attribute names to avoid duplicate keys in Nix
     let mut extra_attrs_map: HashMap<String, Vec<String>> = HashMap::new();
     let mut env_map: HashMap<String, String> = HashMap::new();
-    let parsed_attrs_by_lang: HashMap<&str, &ShellAttrs> = parsed_attrs
-        .iter()
-        .map(|(lang, attrs)| (lang.as_str(), attrs))
-        .collect();
 
     // Make precedence explicit: process attributes by requested language order.
-    for lang in languages {
-        let Some(attrs) = parsed_attrs_by_lang.get(lang.as_str()) else {
+    for (i, lang) in languages.iter().enumerate() {
+        let Some(attrs) = parsed_attrs.get(i) else {
             continue;
         };
 
