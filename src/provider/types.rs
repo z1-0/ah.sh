@@ -1,5 +1,3 @@
-use anyhow::Result;
-
 #[derive(
     Clone,
     Copy,
@@ -35,20 +33,5 @@ impl ProviderKeyOrAll {
             ProviderKeyOrAll::DevTemplates => Some(ProviderType::DevTemplates),
             ProviderKeyOrAll::All => None,
         }
-    }
-}
-
-pub fn validate_languages(languages: &[String], supported: &[String]) -> Result<()> {
-    let supported_set: std::collections::HashSet<_> = supported.iter().collect();
-    let invalids: Vec<_> = languages
-        .iter()
-        .filter(|language| !supported_set.contains(language))
-        .cloned()
-        .collect();
-
-    if invalids.is_empty() {
-        Ok(())
-    } else {
-        anyhow::bail!("unsupported languages: {:?}", invalids)
     }
 }

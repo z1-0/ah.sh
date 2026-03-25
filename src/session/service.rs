@@ -1,30 +1,12 @@
 use crate::paths::get_session_dir;
-use crate::provider::{ProviderType, normalize_language, supported_languages, validate_languages};
+use crate::provider::ProviderType;
+use crate::provider::registry::{normalize_and_dedup_languages, validate_languages};
 use crate::session::storage;
 use crate::session::types::{Session, SessionKey, SessionRemoveResult};
 use anyhow::Result;
 use std::collections::HashSet;
 
 pub struct SessionService;
-
-fn normalize_and_dedup_languages(
-    provider: ProviderType,
-    languages: &[String],
-) -> Result<Vec<String>> {
-    let mut mapped_langs = languages
-        .iter()
-        .map(|language| normalize_language(provider, language))
-        .collect::<Result<Vec<_>>>()?;
-
-    mapped_langs.sort_unstable();
-    mapped_langs.dedup();
-
-    Ok(mapped_langs)
-}
-
-fn get_provider_supported_langs(provider: ProviderType) -> Result<Vec<String>> {
-    supported_languages(provider)
-}
 
 impl SessionService {
     /// Find an existing session by provider + language list
@@ -110,8 +92,7 @@ impl SessionService {
             anyhow::bail!("No languages specified. Use 'ah use <langs>' or 'ah session list'");
         }
 
-        let supported_langs = get_provider_supported_langs(provider)?;
-        validate_languages(&deduped_langs, &supported_langs)?;
+        validate_languages(provider, &deduped_langs)?;
 
         let session_id = storage::generate_id(provider, &deduped_langs);
 

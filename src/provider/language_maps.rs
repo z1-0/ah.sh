@@ -9,14 +9,14 @@ pub(crate) type InputMapping = HashMap<String, String>; // user_input -> canonic
 pub(crate) type LanguageMappings = HashMap<String, Vec<String>>; // canonical_name -> [user_inputs]
 
 // Internal storage indexed by provider name
-type MappingsByProvider = HashMap<ProviderType, LanguageMappings>;
-type InputsByProvider = HashMap<ProviderType, InputMapping>;
-type SupportedByProvider = HashMap<ProviderType, Vec<String>>;
+type Mappings = HashMap<ProviderType, LanguageMappings>;
+type Inputs = HashMap<ProviderType, InputMapping>;
+type Supported = HashMap<ProviderType, Vec<String>>;
 
 struct LanguageMaps {
-    mappings: MappingsByProvider,   // canonical -> inputs per provider
-    inputs: InputsByProvider,       // input -> canonical per provider
-    supported: SupportedByProvider, // supported languages list per provider
+    mappings: Mappings,   // canonical -> inputs per provider
+    inputs: Inputs,       // input -> canonical per provider
+    supported: Supported, // supported languages list per provider
 }
 
 static LANGUAGE_MAPS: OnceLock<Result<LanguageMaps>> = OnceLock::new();
@@ -44,7 +44,7 @@ pub fn is_maybe_language(input: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn supported_languages_for_provider(provider: ProviderType) -> Result<Vec<String>> {
+pub fn get_supported_languages(provider: ProviderType) -> Result<Vec<String>> {
     LanguageMaps::global()?.get_supported_languages(provider)
 }
 
@@ -152,7 +152,6 @@ impl LanguageMaps {
         let mut inputs = InputMapping::new();
 
         for (canonical, variants) in mappings {
-            inputs.insert(canonical.clone(), canonical.clone());
             for variant in variants {
                 inputs.insert(variant.clone(), canonical.clone());
             }
