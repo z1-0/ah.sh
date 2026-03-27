@@ -11,7 +11,7 @@ use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
 pub fn run() -> Result<()> {
     let args = preprocess_args();
-    let cli = Cli::parse_from(args);
+    let cli = Cli::try_parse_from(args)?;
     handle_command(cli.command)
 }
 

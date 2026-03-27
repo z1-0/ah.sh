@@ -4,19 +4,15 @@ fn main() -> ExitCode {
     match ah::cli::run() {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
-            // Detect CLI usage error for exit code 2
-            // Check if error message contains CLI usage indicators
-            let exit_code = if e.to_string().contains("Usage:")
-                || e.to_string().contains("error:")
-                || e.to_string().contains("unexpected argument")
-                || e.to_string().contains("found unexpected argument")
-            {
-                2
-            } else {
-                1
-            };
+            if let Some(clap_err) = e.downcast_ref::<clap::Error>() {
+                if let Err(print_err) = clap_err.print() {
+                    eprintln!("{print_err}");
+                }
+                return ExitCode::from(clap_err.exit_code() as u8);
+            }
+
             eprintln!("{:#}", e);
-            ExitCode::from(exit_code as u8)
+            ExitCode::from(1)
         }
     }
 }
