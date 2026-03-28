@@ -46,7 +46,7 @@ jobs:
             This is an automated PR to update the static language lists for all providers.
             - `src/assets/providers/devenv/supported_languages.json`
             - `src/assets/providers/dev-templates/supported_languages.json`
-          branch: update-supported-langs
+          branch: update-supported-languages
           base: main
           delete-branch: true
 
