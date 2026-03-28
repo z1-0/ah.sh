@@ -4,17 +4,17 @@ use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-pub struct ProviderLanguageMap {
+pub struct LanguageCache {
     pub inputs: HashMap<String, String>, // user_input -> canonical
     pub supported: Vec<String>,          // supported canonical languages
     pub display: HashMap<String, Vec<String>>, // canonical -> sorted unique variants for display
 }
 
-static DEVENV_LANGUAGE_MAP: OnceLock<Result<ProviderLanguageMap>> = OnceLock::new();
-static DEV_TEMPLATES_LANGUAGE_MAP: OnceLock<Result<ProviderLanguageMap>> = OnceLock::new();
+static DEVENV_LANGUAGE_MAP: OnceLock<Result<LanguageCache>> = OnceLock::new();
+static DEV_TEMPLATES_LANGUAGE_MAP: OnceLock<Result<LanguageCache>> = OnceLock::new();
 
 impl ProviderType {
-    pub(crate) fn cache_cell(&self) -> &'static OnceLock<Result<ProviderLanguageMap>> {
+    pub(crate) fn cache_cell(&self) -> &'static OnceLock<Result<LanguageCache>> {
         match self {
             ProviderType::Devenv => &DEVENV_LANGUAGE_MAP,
             ProviderType::DevTemplates => &DEV_TEMPLATES_LANGUAGE_MAP,
@@ -44,10 +44,10 @@ impl ProviderType {
     }
 }
 
-fn get_provider_map(provider: ProviderType) -> Result<&'static ProviderLanguageMap> {
+fn get_provider_map(provider: ProviderType) -> Result<&'static LanguageCache> {
     provider
         .cache_cell()
-        .get_or_init(|| ProviderLanguageMap::load(provider))
+        .get_or_init(|| LanguageCache::load(provider))
         .as_ref()
         .map_err(|e| anyhow::anyhow!("Language map not loaded for {provider}: {e}"))
 }
@@ -104,7 +104,7 @@ pub fn validate_supported_languages(provider: ProviderType, languages: &[String]
     }
 }
 
-impl ProviderLanguageMap {
+impl LanguageCache {
     fn load(provider: ProviderType) -> Result<Self> {
         let supported_languages: Vec<String> = from_str(provider.supported_languages())
             .with_context(|| format!("Failed to parse supported languages for {provider}"))?;

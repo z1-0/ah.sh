@@ -39,11 +39,8 @@ fn handle_command(command: Commands) -> Result<()> {
         },
 
         Commands::Provider { command } => match command {
-            ProviderCommands::List => Manager::list_providers(),
-            ProviderCommands::Show { provider } => match provider.as_provider_type() {
-                None => Manager::show_all_providers(),
-                Some(p) => Manager::show_provider(p),
-            },
+            ProviderCommands::List => Manager::list_provider(),
+            ProviderCommands::Show { provider } => Manager::show_provider(provider),
         },
     }
 }

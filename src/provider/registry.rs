@@ -8,12 +8,6 @@ use anyhow::Result;
 
 use super::ProviderType;
 
-const PROVIDERS: [ProviderType; 2] = [ProviderType::Devenv, ProviderType::DevTemplates];
-
-pub fn all_provider_types() -> &'static [ProviderType] {
-    &PROVIDERS
-}
-
 pub(crate) fn get_flake_contents(provider: ProviderType) -> fn(&[String]) -> Result<String> {
     match provider {
         ProviderType::Devenv => devenv::get_flake_contents,

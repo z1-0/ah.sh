@@ -27,11 +27,11 @@ pub enum ProviderKeyOrAll {
 }
 
 impl ProviderKeyOrAll {
-    pub fn as_provider_type(&self) -> Option<ProviderType> {
+    pub fn as_provider_types(&self) -> &'static [ProviderType] {
         match self {
-            ProviderKeyOrAll::Devenv => Some(ProviderType::Devenv),
-            ProviderKeyOrAll::DevTemplates => Some(ProviderType::DevTemplates),
-            ProviderKeyOrAll::All => None,
+            ProviderKeyOrAll::Devenv => &[ProviderType::Devenv],
+            ProviderKeyOrAll::DevTemplates => &[ProviderType::DevTemplates],
+            ProviderKeyOrAll::All => &[ProviderType::Devenv, ProviderType::DevTemplates],
         }
     }
 }

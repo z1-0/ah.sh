@@ -1,5 +1,5 @@
 use crate::provider::language::get_supported_languages;
-use crate::provider::{ProviderType, all_provider_types, provider_language_map_for_display};
+use crate::provider::{ProviderKeyOrAll, ProviderType, provider_language_map_for_display};
 use crate::session::SessionService;
 use crate::session::{Session, SessionKey};
 use anyhow::Result;
@@ -18,7 +18,7 @@ fn format_provider_row(index: usize, provider: ProviderType) -> String {
     )
 }
 
-fn format_provider_language_line(lang: String, mapped_inputs: Vec<String>) -> String {
+fn format_provider_language_line(lang: String, mapped_inputs: &[String]) -> String {
     if mapped_inputs.is_empty() {
         lang
     } else {
@@ -113,7 +113,7 @@ impl Manager {
         }
     }
 
-    pub fn list_providers() -> Result<()> {
+    pub fn list_provider() -> Result<()> {
         println!(
             "{:<5} {:<width$}",
             "Index",
@@ -121,23 +121,22 @@ impl Manager {
             width = PROVIDER_TABLE_NAME_WIDTH
         );
 
-        for (i, provider) in all_provider_types().iter().enumerate() {
+        for (i, provider) in ProviderKeyOrAll::All.as_provider_types().iter().enumerate() {
             println!("{}", format_provider_row(i + 1, *provider));
         }
 
         Ok(())
     }
 
-    pub fn show_provider(provider: ProviderType) -> Result<()> {
-        Self::write_provider_languages(provider, false)
-    }
+    pub fn show_provider(provider: ProviderKeyOrAll) -> Result<()> {
+        let providers = provider.as_provider_types();
+        let include_header = providers.len() > 1;
 
-    pub fn show_all_providers() -> Result<()> {
-        for (i, provider_type) in all_provider_types().iter().enumerate() {
+        for (i, provider_type) in providers.iter().enumerate() {
             if i > 0 {
                 println!();
             }
-            Self::write_provider_languages(*provider_type, true)?;
+            Self::write_provider_languages(*provider_type, include_header)?;
         }
 
         Ok(())
@@ -165,7 +164,7 @@ impl Manager {
                 .get(&lang)
                 .map(|v| v.as_slice())
                 .unwrap_or(&[]);
-            let line = format_provider_language_line(lang, mapped_inputs.to_vec());
+            let line = format_provider_language_line(lang, mapped_inputs);
 
             if let Err(e) = writeln!(out, "{line}") {
                 if e.kind() == ErrorKind::BrokenPipe {
