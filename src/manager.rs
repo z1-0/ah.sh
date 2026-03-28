@@ -1,4 +1,4 @@
-use crate::provider::language_maps::get_supported_languages;
+use crate::provider::language::get_supported_languages;
 use crate::provider::{ProviderType, all_provider_types, provider_language_map_for_display};
 use crate::session::SessionService;
 use crate::session::{Session, SessionKey};
@@ -146,7 +146,7 @@ impl Manager {
     fn write_provider_languages(provider: ProviderType, include_header: bool) -> Result<()> {
         use std::io::{ErrorKind, Write};
 
-        let mut languages = get_supported_languages(provider)?;
+        let mut languages = get_supported_languages(provider)?.to_vec();
         languages.sort();
 
         let map_by_language = provider_language_map_for_display(provider)?;
