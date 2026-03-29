@@ -1,6 +1,6 @@
 use crate::paths::get_session_dir;
 use crate::provider::ProviderType;
-use crate::provider::registry::{normalize_and_dedup_languages, validate_languages};
+use crate::provider::{normalize_and_dedup_languages, validate_supported_languages};
 use crate::session::storage;
 use crate::session::types::{Session, SessionKey, SessionRemoveResult};
 use anyhow::Result;
@@ -92,7 +92,7 @@ impl SessionService {
             anyhow::bail!("No languages specified. Use 'ah use <langs>' or 'ah session list'");
         }
 
-        validate_languages(provider, &deduped_langs)?;
+        validate_supported_languages(provider, &deduped_langs)?;
 
         let session_id = storage::generate_id(provider, &deduped_langs);
 

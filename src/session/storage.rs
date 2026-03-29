@@ -1,6 +1,5 @@
 use crate::paths::get_session_dir;
-use crate::provider::ProviderType;
-use crate::provider::registry::get_flake_contents;
+use crate::provider::{ProviderType, get_flake_contents};
 use crate::session::types::{SESSION_ID_LEN, Session, SessionKey};
 use anyhow::Result;
 use std::cmp::Ordering;

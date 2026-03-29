@@ -4,65 +4,64 @@ use serde_json::from_str;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-pub struct LanguageCache {
-    pub inputs: HashMap<String, String>, // user_input -> canonical
-    pub supported: Vec<String>,          // supported canonical languages
-    pub display: HashMap<String, Vec<String>>, // canonical -> sorted unique variants for display
+pub struct Provider {
+    pub supported_languages: Vec<String>,
+    pub language_to_aliases: HashMap<String, Vec<String>>,
+    pub alias_to_language: HashMap<String, String>,
 }
 
-static DEVENV_LANGUAGE_MAP: OnceLock<Result<LanguageCache>> = OnceLock::new();
-static DEV_TEMPLATES_LANGUAGE_MAP: OnceLock<Result<LanguageCache>> = OnceLock::new();
+static DEVENV_PROVIDER: OnceLock<Result<Provider>> = OnceLock::new();
+static DEV_TEMPLATES_PROVIDER: OnceLock<Result<Provider>> = OnceLock::new();
 
-impl ProviderType {
-    pub(crate) fn cache_cell(&self) -> &'static OnceLock<Result<LanguageCache>> {
-        match self {
-            ProviderType::Devenv => &DEVENV_LANGUAGE_MAP,
-            ProviderType::DevTemplates => &DEV_TEMPLATES_LANGUAGE_MAP,
-        }
+fn get_provider(provider: ProviderType) -> &'static OnceLock<Result<Provider>> {
+    match provider {
+        ProviderType::Devenv => &DEVENV_PROVIDER,
+        ProviderType::DevTemplates => &DEV_TEMPLATES_PROVIDER,
     }
+}
 
-    pub(crate) fn supported_languages(&self) -> &'static str {
-        match self {
-            ProviderType::Devenv => {
-                include_str!("../assets/providers/devenv/supported_languages.json")
-            }
-            ProviderType::DevTemplates => {
-                include_str!("../assets/providers/dev-templates/supported_languages.json")
-            }
+fn supported_languages_json(provider: ProviderType) -> &'static str {
+    match provider {
+        ProviderType::Devenv => {
+            include_str!("../assets/providers/devenv/supported_languages.json")
         }
-    }
-
-    pub(crate) fn language_aliases(&self) -> &'static str {
-        match self {
-            ProviderType::Devenv => {
-                include_str!("../assets/providers/devenv/language_aliases.json")
-            }
-            ProviderType::DevTemplates => {
-                include_str!("../assets/providers/dev-templates/language_aliases.json")
-            }
+        ProviderType::DevTemplates => {
+            include_str!("../assets/providers/dev-templates/supported_languages.json")
         }
     }
 }
 
-fn get_provider_map(provider: ProviderType) -> Result<&'static LanguageCache> {
-    provider
-        .cache_cell()
-        .get_or_init(|| LanguageCache::load(provider))
+fn language_aliases_json(provider: ProviderType) -> &'static str {
+    match provider {
+        ProviderType::Devenv => {
+            include_str!("../assets/providers/devenv/language_aliases.json")
+        }
+        ProviderType::DevTemplates => {
+            include_str!("../assets/providers/dev-templates/language_aliases.json")
+        }
+    }
+}
+
+fn get_provider_map(provider: ProviderType) -> Result<&'static Provider> {
+    get_provider(provider)
+        .get_or_init(|| load(provider))
         .as_ref()
         .map_err(|e| anyhow::anyhow!("Language map not loaded for {provider}: {e}"))
 }
 
 pub fn is_maybe_language(provider: ProviderType, input: &str) -> Result<bool> {
-    Ok(get_provider_map(provider)?.inputs.contains_key(input))
+    Ok(get_provider_map(provider)?
+        .alias_to_language
+        .contains_key(input))
 }
 
 pub fn get_supported_languages(provider: ProviderType) -> Result<&'static [String]> {
-    Ok(get_provider_map(provider)?.supported.as_slice())
+    Ok(get_provider_map(provider)?.supported_languages.as_slice())
 }
 
 pub fn map_language_for_provider(provider: ProviderType, input: &str) -> Result<String> {
     Ok(get_provider_map(provider)?
-        .inputs
+        .alias_to_language
         .get(input)
         .cloned()
         .unwrap_or_else(|| input.to_string()))
@@ -71,7 +70,7 @@ pub fn map_language_for_provider(provider: ProviderType, input: &str) -> Result<
 pub fn language_map_for_display(
     provider: ProviderType,
 ) -> Result<&'static HashMap<String, Vec<String>>> {
-    Ok(&get_provider_map(provider)?.display)
+    Ok(&get_provider_map(provider)?.language_to_aliases)
 }
 
 pub fn normalize_and_dedup_languages(
@@ -104,65 +103,38 @@ pub fn validate_supported_languages(provider: ProviderType, languages: &[String]
     }
 }
 
-impl LanguageCache {
-    fn load(provider: ProviderType) -> Result<Self> {
-        let supported_languages: Vec<String> = from_str(provider.supported_languages())
-            .with_context(|| format!("Failed to parse supported languages for {provider}"))?;
+fn build_alias_to_language(
+    language_to_aliases: &HashMap<String, Vec<String>>,
+    supported_languages: &[String],
+) -> HashMap<String, String> {
+    let mut alias_to_language = HashMap::new();
 
-        let language_to_aliases: HashMap<String, Vec<String>> =
-            from_str(provider.language_aliases())
-                .with_context(|| format!("Failed to parse language mappings for {provider}"))?;
-
-        let inputs = Self::build_input_mappings(&language_to_aliases, &supported_languages);
-        let display = Self::format_display_variants(&language_to_aliases);
-
-        Ok(Self {
-            inputs,
-            supported: supported_languages,
-            display,
-        })
+    for language in supported_languages {
+        alias_to_language.insert(language.clone(), language.clone());
     }
 
-    fn build_input_mappings(
-        language_to_aliases: &HashMap<String, Vec<String>>,
-        supported: &[String],
-    ) -> HashMap<String, String> {
-        let inputs = language_to_aliases
-            .iter()
-            .fold(HashMap::new(), |mut acc, (lang, aliases)| {
-                acc.entry(lang.clone()).or_insert_with(|| lang.clone());
-                Self::normalized_aliases(lang, aliases)
-                    .into_iter()
-                    .for_each(|alias| {
-                        acc.insert(alias.clone(), lang.clone());
-                    });
-
-                acc
-            });
-
-        supported.iter().fold(inputs, |mut acc, lang| {
-            acc.entry(lang.clone()).or_insert_with(|| lang.clone());
-            acc
-        })
+    for (language, aliases) in language_to_aliases {
+        for alias in aliases {
+            alias_to_language.insert(alias.clone(), language.clone());
+        }
     }
 
-    fn format_display_variants(
-        language_to_aliases: &HashMap<String, Vec<String>>,
-    ) -> HashMap<String, Vec<String>> {
-        language_to_aliases
-            .iter()
-            .map(|(lang, aliases)| (lang.clone(), Self::normalized_aliases(lang, aliases)))
-            .collect()
-    }
+    alias_to_language
+}
 
-    fn normalized_aliases(lang: &str, aliases: &[String]) -> Vec<String> {
-        let mut normalized: Vec<String> = aliases
-            .iter()
-            .filter(|alias| alias.as_str() != lang)
-            .cloned()
-            .collect();
-        normalized.sort();
-        normalized.dedup();
-        normalized
-    }
+fn load(provider: ProviderType) -> Result<Provider> {
+    let supported_languages: Vec<String> = from_str(supported_languages_json(provider))
+        .with_context(|| format!("Failed to parse supported languages for {provider}"))?;
+
+    let language_to_aliases: HashMap<String, Vec<String>> =
+        from_str(language_aliases_json(provider))
+            .with_context(|| format!("Failed to parse language mappings for {provider}"))?;
+
+    let alias_to_language = build_alias_to_language(&language_to_aliases, &supported_languages);
+
+    Ok(Provider {
+        supported_languages,
+        language_to_aliases,
+        alias_to_language,
+    })
 }

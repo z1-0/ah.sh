@@ -1,5 +1,5 @@
 use crate::provider::language::get_supported_languages;
-use crate::provider::{ProviderKeyOrAll, ProviderType, provider_language_map_for_display};
+use crate::provider::{ProviderShowSelector, ProviderType, language_map_for_display};
 use crate::session::SessionService;
 use crate::session::{Session, SessionKey};
 use anyhow::Result;
@@ -121,14 +121,18 @@ impl Manager {
             width = PROVIDER_TABLE_NAME_WIDTH
         );
 
-        for (i, provider) in ProviderKeyOrAll::All.as_provider_types().iter().enumerate() {
+        for (i, provider) in ProviderShowSelector::All
+            .as_provider_types()
+            .iter()
+            .enumerate()
+        {
             println!("{}", format_provider_row(i + 1, *provider));
         }
 
         Ok(())
     }
 
-    pub fn show_provider(provider: ProviderKeyOrAll) -> Result<()> {
+    pub fn show_provider(provider: ProviderShowSelector) -> Result<()> {
         let providers = provider.as_provider_types();
         let include_header = providers.len() > 1;
 
@@ -148,7 +152,7 @@ impl Manager {
         let mut languages = get_supported_languages(provider)?.to_vec();
         languages.sort();
 
-        let map_by_language = provider_language_map_for_display(provider)?;
+        let map_by_language = language_map_for_display(provider)?;
 
         let mut out = std::io::stdout().lock();
 
