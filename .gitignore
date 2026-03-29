@@ -1,14 +1,10 @@
-.direnv
-.devenv
-.pre-commit-config.yaml
-.worktrees
+.claude/
+.devenv/
+.direnv/
+
+target/
 
 result*
 result-*
 
-target
-
-.claude
-AGENT.md
-CLAUDE.md
-todo.md
+.pre-commit-config.yaml
