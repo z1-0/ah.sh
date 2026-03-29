@@ -1,7 +1,7 @@
 use clap::Command;
 use std::ffi::OsString;
 
-use crate::provider::{ProviderType, is_maybe_language};
+use crate::provider::{ProviderType, language::is_maybe_language};
 
 pub fn maybe_implicit_use_command(mut args: Vec<OsString>, cmd: &Command) -> Vec<OsString> {
     let first_arg = match args.get(1) {
@@ -14,7 +14,7 @@ pub fn maybe_implicit_use_command(mut args: Vec<OsString>, cmd: &Command) -> Vec
         return args;
     }
 
-    if should_implicit_use_command(cmd, first_arg_str, &args) {
+    if should_implicit_use_command(cmd, first_arg_str) {
         args.insert(1, OsString::from("use"));
     }
 
@@ -31,29 +31,10 @@ fn is_top_level_flag(cmd: &Command, arg: &str) -> bool {
         .any(|a| matches_flag(arg, a.get_short(), a.get_long()))
 }
 
-fn should_implicit_use_command(cmd: &Command, arg: &str, args: &[OsString]) -> bool {
-    let provider = extract_provider_from_args(cmd, args);
-    is_maybe_language(provider, arg).unwrap_or(false) || is_use_command_flag(cmd, arg)
-}
-
-fn extract_provider_from_args(cmd: &Command, args: &[OsString]) -> ProviderType {
-    let use_cmd = cmd
-        .find_subcommand("use")
-        .expect("use subcommand not found");
-    let provider_arg = use_cmd
-        .get_arguments()
-        .find(|a| a.get_id() == "provider")
-        .expect("provider arg not found");
-
-    let matches = Command::new("resolver")
-        .ignore_errors(true)
-        .arg(provider_arg.clone())
-        .get_matches_from(args);
-
-    matches
-        .get_one::<ProviderType>("provider")
-        .copied()
-        .unwrap_or(ProviderType::DevTemplates)
+// TODO  The current provider is hard-coded
+fn should_implicit_use_command(cmd: &Command, arg: &str) -> bool {
+    is_maybe_language(ProviderType::DevTemplates, arg).unwrap_or(false)
+        || is_use_command_flag(cmd, arg)
 }
 
 fn is_use_command_flag(cmd: &Command, arg: &str) -> bool {
