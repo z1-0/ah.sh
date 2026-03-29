@@ -26,10 +26,12 @@ fn preprocess_args() -> Vec<std::ffi::OsString> {
 /// Dispatches the parsed command to the appropriate manager logic.
 fn handle_command(command: Commands) -> Result<()> {
     match command {
-        Commands::Use {
-            languages,
-            provider,
-        } => Manager::use_languages(provider, languages),
+        Commands::Init => todo!(""),
+
+        Commands::Provider { command } => match command {
+            ProviderCommands::List => Manager::list_provider(),
+            ProviderCommands::Show { provider } => Manager::show_provider(provider),
+        },
 
         Commands::Session { command } => match command {
             SessionCommands::List => Manager::list_sessions(),
@@ -38,9 +40,11 @@ fn handle_command(command: Commands) -> Result<()> {
             SessionCommands::Remove { keys } => Manager::remove_sessions(&keys),
         },
 
-        Commands::Provider { command } => match command {
-            ProviderCommands::List => Manager::list_provider(),
-            ProviderCommands::Show { provider } => Manager::show_provider(provider),
-        },
+        Commands::Update => todo!(""),
+
+        Commands::Use {
+            languages,
+            provider,
+        } => Manager::use_languages(provider, languages),
     }
 }

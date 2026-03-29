@@ -11,6 +11,24 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// init 不创建session,在本地创建
+    Init,
+
+    /// Inspect available providers
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommands,
+    },
+
+    /// Manage development sessions
+    Session {
+        #[command(subcommand)]
+        command: SessionCommands,
+    },
+
+    /// 如果pwd中有flake.nix文件，更新本地，如果没有，更新session目录
+    Update,
+
     /// Create a development session
     Use {
         /// Languages to enable (e.g. rust go)
@@ -21,30 +39,15 @@ pub enum Commands {
         #[arg(short, long, value_enum, default_value = "dev-templates")]
         provider: ProviderType,
     },
-
-    /// Manage development sessions
-    Session {
-        #[command(subcommand)]
-        command: SessionCommands,
-    },
-
-    /// Inspect available providers
-    Provider {
-        #[command(subcommand)]
-        command: ProviderCommands,
-    },
 }
 
 #[derive(Subcommand, Debug)]
 pub enum SessionCommands {
+    /// Remove all sessions
+    Clear,
+
     /// List sessions
     List,
-
-    /// Restore a session by index or id
-    Restore {
-        /// Session index (1, 2, ...) or id (8 hex chars)
-        key: SessionKey,
-    },
 
     /// Remove one or more sessions by index or id
     Remove {
@@ -53,8 +56,11 @@ pub enum SessionCommands {
         keys: Vec<SessionKey>,
     },
 
-    /// Remove all sessions
-    Clear,
+    /// Restore a session by index or id
+    Restore {
+        /// Session index (1, 2, ...) or id (8 hex chars)
+        key: SessionKey,
+    },
 }
 
 #[derive(Subcommand, Debug)]
