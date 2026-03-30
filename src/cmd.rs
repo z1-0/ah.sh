@@ -2,11 +2,14 @@ use anyhow::{Context, Result};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-use crate::{provider::ProviderType, session::Session};
+use crate::{paths::set_current_session, provider::ProviderType, session::Session};
 
 pub fn nix_develop(session: Session, use_existing_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
     let profile_path = flake_dir.join("nix-profile");
+
+    // Record current session before entering
+    set_current_session(&session.id)?;
 
     let mut cmd = Command::new("nix");
     cmd.arg("develop");

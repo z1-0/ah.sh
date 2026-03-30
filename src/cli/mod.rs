@@ -40,7 +40,7 @@ fn handle_command(command: Commands) -> Result<()> {
             SessionCommands::Remove { keys } => Manager::remove_sessions(&keys),
         },
 
-        Commands::Update => todo!(""),
+        Commands::Update { session } => Manager::update_session(session.as_ref()),
 
         Commands::Use {
             languages,

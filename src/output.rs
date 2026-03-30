@@ -2,6 +2,7 @@ use anyhow::Result;
 use comfy_table::{Attribute, Cell, Color, Table, presets::UTF8_FULL};
 use console::{Term, style};
 use std::collections::HashMap;
+use std::io::Write;
 
 use crate::{
     provider::{ProviderType, language::get_supported_languages, language_map_for_display},
@@ -9,9 +10,9 @@ use crate::{
 };
 
 /// Language grouping by first letter range
-pub struct LanguageGroup {
-    pub range: String,
-    pub languages: Vec<String>,
+struct LanguageGroup {
+    range: String,
+    languages: Vec<String>,
 }
 
 /// Print warning message
@@ -45,11 +46,14 @@ pub fn is_terminal() -> bool {
 
 /// Ask for user confirmation, returns true if confirmed
 pub fn ask_confirmation(prompt: &str) -> bool {
-    use std::io::Write;
     print!("{}", prompt);
-    std::io::stdout().flush().unwrap_or(());
+    if std::io::stdout().flush().is_err() {
+        return false;
+    }
     let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap_or(0);
+    if std::io::stdin().read_line(&mut input).is_err() {
+        return false;
+    }
     matches!(input.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }
 
@@ -64,17 +68,17 @@ pub fn print_session_found(id: &str, provider: &str, languages: &[String]) {
 
 /// Print no existing session info (multi-line)
 pub fn print_no_session(provider: &str, languages: &[String]) {
-    print_warning("No existing session");
+    print_info("No existing session");
     println!("  Provider: {}", provider);
     println!("  Languages: {}", languages.join(", "));
     println!();
 }
 
 /// Sessions table with default headers
-pub fn print_sessions_list(sessions: Vec<Session>) {
+pub fn print_sessions_list(sessions: &[Session]) {
     let default_headers = ["Index", "ID", "Provider", "Languages"];
     // Build table data
-    let mut rows: Vec<Vec<String>> = Vec::new();
+    let mut rows: Vec<Vec<String>> = Vec::with_capacity(sessions.len());
 
     for (i, s) in sessions.iter().enumerate() {
         let langs = s.languages.join(", ");
@@ -124,7 +128,7 @@ fn print_sessions_table(headers: &[&str], rows: &[Vec<String>]) {
 
 pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
     // Build provider info: (name, languages_count)
-    let mut provider_info: Vec<(String, usize)> = Vec::new();
+    let mut provider_info: Vec<(String, usize)> = Vec::with_capacity(providers.len());
 
     for p in providers {
         let langs = get_supported_languages(*p)?;
@@ -168,19 +172,17 @@ fn print_provider_table(providers: &[(String, usize)]) {
 }
 
 pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
-    let include_header = providers.len() > 1;
-
     for (i, provider_type) in providers.iter().enumerate() {
         if i > 0 {
             println!();
         }
-        write_provider_languages(*provider_type, include_header)?;
+        write_provider_languages(*provider_type)?;
     }
 
     Ok(())
 }
 
-fn write_provider_languages(provider: ProviderType, _include_header: bool) -> Result<()> {
+fn write_provider_languages(provider: ProviderType) -> Result<()> {
     let languages = get_supported_languages(provider)?.to_vec();
     let map_by_language = language_map_for_display(provider)?;
 

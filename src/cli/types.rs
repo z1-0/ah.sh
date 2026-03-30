@@ -26,8 +26,11 @@ pub enum Commands {
         command: SessionCommands,
     },
 
-    /// 如果pwd中有flake.nix文件，更新本地，如果没有，更新session目录
-    Update,
+    /// Update session dependencies (nix flake update)
+    Update {
+        /// Session index (1, 2, ...) or id (8 hex chars). Uses current session if not specified.
+        session: Option<SessionKey>,
+    },
 
     /// Create a development session
     Use {
