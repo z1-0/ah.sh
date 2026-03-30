@@ -15,3 +15,5 @@ directories = "6"
 rayon = "1.10"
 strum = { version = "0.28", features = ["derive"] }
 fp-core = "0.1.9"
+comfy-table = "7.2"
+console = "0.16"

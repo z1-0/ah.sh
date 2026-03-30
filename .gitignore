@@ -2,6 +2,7 @@
 .devenv/
 .direnv/
 
+docs/
 target/
 
 result*

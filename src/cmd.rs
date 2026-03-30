@@ -63,6 +63,9 @@ fn run(mut cmd: Command) -> Result<String> {
 
 fn exec(mut cmd: Command) -> Result<()> {
     let command = command_to_string(&cmd);
+
+    // Only print command in debug mode
+    #[cfg(debug_assertions)]
     println!("{command}");
 
     let source = cmd.exec();
