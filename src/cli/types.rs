@@ -1,4 +1,4 @@
-use crate::provider::{ProviderShowSelector, ProviderType};
+use crate::provider::{Language, ProviderShowSelector, ProviderType};
 use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
 
@@ -33,7 +33,7 @@ pub enum Commands {
     Use {
         /// Languages to enable (e.g. rust go)
         #[arg(required = true, num_args = 1..)]
-        languages: Vec<String>,
+        languages: Vec<Language>,
 
         /// Provider for session creation
         #[arg(short, long, value_enum, default_value = "dev-templates")]

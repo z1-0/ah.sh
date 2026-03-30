@@ -1,6 +1,5 @@
 use crate::paths::get_session_dir;
-use crate::provider::ProviderType;
-use crate::provider::{normalize_and_dedup_languages, validate_supported_languages};
+use crate::provider::{Language, ProviderType, to_supported_languages};
 use crate::session::storage;
 use crate::session::types::{Session, SessionKey, SessionRemoveResult};
 use anyhow::Result;
@@ -10,14 +9,10 @@ pub struct SessionService;
 
 impl SessionService {
     /// Find an existing session by provider + language list
-    pub fn find_session(provider: ProviderType, languages: &[String]) -> Result<Option<Session>> {
-        let deduped_langs = normalize_and_dedup_languages(provider, languages)?;
+    pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
+        let supported_languages = to_supported_languages(provider, languages)?;
 
-        if deduped_langs.is_empty() {
-            return Ok(None);
-        }
-
-        let session_id = storage::generate_id(provider, &deduped_langs);
+        let session_id = storage::generate_id(provider, &supported_languages);
         let meta_path = get_session_dir()?.join(&session_id).join("metadata.json");
 
         let content = match std::fs::read_to_string(&meta_path) {
@@ -85,21 +80,15 @@ impl SessionService {
     }
 
     /// Create a new session (assumes session doesn't exist - call find_session first)
-    pub fn create_session(provider: ProviderType, languages: Vec<String>) -> Result<Session> {
-        let deduped_langs = normalize_and_dedup_languages(provider, &languages)?;
+    pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Result<Session> {
+        let supported_languages = to_supported_languages(provider, &languages)?;
 
-        if deduped_langs.is_empty() {
-            anyhow::bail!("No languages specified. Use 'ah use <langs>' or 'ah session list'");
-        }
-
-        validate_supported_languages(provider, &deduped_langs)?;
-
-        let session_id = storage::generate_id(provider, &deduped_langs);
+        let session_id = storage::generate_id(provider, &supported_languages);
 
         let session = Session {
             id: session_id,
             provider,
-            languages: deduped_langs,
+            languages: supported_languages,
         };
 
         storage::save_session(&session)?;

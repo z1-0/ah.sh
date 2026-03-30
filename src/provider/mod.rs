@@ -6,10 +6,7 @@ pub mod dev_templates;
 pub mod devenv;
 pub mod language;
 
-pub use language::{
-    is_maybe_language, language_map_for_display, map_language_for_provider,
-    normalize_and_dedup_languages, validate_supported_languages,
-};
+pub use language::{is_maybe_language, language_map_for_display, to_supported_languages};
 
 #[derive(
     Clone,
@@ -40,10 +37,14 @@ pub enum ProviderShowSelector {
     All,
 }
 
+pub type Language = String;
+pub type Supported = String;
+pub type Alias = String;
+
 struct Provider {
-    pub supported_languages: Vec<String>,
-    pub language_to_aliases: HashMap<String, Vec<String>>,
-    pub alias_to_language: HashMap<String, String>,
+    pub supported_languages: Vec<Supported>,
+    pub language_to_aliases: HashMap<Supported, Vec<Alias>>,
+    pub alias_to_language: HashMap<Alias, Supported>,
 }
 
 impl ProviderShowSelector {
@@ -103,14 +104,14 @@ fn get_or_init_provider(provider: ProviderType) -> Result<&'static Provider> {
 }
 
 fn init_provider(provider: ProviderType) -> Result<Provider> {
-    let supported_languages: Vec<String> = from_str(supported_languages_json(provider))
+    let supported_languages: Vec<Supported> = from_str(supported_languages_json(provider))
         .with_context(|| format!("Failed to parse supported languages for {provider}"))?;
 
-    let language_to_aliases: HashMap<String, Vec<String>> =
+    let language_to_aliases: HashMap<Supported, Vec<Alias>> =
         from_str(language_aliases_json(provider))
             .with_context(|| format!("Failed to parse language mappings for {provider}"))?;
 
-    let alias_to_language = build_alias_to_language(&language_to_aliases, &supported_languages);
+    let alias_to_language = build_alias_to_language(&supported_languages, &language_to_aliases);
 
     Ok(Provider {
         supported_languages,
@@ -120,9 +121,9 @@ fn init_provider(provider: ProviderType) -> Result<Provider> {
 }
 
 fn build_alias_to_language(
-    language_to_aliases: &HashMap<String, Vec<String>>,
-    supported_languages: &[String],
-) -> HashMap<String, String> {
+    supported_languages: &[Supported],
+    language_to_aliases: &HashMap<Supported, Vec<Alias>>,
+) -> HashMap<Alias, Supported> {
     let mut alias_to_language = HashMap::new();
 
     for language in supported_languages {

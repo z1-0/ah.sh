@@ -7,10 +7,7 @@ use std::fs;
 use std::time::SystemTime;
 
 pub(crate) fn generate_id(provider: ProviderType, languages: &[String]) -> String {
-    let mut sorted_langs = languages.to_vec();
-    sorted_langs.sort();
-
-    let input = format!("{}:{}", provider, sorted_langs.join(","));
+    let input = format!("{}:{}", provider, languages.join(","));
     let digest = blake3::hash(input.as_bytes());
     digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
 }

@@ -1,11 +1,11 @@
-use crate::provider::{ProviderType, get_or_init_provider};
+use crate::provider::{Language, ProviderType, Supported, get_or_init_provider};
 use anyhow::Result;
 use std::collections::HashMap;
 
-pub fn is_maybe_language(provider: ProviderType, input: &str) -> Result<bool> {
+pub fn is_maybe_language(provider: ProviderType, language: &str) -> Result<bool> {
     Ok(get_or_init_provider(provider)?
         .alias_to_language
-        .contains_key(input))
+        .contains_key(language))
 }
 
 pub fn get_supported_languages(provider: ProviderType) -> Result<&'static [String]> {
@@ -14,46 +14,33 @@ pub fn get_supported_languages(provider: ProviderType) -> Result<&'static [Strin
         .as_slice())
 }
 
-pub fn map_language_for_provider(provider: ProviderType, input: &str) -> Result<String> {
-    Ok(get_or_init_provider(provider)?
-        .alias_to_language
-        .get(input)
-        .cloned()
-        .unwrap_or_else(|| input.to_string()))
-}
-
 pub fn language_map_for_display(
     provider: ProviderType,
 ) -> Result<&'static HashMap<String, Vec<String>>> {
     Ok(&get_or_init_provider(provider)?.language_to_aliases)
 }
 
-pub fn normalize_and_dedup_languages(
+pub fn to_supported_languages(
     provider: ProviderType,
-    languages: &[String],
-) -> Result<Vec<String>> {
-    let mut mapped_langs = languages
-        .iter()
-        .map(|language| map_language_for_provider(provider, language))
-        .collect::<Result<Vec<_>>>()?;
+    languages: &[Language],
+) -> Result<Vec<Supported>> {
+    let alias_to_language = &get_or_init_provider(provider)?.alias_to_language;
+    let mut supported_languages = Vec::with_capacity(languages.len());
+    let mut unsupported_languages = Vec::new();
 
-    mapped_langs.sort_unstable();
-    mapped_langs.dedup();
-    Ok(mapped_langs)
-}
-
-pub fn validate_supported_languages(provider: ProviderType, languages: &[String]) -> Result<()> {
-    let supported = get_supported_languages(provider)?;
-    let supported_set: std::collections::HashSet<_> = supported.iter().collect();
-    let invalids: Vec<_> = languages
-        .iter()
-        .filter(|language| !supported_set.contains(language))
-        .cloned()
-        .collect();
-
-    if invalids.is_empty() {
-        Ok(())
-    } else {
-        anyhow::bail!("unsupported languages: {:?}", invalids)
+    for language in languages {
+        if let Some(supported) = alias_to_language.get(language) {
+            supported_languages.push(supported.clone());
+        } else {
+            unsupported_languages.push(language.clone());
+        }
     }
+
+    if !unsupported_languages.is_empty() {
+        anyhow::bail!("unsupported languages: {:?}", unsupported_languages);
+    }
+
+    supported_languages.sort_unstable();
+    supported_languages.dedup();
+    Ok(supported_languages)
 }

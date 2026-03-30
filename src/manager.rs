@@ -1,5 +1,5 @@
 use crate::provider::language::get_supported_languages;
-use crate::provider::{ProviderShowSelector, ProviderType, language_map_for_display};
+use crate::provider::{Language, ProviderShowSelector, ProviderType, language_map_for_display};
 use crate::session::SessionService;
 use crate::session::{Session, SessionKey};
 use anyhow::Result;
@@ -99,7 +99,7 @@ impl Manager {
         Ok(())
     }
 
-    pub fn use_languages(provider_type: ProviderType, languages: Vec<String>) -> Result<()> {
+    pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> Result<()> {
         match SessionService::find_session(provider_type, &languages)? {
             Some(session) => {
                 println!("Restoring develop shell...");
@@ -149,8 +149,7 @@ impl Manager {
     fn write_provider_languages(provider: ProviderType, include_header: bool) -> Result<()> {
         use std::io::{ErrorKind, Write};
 
-        let mut languages = get_supported_languages(provider)?.to_vec();
-        languages.sort();
+        let languages = get_supported_languages(provider)?.to_vec();
 
         let map_by_language = language_map_for_display(provider)?;
 
