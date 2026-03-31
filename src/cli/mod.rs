@@ -26,7 +26,10 @@ fn preprocess_args() -> Vec<std::ffi::OsString> {
 /// Dispatches the parsed command to the appropriate manager logic.
 fn handle_command(command: Commands) -> Result<()> {
     match command {
-        Commands::Init => todo!(""),
+        Commands::Init {
+            languages,
+            provider,
+        } => Manager::init(provider, languages),
 
         Commands::Provider { command } => match command {
             ProviderCommands::List => Manager::list_provider(),

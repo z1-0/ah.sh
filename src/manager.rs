@@ -1,5 +1,7 @@
 use crate::output::*;
-use crate::provider::{Language, ProviderShowSelector, ProviderType};
+use crate::provider::{
+    Language, ProviderShowSelector, ProviderType, get_flake_contents, to_supported_languages,
+};
 use crate::session::SessionService;
 use crate::session::{Session, SessionKey};
 use anyhow::Result;
@@ -95,6 +97,49 @@ impl Manager {
         Ok(())
     }
 
+    pub fn init(provider_type: ProviderType, languages: Vec<Language>) -> Result<()> {
+        // 1. Check and handle existing flake.nix
+        let current_dir = std::env::current_dir()?;
+        let flake_path = current_dir.join("flake.nix");
+        if flake_path.exists() {
+            if is_terminal() {
+                if !ask_confirmation("flake.nix already exists. Backup and overwrite? [y/N]: ") {
+                    print_info("Cancelled.");
+                    return Ok(());
+                }
+            } else {
+                // Non-interactive mode: warn and auto-backup
+                print_warning("flake.nix already exists. Auto-backing up to flake.nix.bak");
+            }
+            // Backup
+            let backup_path = current_dir.join("flake.nix.bak");
+            std::fs::copy(&flake_path, &backup_path)?;
+            print_success(format!(
+                "Backed up existing flake.nix to {}",
+                backup_path.display()
+            ));
+        }
+
+        // 2. Generate flake.nix content
+        let supported = to_supported_languages(provider_type, &languages)?;
+        let flake_contents = get_flake_contents(provider_type)(&supported)?;
+
+        // 3. Write file
+        std::fs::write(&flake_path, flake_contents)?;
+        print_success(format!("Created {}", flake_path.display()));
+
+        // 4. Execute nix develop
+        print_bold("Entering develop shell...");
+        let mut cmd = std::process::Command::new("nix");
+        cmd.arg("develop").arg(&current_dir);
+        if provider_type == ProviderType::Devenv {
+            cmd.arg("--no-pure-eval");
+        }
+        let env_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+        cmd.arg("--command").arg(env_shell);
+        exec(cmd)
+    }
+
     pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
         // Resolve session: use provided key or fall back to current session
         let session = match key {
@@ -154,4 +199,10 @@ impl Manager {
 
         Ok(())
     }
+}
+
+fn exec(mut cmd: std::process::Command) -> Result<()> {
+    use std::os::unix::process::CommandExt;
+    let err = cmd.exec();
+    Err(anyhow::anyhow!("failed to exec: {}", err))
 }

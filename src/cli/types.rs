@@ -11,8 +11,15 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// init 不创建session,在本地创建
-    Init,
+    /// 在当前目录生成 flake.nix 并进入开发环境（不创建会话）
+    Init {
+        /// Languages to enable (e.g. rust go)
+        #[arg(required = true, num_args = 1..)]
+        languages: Vec<Language>,
+        /// Provider for flake generation
+        #[arg(short, long, value_enum, default_value = "dev-templates")]
+        provider: ProviderType,
+    },
 
     /// Inspect available providers
     Provider {
