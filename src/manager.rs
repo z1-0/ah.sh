@@ -97,7 +97,6 @@ pub fn show_provider(provider: ProviderShowSelector) -> Result<()> {
 }
 
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
-    // Resolve session: use provided key or fall back to current session
     let session = match key {
         Some(k) => session::service::resolve_session_dir(k)?,
         None => {
@@ -111,14 +110,11 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     let session_dir = session.get_dir()?;
     let lock_path = session_dir.join("flake.lock");
 
-    // Get modification time before update
     let mtime_before = lock_path.metadata().and_then(|m| m.modified()).ok();
 
     print_bold("Updating flake dependencies...");
+    nix_flake_update_of_session(&session)?;
 
-    let _ = nix_flake_update_of_session(&session);
-
-    // Check if flake.lock was actually updated
     let mtime_after = lock_path.metadata().and_then(|m| m.modified()).ok();
     let was_updated = match (mtime_before, mtime_after) {
         (Some(before), Some(after)) => after > before,
@@ -129,7 +125,6 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     if was_updated {
         print_success("Dependencies updated.");
 
-        // Prompt user to enter new development environment
         if is_terminal() {
             if ask_confirmation("Enter new development environment? [Y/n]: ") {
                 print_bold("Entering develop shell...");
