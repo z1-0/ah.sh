@@ -87,7 +87,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 
 pub fn restore_session(key: &SessionKey) -> Result<()> {
     let session = session::service::resolve_session_dir(key)?;
-    crate::cmd::nix_develop_of_session(session, true)
+    nix_develop_of_session(session, true)
 }
 
 pub fn show_provider(provider: ProviderShowSelector) -> Result<()> {
@@ -124,15 +124,8 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 
     if was_updated {
         print_success("Dependencies updated.");
-
-        if is_terminal() {
-            if ask_confirmation("Enter new development environment? [Y/n]: ") {
-                print_bold("Entering develop shell...");
-                nix_develop_of_session(session, false)?
-            } else {
-                print_info("Skipped. Run 'ah session restore' to enter manually.");
-            }
-        }
+        print_bold("Entering develop shell...");
+        nix_develop_of_session(session, false)?
     } else {
         print_info("Dependencies are already up to date.");
     }
