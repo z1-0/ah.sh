@@ -26,12 +26,12 @@ pub fn get_session_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
-pub fn get_current_session_path() -> Result<PathBuf> {
+fn get_current_session_path() -> Result<PathBuf> {
     let path = get_cache_dir()?.join("current_session");
     Ok(path)
 }
 
-pub fn get_current_session() -> Result<Option<String>> {
+pub fn read_current_session() -> Result<Option<String>> {
     let path = get_current_session_path()?;
     if path.exists() {
         let content = std::fs::read_to_string(&path)?;
@@ -41,7 +41,7 @@ pub fn get_current_session() -> Result<Option<String>> {
     }
 }
 
-pub fn set_current_session(session_id: &str) -> Result<()> {
+pub fn save_current_session(session_id: &str) -> Result<()> {
     let path = get_current_session_path()?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;

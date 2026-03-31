@@ -11,7 +11,7 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// 在当前目录生成 flake.nix 并进入开发环境（不创建会话）
+    /// 在当前目录生成 flake.nix 并进入开发环境
     Init {
         /// Languages to enable (e.g. rust go)
         #[arg(required = true, num_args = 1..)]
