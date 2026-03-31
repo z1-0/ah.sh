@@ -8,13 +8,7 @@ pub fn nix_develop_of_path(provider: ProviderType, flake_url: PathBuf) -> Result
     let mut cmd = Command::new("nix");
     cmd.arg("develop").arg(&flake_url);
 
-    if provider == ProviderType::Devenv {
-        cmd.arg("--no-pure-eval");
-    }
-
-    let env_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-    cmd.arg("--command").arg(env_shell);
-
+    build_nix_develop_cmd(&mut cmd, provider);
     exec(cmd)
 }
 
@@ -34,13 +28,18 @@ pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> R
         cmd.arg(&flake_dir).arg("--profile").arg(&profile_path);
     }
 
-    if session.provider == ProviderType::Devenv {
+    build_nix_develop_cmd(&mut cmd, session.provider);
+    exec(cmd)
+}
+
+/// Common setup for nix develop commands: devenv flags and shell configuration
+fn build_nix_develop_cmd(cmd: &mut Command, provider: ProviderType) {
+    if provider == ProviderType::Devenv {
         cmd.arg("--no-pure-eval");
     }
+
     let env_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
     cmd.arg("--command").arg(env_shell);
-
-    exec(cmd)
 }
 
 pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
@@ -79,11 +78,7 @@ fn run(mut cmd: Command) -> Result<String> {
         anyhow::bail!("command `{}` failed: {}", command, details);
     }
 
-    let command_for_decode_error = command.clone();
-    String::from_utf8(output.stdout).context(format!(
-        "invalid UTF-8 output from `{}`",
-        command_for_decode_error
-    ))
+    String::from_utf8(output.stdout).context(format!("invalid UTF-8 output from `{}`", command))
 }
 
 fn exec(mut cmd: Command) -> Result<()> {

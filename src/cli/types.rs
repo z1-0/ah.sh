@@ -2,8 +2,16 @@ use crate::provider::{Language, ProviderShowSelector, ProviderType};
 use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
 
+const HELP_ASCII_ART: &str = r#"
+    █████   ██  ██
+   ██   ██  ██  ██
+   ███████  ██████
+   ██   ██  ██  ██
+   ██   ██  ██  ██ .sh"#;
+
+/// Magic shell environments powered by Nix
 #[derive(Parser)]
-#[command(version, about)]
+#[command(version, about, before_help = HELP_ASCII_ART)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
