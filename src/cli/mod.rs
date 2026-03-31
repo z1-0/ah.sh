@@ -2,7 +2,7 @@ mod implicit_use;
 mod types;
 
 use crate::cli::implicit_use::maybe_implicit_use_command;
-use crate::manager::Manager;
+use crate::manager;
 use anyhow::Result;
 use clap::CommandFactory;
 use clap::Parser;
@@ -29,25 +29,25 @@ fn handle_command(command: Commands) -> Result<()> {
         Commands::Init {
             languages,
             provider,
-        } => Manager::init(provider, languages),
+        } => manager::init(provider, languages),
 
         Commands::Provider { command } => match command {
-            ProviderCommands::List => Manager::list_provider(),
-            ProviderCommands::Show { provider } => Manager::show_provider(provider),
+            ProviderCommands::List => manager::list_provider(),
+            ProviderCommands::Show { provider } => manager::show_provider(provider),
         },
 
         Commands::Session { command } => match command {
-            SessionCommands::List => Manager::list_sessions(),
-            SessionCommands::Restore { key } => Manager::restore_session(&key),
-            SessionCommands::Clear => Manager::clear_sessions(),
-            SessionCommands::Remove { keys } => Manager::remove_sessions(&keys),
+            SessionCommands::List => manager::list_sessions(),
+            SessionCommands::Restore { key } => manager::restore_session(&key),
+            SessionCommands::Clear => manager::clear_sessions(),
+            SessionCommands::Remove { keys } => manager::remove_sessions(&keys),
         },
 
-        Commands::Update { session } => Manager::update_session(session.as_ref()),
+        Commands::Update { session } => manager::update_session(session.as_ref()),
 
         Commands::Use {
             languages,
             provider,
-        } => Manager::use_languages(provider, languages),
+        } => manager::use_languages(provider, languages),
     }
 }

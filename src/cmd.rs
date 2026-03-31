@@ -1,10 +1,24 @@
 use anyhow::{Context, Result};
-use std::os::unix::process::CommandExt;
 use std::process::Command;
+use std::{os::unix::process::CommandExt, path::PathBuf};
 
 use crate::{paths::save_current_session, provider::ProviderType, session::Session};
 
-pub fn nix_develop(session: Session, use_existing_profile: bool) -> Result<()> {
+pub fn nix_develop_of_path(provider: ProviderType, flake_url: PathBuf) -> Result<()> {
+    let mut cmd = Command::new("nix");
+    cmd.arg("develop").arg(&flake_url);
+
+    if provider == ProviderType::Devenv {
+        cmd.arg("--no-pure-eval");
+    }
+
+    let env_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
+    cmd.arg("--command").arg(env_shell);
+
+    exec(cmd)
+}
+
+pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
     let profile_path = flake_dir.join("nix-profile");
 
@@ -23,11 +37,19 @@ pub fn nix_develop(session: Session, use_existing_profile: bool) -> Result<()> {
     if session.provider == ProviderType::Devenv {
         cmd.arg("--no-pure-eval");
     }
-
-    let env_shell = std::env::var("SHELL")?;
+    let env_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
     cmd.arg("--command").arg(env_shell);
 
     exec(cmd)
+}
+
+pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
+    let mut cmd = Command::new("nix");
+    cmd.arg("flake")
+        .arg("update")
+        .current_dir(session.get_dir()?);
+
+    run(cmd)
 }
 
 pub fn prefetch_dev_templates() -> Result<String> {
@@ -64,7 +86,7 @@ fn run(mut cmd: Command) -> Result<String> {
     ))
 }
 
-pub fn exec(mut cmd: Command) -> Result<()> {
+fn exec(mut cmd: Command) -> Result<()> {
     let command = command_to_string(&cmd);
 
     // Only print command in debug mode

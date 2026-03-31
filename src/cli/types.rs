@@ -11,17 +11,17 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// 在当前目录生成 flake.nix 并进入开发环境
+    /// Generate flake.nix and enter dev environment
     Init {
-        /// Languages to enable (e.g. rust go)
+        /// Languages to enable (e.g., rust go nodejs)
         #[arg(required = true, num_args = 1..)]
         languages: Vec<Language>,
-        /// Provider for flake generation
+        /// Which provider to use
         #[arg(short, long, value_enum, default_value = "dev-templates")]
         provider: ProviderType,
     },
 
-    /// Inspect available providers
+    /// List and inspect providers
     Provider {
         #[command(subcommand)]
         command: ProviderCommands,
@@ -33,19 +33,19 @@ pub enum Commands {
         command: SessionCommands,
     },
 
-    /// Update session dependencies (nix flake update)
+    /// Update session dependencies
     Update {
-        /// Session index (1, 2, ...) or id (8 hex chars). Uses current session if not specified.
+        /// Session index (1, 2, ...) or ID (8 hex chars). Uses current session if not specified
         session: Option<SessionKey>,
     },
 
-    /// Create a development session
+    /// Create and enter a development environment
     Use {
-        /// Languages to enable (e.g. rust go)
+        /// Languages to enable (e.g., rust go nodejs)
         #[arg(required = true, num_args = 1..)]
         languages: Vec<Language>,
 
-        /// Provider for session creation
+        /// Which provider to use
         #[arg(short, long, value_enum, default_value = "dev-templates")]
         provider: ProviderType,
     },
@@ -53,34 +53,34 @@ pub enum Commands {
 
 #[derive(Subcommand, Debug)]
 pub enum SessionCommands {
-    /// Remove all sessions
+    /// Delete all sessions
     Clear,
 
-    /// List sessions
+    /// List all sessions
     List,
 
-    /// Remove one or more sessions by index or id
+    /// Delete one or more sessions by index or ID
     Remove {
-        /// Session index(es) or id(s) (8 hex chars)
+        /// Session index(es) or ID(s) (8 hex chars)
         #[arg(required = true, num_args = 1..)]
         keys: Vec<SessionKey>,
     },
 
-    /// Restore a session by index or id
+    /// Restore a session by index or ID
     Restore {
-        /// Session index (1, 2, ...) or id (8 hex chars)
+        /// Session index (1, 2, ...) or ID (8 hex chars)
         key: SessionKey,
     },
 }
 
 #[derive(Subcommand, Debug)]
 pub enum ProviderCommands {
-    /// List all providers
+    /// List all available providers
     List,
 
-    /// Show provider supported languages
+    /// Show supported languages for a provider
     Show {
-        /// Provider name (devenv/dev-templates) or "all"
+        /// Provider name (devenv, dev-templates) or "all"
         provider: ProviderShowSelector,
     },
 }
