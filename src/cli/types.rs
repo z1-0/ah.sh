@@ -57,6 +57,12 @@ pub enum Commands {
         #[arg(short, long, value_enum, default_value = "dev-templates")]
         provider: ProviderType,
     },
+
+    /// Restore a session by index or ID
+    Restore {
+        /// Session index (1, 2, ...) or ID (8 hex chars)
+        key: SessionKey,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -78,6 +84,12 @@ pub enum SessionCommands {
     Restore {
         /// Session index (1, 2, ...) or ID (8 hex chars)
         key: SessionKey,
+    },
+
+    /// Update session dependencies
+    Update {
+        /// Session index (1, 2, ...) or ID (8 hex chars). Uses current session if not specified
+        session: Option<SessionKey>,
     },
 }
 
