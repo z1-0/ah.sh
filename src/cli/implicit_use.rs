@@ -1,7 +1,9 @@
+use anyhow::Result;
 use clap::Command;
 use std::ffi::OsString;
 
-use crate::provider::{ProviderType, language::is_maybe_language};
+use crate::provider::ProviderType;
+use crate::provider::get_alias_to_language;
 
 pub fn maybe_implicit_use_command(mut args: Vec<OsString>, cmd: &Command) -> Vec<OsString> {
     let first_arg = match args.get(1) {
@@ -31,10 +33,13 @@ fn is_top_level_flag(cmd: &Command, arg: &str) -> bool {
         .any(|a| matches_flag(arg, a.get_short(), a.get_long()))
 }
 
-// TODO  The current provider is hard-coded
 fn should_implicit_use_command(cmd: &Command, arg: &str) -> bool {
     is_maybe_language(ProviderType::DevTemplates, arg).unwrap_or(false)
         || is_use_command_flag(cmd, arg)
+}
+
+fn is_maybe_language(provider: ProviderType, language: &str) -> Result<bool> {
+    Ok(get_alias_to_language(provider)?.contains_key(language))
 }
 
 fn is_use_command_flag(cmd: &Command, arg: &str) -> bool {

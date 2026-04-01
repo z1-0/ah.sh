@@ -4,10 +4,7 @@ use console::{Term, style};
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::{
-    provider::{ProviderType, language::get_supported_languages, language_map_for_display},
-    session::Session,
-};
+use crate::{provider::ProviderType, session::Session};
 
 /// Language grouping by first letter range
 struct LanguageGroup {
@@ -131,7 +128,7 @@ pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
     let mut provider_info: Vec<(String, usize)> = Vec::with_capacity(providers.len());
 
     for p in providers {
-        let langs = get_supported_languages(*p)?;
+        let langs = p.to_provider()?.get_supported_languages();
         provider_info.push((p.to_string(), langs.len()));
     }
     print_provider_table(&provider_info);
@@ -182,22 +179,22 @@ pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
     Ok(())
 }
 
-fn write_provider_languages(provider: ProviderType) -> Result<()> {
-    let languages = get_supported_languages(provider)?.to_vec();
-    let map_by_language = language_map_for_display(provider)?;
+fn write_provider_languages(pt: ProviderType) -> Result<()> {
+    let provider = pt.to_provider()?;
+    let supported_languages = provider.get_supported_languages();
+    let language_to_aliases = provider.get_language_to_aliases();
 
     // Build aliases list
     let mut aliases: Vec<(String, String)> = Vec::new();
-    for lang in &languages {
-        if let Some(inputs) = map_by_language.get(lang) {
-            for input in inputs {
-                aliases.push((lang.clone(), input.clone()));
+    for language in supported_languages {
+        if let Some(lang_aliases) = language_to_aliases.get(language) {
+            for alias in lang_aliases {
+                aliases.push((language.clone(), alias.clone()));
             }
         }
     }
 
-    // Use output module to print grouped languages
-    print_language_groups(&provider.to_string(), &languages, &aliases);
+    print_language_groups(&pt.to_string(), supported_languages, &aliases);
 
     Ok(())
 }

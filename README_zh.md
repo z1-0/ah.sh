@@ -4,9 +4,9 @@
 
 如果你需要精细化管理项目级的开发环境请使用 mise, asdf, 或 nix 生态的 nix-shell / devenv
 
-如果你仅仅需要快速进入一个临时的开发环境，请使用 ah.sh
+如果你仅仅需要快速进入一个临时的开发环境，可以使用 `ah.sh`
 
-`ah.sh` 使用最贴近人脑的表达方式，没有任何负担：
+`ah.sh` 使用贴近人脑的表达方式，没有任何负担：
 
 临时使用 rust go js
 
@@ -75,7 +75,7 @@ devenv
 无需安装，直接试用：
 
 ```bash
-nix run github:z1-0/ah.sh -- --help
+nix run github:z1-0/ah.sh
 ```
 
 ### Flake 安装方式（推荐）
@@ -83,16 +83,10 @@ nix run github:z1-0/ah.sh -- --help
 如果你使用 Nix Flake 管理系统，在 `flake.nix` 的 `inputs` 中添加：
 
 ```nix
-inputs = {
-    ah = {
-      url = "github:z1-0/ah.sh";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        treefmt-nix.follows = "treefmt-nix";
-        git-hooks-nix.follows = "git-hooks-nix";
-      };
-    };
-    # ... 其他 inputs
+inputs.ah = {
+  url = "github:z1-0/ah.sh";
+  inputs.nixpkgs.follows = "nixpkgs";
+  # ... 其他 inputs
 };
 ```
 
@@ -223,15 +217,6 @@ Options:
   -h, --help
   -V, --version
 ````
-
----
-
-## Roadmap（克制版）
-
-- 更友好的输出（更清晰的错误提示、可复制的建议命令）
-- 为脚本/CI 提供机器可读输出（如 `--json`）
-- resolve_session_dir , list_session 函数优化
-- language.rs 优化
 
 ---
 
