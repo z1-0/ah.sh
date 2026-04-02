@@ -10,7 +10,7 @@ const BEFORE_HELP: &str = "
    ██   ██  ██  ██
    ██   ██  ██  ██ .sh";
 
-const ABOUT: &str = "Magic shell environments powered by Nix";
+const ABOUT: &str = "Magic development environments powered by Nix";
 
 const AFTER_LONG_HELP: &str = "\x1b[1;4mAliases:\x1b[0m
   ah          ->  ah use

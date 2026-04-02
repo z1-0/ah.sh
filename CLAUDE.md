@@ -15,7 +15,7 @@ ah rust go nodejs
 
 - **语言**: Rust (Edition 2024)
 - **核心底座**: Nix (Flakes)
-- **关键库**: clap、anyhow、serde、rnix、rowan、rayon、fp-core
+- **关键库**: clap、anyhow、serde、rnix、rowan、rayon
 
 ## 常用命令
 
@@ -147,4 +147,4 @@ ah update <key>    # 指定会话 ID 或索引
 ## 开发规范
 
 - 使用 `haksell` `FP` 的编程范式去组织代码，包括架构，结构，实现逻辑。
-- 仅使用 `rust` 语言自身提供的 `Option` `Result` 等函数式特性以及 `fp-core` 提供的函数式封装，不另外做封装。
+- 仅使用 `rust` 语言自身提供的 `Option`、`Result` 等函数式特性，不另外做封装。

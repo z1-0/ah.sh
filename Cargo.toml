@@ -2,6 +2,16 @@
 name = "ah"
 version = "0.1.0"
 edition = "2024"
+description = "Magic development environments powered by Nix"
+authors = ["zion <ox7a696f6e@outlook.com>"]
+license = "MIT"
+repository = "https://github.com/z1-0/ah.sh"
+homepage = "https://github.com/z1-0/ah.sh"
+keywords = ["nix", "cli", "development-environment", "devtools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[badges]
+github-actions = { repository = "z1-0/ah.sh" }
 
 [dependencies]
 blake3 = "1.8"
@@ -12,8 +22,7 @@ rowan = "0.16"
 serde = { version = "1.0.228" ,features = ["derive"]}
 serde_json = "1.0.149"
 directories = "6"
-rayon = "1.10"
+rayon = "1.11"
 strum = { version = "0.28", features = ["derive"] }
-fp-core = "0.1.9"
 comfy-table = "7.2"
 console = "0.16"

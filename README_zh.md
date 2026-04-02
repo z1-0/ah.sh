@@ -223,3 +223,6 @@ Options:
 ## License
 
 MIT License，见 [LICENSE](./LICENSE)。
+
+检查nix环境
+多平台多架构发布

@@ -73,6 +73,7 @@
             packages = [
               pkgs.nixd
               pkgs.cargo-edit
+              pkgs.cargo-audit
               pkgs.rust-bin.stable.latest.complete
             ]
             ++ (lib.attrValues config.treefmt.build.programs)
