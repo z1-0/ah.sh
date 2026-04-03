@@ -1,0 +1,44 @@
+name: Cachix
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cachix:
+    name: Cachix (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: x86_64-linux
+
+          - runner: macos-latest
+            system: aarch64-darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: z1-0
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Build with Nix
+        run: nix build --print-build-logs .#packages.${{ matrix.system }}.ah
