@@ -2,10 +2,12 @@ use anyhow::Result;
 use directories::ProjectDirs;
 use std::path::PathBuf;
 
-const PROGRAM_NAME: &str = env!("CARGO_PKG_NAME");
+fn app_name() -> &'static str {
+    option_env!("CARGO_BIN_NAME").unwrap_or(env!("CARGO_PKG_NAME"))
+}
 
 fn get_project_dirs() -> Result<ProjectDirs> {
-    ProjectDirs::from("", "", PROGRAM_NAME)
+    ProjectDirs::from("", "", app_name())
         .ok_or_else(|| anyhow::anyhow!("Could not determine project directories"))
 }
 

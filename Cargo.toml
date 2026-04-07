@@ -9,6 +9,10 @@ repository = "https://github.com/z1-0/ah.sh"
 keywords = ["cli", "nix", "dev", "shell", "devtools"]
 categories = ["command-line-utilities", "development-tools"]
 
+[lib]
+name = "ah"
+path = "src/lib.rs"
+
 [[bin]]
 name = "ah"
 path = "src/main.rs"
