@@ -55,31 +55,28 @@ fn init_provider(provider: ProviderType) -> Result<Provider> {
         from_str(language_aliases_json(provider))
             .with_context(|| format!("Failed to parse language mappings for {provider}"))?;
 
-    Ok(Provider::new(supported_languages, language_to_aliases))
-}
-
-pub fn get_alias_to_language(pt: ProviderType) -> Result<HashMap<Alias, Supported>> {
-    let provider = pt.to_provider()?;
     let mut alias_to_language = HashMap::new();
-
-    for language in provider.get_supported_languages() {
-        alias_to_language.insert(language.clone(), language.clone());
+    for lang in &supported_languages {
+        alias_to_language.insert(lang.clone(), lang.clone());
     }
-
-    for (language, aliases) in provider.get_language_to_aliases() {
+    for (lang, aliases) in &language_to_aliases {
         for alias in aliases {
-            alias_to_language.insert(alias.clone(), language.clone());
+            alias_to_language.insert(alias.clone(), lang.clone());
         }
     }
 
-    Ok(alias_to_language)
+    Ok(Provider::new(
+        supported_languages,
+        language_to_aliases,
+        alias_to_language,
+    ))
 }
 
 pub fn to_supported_languages(
     provider: ProviderType,
     languages: &[Language],
 ) -> Result<Vec<Supported>> {
-    let alias_to_language = get_alias_to_language(provider)?;
+    let alias_to_language = provider.to_provider()?.get_alias_to_language();
     let mut supported_languages = Vec::with_capacity(languages.len());
     let mut unsupported_languages = Vec::new();
 

@@ -1,16 +1,8 @@
 use anyhow::{Context, Result};
+use std::os::unix::process::CommandExt;
 use std::process::Command;
-use std::{os::unix::process::CommandExt, path::PathBuf};
 
 use crate::{paths::save_current_session, provider::ProviderType, session::Session};
-
-pub fn nix_develop_of_path(provider: ProviderType, flake_url: PathBuf) -> Result<()> {
-    let mut cmd = Command::new("nix");
-    cmd.arg("develop").arg(&flake_url);
-
-    build_nix_develop_cmd(&mut cmd, provider);
-    exec(cmd)
-}
 
 pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
