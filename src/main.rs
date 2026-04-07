@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    match ah::cli::run() {
+    match ah_sh::cli::run() {
         Ok(_) => ExitCode::SUCCESS,
         Err(e) => {
             if let Some(clap_err) = e.downcast_ref::<clap::Error>() {

@@ -1,7 +1,5 @@
-use crate::cmd::{nix_develop_of_path, nix_develop_of_session, nix_flake_update_of_session};
-use crate::provider::{
-    Language, ProviderShowSelector, ProviderType, get_flake_contents, to_supported_languages,
-};
+use crate::cmd::{nix_develop_of_session, nix_flake_update_of_session};
+use crate::provider::{Language, ProviderShowSelector, ProviderType};
 use crate::session::SessionKey;
 use crate::{output::*, session};
 use anyhow::Result;
@@ -15,37 +13,6 @@ pub fn clear_sessions() -> Result<()> {
     let removed = session::service::clear_sessions()?;
     print_success(format!("Cleared {} session(s).", removed));
     Ok(())
-}
-
-pub fn init(provider: ProviderType, languages: Vec<Language>) -> Result<()> {
-    let current_dir = std::env::current_dir()?;
-    let flake_path = current_dir.join("flake.nix");
-    if flake_path.exists() {
-        if is_terminal() {
-            if !ask_confirmation("flake.nix already exists. Backup and overwrite? [y/N]: ") {
-                print_info("Cancelled.");
-                return Ok(());
-            }
-        } else {
-            print_warning("flake.nix already exists. Auto-backing up to flake.nix.bak");
-        }
-
-        let backup_path = current_dir.join("flake.nix.bak");
-        std::fs::copy(&flake_path, &backup_path)?;
-        print_success(format!(
-            "Backed up existing flake.nix to {}",
-            backup_path.display()
-        ));
-    }
-
-    let supported = to_supported_languages(provider, &languages)?;
-    let flake_contents = get_flake_contents(provider)(&supported)?;
-
-    std::fs::write(&flake_path, flake_contents)?;
-    print_success(format!("Created {}", flake_path.display()));
-
-    print_bold("Entering develop shell...");
-    nix_develop_of_path(provider, current_dir)
 }
 
 pub fn list_provider() -> Result<()> {

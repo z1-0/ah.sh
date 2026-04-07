@@ -29,16 +29,6 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Generate flake.nix and enter dev environment
-    Init {
-        /// Languages to enable (e.g., rust go nodejs)
-        #[arg(required = true, num_args = 1..)]
-        languages: Vec<Language>,
-        /// Which provider to use
-        #[arg(short, long, value_enum, default_value = "dev-templates")]
-        provider: ProviderType,
-    },
-
     /// List and inspect providers
     Provider {
         #[command(subcommand)]
