@@ -14,6 +14,11 @@ pub(crate) fn generate_id(provider: ProviderType, languages: &[String]) -> Strin
 
 pub(crate) fn list_sessions() -> Result<Vec<Session>> {
     let session_dir = get_session_dir()?;
+
+    if !session_dir.exists() {
+        return Ok(Vec::new());
+    }
+
     let mut sessions = Vec::new();
 
     for entry in fs::read_dir(session_dir)? {
@@ -99,6 +104,11 @@ pub(crate) fn remove_session(session_id: &str) -> Result<bool> {
 
 pub(crate) fn clear_sessions() -> Result<usize> {
     let session_dir = get_session_dir()?;
+
+    if !session_dir.exists() {
+        return Ok(0);
+    }
+
     let mut removed = 0usize;
 
     for entry in fs::read_dir(session_dir)? {

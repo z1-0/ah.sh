@@ -2,12 +2,10 @@ use anyhow::Result;
 use directories::ProjectDirs;
 use std::path::PathBuf;
 
-fn app_name() -> &'static str {
-    option_env!("CARGO_BIN_NAME").unwrap_or(env!("CARGO_PKG_NAME"))
-}
+use crate::APP_NAME;
 
 fn get_project_dirs() -> Result<ProjectDirs> {
-    ProjectDirs::from("", "", app_name())
+    ProjectDirs::from("", "", APP_NAME)
         .ok_or_else(|| anyhow::anyhow!("Could not determine project directories"))
 }
 

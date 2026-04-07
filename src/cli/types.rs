@@ -1,3 +1,4 @@
+use crate::APP_NAME;
 use crate::provider::{Language, ProviderShowSelector, ProviderType};
 use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
@@ -21,7 +22,7 @@ Use \x1b[1;3mah <COMMAND> --help\x1b[0m for more information about a command.
 ";
 
 #[derive(Parser)]
-#[command(version, about = ABOUT, before_help = BEFORE_HELP, after_help = AFTER_LONG_HELP, disable_help_subcommand = true)]
+#[command(name = APP_NAME, version, about = ABOUT, before_help = BEFORE_HELP, after_help = AFTER_LONG_HELP, disable_help_subcommand = true)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
