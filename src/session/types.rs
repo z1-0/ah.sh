@@ -16,6 +16,12 @@ pub struct Session {
     pub languages: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HistoryEntry {
+    pub path: String,
+    pub timestamp: String,
+}
+
 impl Session {
     pub fn get_dir(&self) -> Result<PathBuf> {
         Ok(get_session_dir()?.join(&self.id))
