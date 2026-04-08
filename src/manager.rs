@@ -101,6 +101,36 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 }
 
 pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> Result<()> {
+    // If no provider and no languages, check for session history
+    if provider_type == ProviderType::Devenv && languages.is_empty() {
+        let cwd = std::env::current_dir()?;
+        if let Ok(sessions_with_ts) = session::service::find_by_path(&cwd) {
+            if !sessions_with_ts.is_empty() {
+                let (sessions, timestamps): (Vec<_>, Vec<_>) =
+                    sessions_with_ts.into_iter().unzip();
+                print_session_history(&sessions, &timestamps);
+                let mut input = String::new();
+                if std::io::stdin().read_line(&mut input).is_ok() {
+                    let choice = input.trim();
+                    if let Ok(idx) = choice.parse::<usize>() {
+                        if idx > 0 && idx <= sessions.len() {
+                            let session = &sessions[idx - 1];
+                            print_session_found(
+                                &session.id,
+                                &session.provider.to_string(),
+                                &session.languages,
+                            );
+                            print_bold("Restoring develop shell...");
+                            return nix_develop_of_session(session.clone(), true);
+                        }
+                    }
+                }
+                // User pressed Enter without selecting - fall through to create new
+                println!();
+            }
+        }
+    }
+
     match session::service::find_session(provider_type, &languages)? {
         Some(session) => {
             print_session_found(

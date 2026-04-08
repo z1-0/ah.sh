@@ -37,7 +37,7 @@ pub fn clear_sessions() -> Result<usize> {
     storage::clear_sessions()
 }
 
-pub fn find_by_path(path: &std::path::Path) -> Result<Vec<Session>> {
+pub fn find_by_path(path: &std::path::Path) -> Result<Vec<(Session, String)>> {
     storage::find_by_path(path)
 }
 

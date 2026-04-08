@@ -157,7 +157,7 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 	Ok(())
 }
 
-pub(crate) fn find_by_path(path: &Path) -> Result<Vec<Session>> {
+pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, String)>> {
 	let session_dir = get_session_dir()?;
 	if !session_dir.exists() {
 		return Ok(Vec::new());
@@ -197,5 +197,5 @@ pub(crate) fn find_by_path(path: &Path) -> Result<Vec<Session>> {
 	// Sort by timestamp descending (most recent first)
 	matching_sessions.sort_by(|(_, a_ts), (_, b_ts)| b_ts.cmp(a_ts));
 
-	Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
+	Ok(matching_sessions)
 }
