@@ -11,6 +11,13 @@ pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> R
     // Record current session before entering
     save_current_session(&session.id)?;
 
+    // Update session history with current working directory
+    let cwd = std::env::current_dir()
+        .context("failed to get current directory")?;
+    if let Err(e) = crate::session::service::update_history(&session, &cwd) {
+        eprintln!("Warning: failed to update session history: {}", e);
+    }
+
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
 
