@@ -1,7 +1,7 @@
 use crate::cmd::{nix_develop_of_session, nix_flake_update_of_session};
 use crate::provider::{Language, ProviderShowSelector, ProviderType};
 use crate::session::SessionKey;
-use crate::{output::*, session};
+use crate::{output::*, paths::get_cwd, session};
 use anyhow::Result;
 
 pub fn clear_sessions() -> Result<()> {
@@ -103,11 +103,10 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> Result<()> {
     // If no provider and no languages, check for session history
     if provider_type == ProviderType::Devenv && languages.is_empty() {
-        let cwd = std::env::current_dir()?;
+        let cwd = get_cwd()?;
         if let Ok(sessions_with_ts) = session::service::find_by_path(&cwd) {
             if !sessions_with_ts.is_empty() {
-                let (sessions, timestamps): (Vec<_>, Vec<_>) =
-                    sessions_with_ts.into_iter().unzip();
+                let (sessions, timestamps): (Vec<_>, Vec<_>) = sessions_with_ts.into_iter().unzip();
                 print_session_history(&sessions, &timestamps);
                 let mut input = String::new();
                 if std::io::stdin().read_line(&mut input).is_ok() {

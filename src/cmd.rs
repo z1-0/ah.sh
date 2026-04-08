@@ -2,7 +2,11 @@ use anyhow::{Context, Result};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-use crate::{paths::save_current_session, provider::ProviderType, session::Session};
+use crate::{
+    paths::{get_cwd, save_current_session},
+    provider::ProviderType,
+    session::Session,
+};
 
 pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
@@ -12,8 +16,7 @@ pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> R
     save_current_session(&session.id)?;
 
     // Update session history with current working directory
-    let cwd = std::env::current_dir()
-        .context("failed to get current directory")?;
+    let cwd = get_cwd()?;
     if let Err(e) = crate::session::service::update_history(&session, &cwd) {
         eprintln!("Warning: failed to update session history: {}", e);
     }

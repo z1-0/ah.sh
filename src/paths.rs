@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use std::path::PathBuf;
 
@@ -24,6 +24,10 @@ pub fn get_cache_dir() -> Result<PathBuf> {
 pub fn get_session_dir() -> Result<PathBuf> {
     let dir = get_cache_dir()?.join("sessions");
     Ok(dir)
+}
+
+pub fn get_cwd() -> Result<PathBuf> {
+    std::env::current_dir().context("failed to get current directory")
 }
 
 fn get_current_session_path() -> Result<PathBuf> {
