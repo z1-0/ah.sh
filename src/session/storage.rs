@@ -2,6 +2,7 @@ use crate::paths::get_session_dir;
 use crate::provider::{ProviderType, get_flake_contents};
 use crate::session::types::{HISTORY_LIMIT, HistoryEntry, SESSION_ID_LEN, Session, SessionKey};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
@@ -141,7 +142,7 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     history.retain(|entry| entry.path != cwd_str);
 
     // Add new entry at the beginning
-    let timestamp = chrono::Utc::now().to_rfc3339();
+    let timestamp = Utc::now();
     history.insert(
         0,
         HistoryEntry {
@@ -160,7 +161,7 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, String)>> {
+pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, DateTime<Utc>)>> {
     let session_dir = get_session_dir()?;
     if !session_dir.exists() {
         return Ok(Vec::new());
