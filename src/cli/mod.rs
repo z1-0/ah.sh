@@ -33,14 +33,14 @@ fn handle_command(command: Commands) -> Result<()> {
 
         Commands::Session { command } => match command {
             SessionCommands::List => manager::list_sessions(),
-            SessionCommands::Restore { key } => manager::restore_session(&key),
+            SessionCommands::Restore { key } => manager::restore_session(key.as_ref()),
             SessionCommands::Clear => manager::clear_sessions(),
             SessionCommands::Remove { keys } => manager::remove_sessions(&keys),
             SessionCommands::Update { session } => manager::update_session(session.as_ref()),
         },
 
         Commands::Update { session } => manager::update_session(session.as_ref()),
-        Commands::Restore { key } => manager::restore_session(&key),
+        Commands::Restore { key } => manager::restore_session(key.as_ref()),
 
         Commands::Use {
             languages,

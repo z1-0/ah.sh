@@ -36,11 +36,12 @@ pub enum Commands {
         command: ProviderCommands,
     },
 
-    /// Restore a session by index or ID
+    /// Restore a session by index, ID, or show history for current directory
     #[command(hide = true)]
     Restore {
-        /// Session index (1, 2, ...) or ID (8 hex chars)
-        key: SessionKey,
+        /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
+        #[arg(required = false)]
+        key: Option<SessionKey>,
     },
 
     /// Manage development sessions
@@ -83,10 +84,11 @@ pub enum SessionCommands {
         keys: Vec<SessionKey>,
     },
 
-    /// Restore a session by index or ID
+    /// Restore a session by index, ID, or show history for current directory
     Restore {
-        /// Session index (1, 2, ...) or ID (8 hex chars)
-        key: SessionKey,
+        /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
+        #[arg(required = false)]
+        key: Option<SessionKey>,
     },
 
     /// Update session dependencies
