@@ -5,7 +5,7 @@ use console::{Term, style};
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::{provider::ProviderType, session::Session};
+use crate::{provider::ProviderType, session::Session, session::types::HISTORY_LIMIT};
 
 /// Language grouping by first letter range
 struct LanguageGroup {
@@ -184,7 +184,7 @@ pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
 pub fn print_session_history(sessions: &[Session], history_timestamps: &[DateTime<Utc>]) {
     println!();
     println!("╭─ Session History ──────────────────────────────────────────╮");
-    for (i, session) in sessions.iter().enumerate().take(5) {
+    for (i, session) in sessions.iter().enumerate().take(HISTORY_LIMIT) {
         let langs = session.languages.join(", ");
         let timestamp = history_timestamps
             .get(i)
