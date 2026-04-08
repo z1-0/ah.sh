@@ -1,9 +1,10 @@
 use crate::paths::get_session_dir;
 use crate::provider::{ProviderType, get_flake_contents};
-use crate::session::types::{SESSION_ID_LEN, Session, SessionKey};
+use crate::session::types::{SESSION_ID_LEN, Session, SessionKey, HistoryEntry};
 use anyhow::Result;
 use std::cmp::Ordering;
 use std::fs;
+use std::path::Path;
 use std::time::SystemTime;
 
 pub(crate) fn generate_id(provider: ProviderType, languages: &[String]) -> String {
@@ -121,4 +122,80 @@ pub(crate) fn clear_sessions() -> Result<usize> {
     }
 
     Ok(removed)
+}
+
+pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
+	let session_dir = session.get_dir()?;
+	let history_path = session_dir.join("history.json");
+
+	// Read existing history
+	let mut history: Vec<HistoryEntry> = if history_path.exists() {
+		let content = fs::read_to_string(&history_path)?;
+		serde_json::from_str(&content).unwrap_or_default()
+	} else {
+		Vec::new()
+	};
+
+	// Remove existing entry for this path (if any)
+	let cwd_str = cwd.to_string_lossy().to_string();
+	history.retain(|entry| entry.path != cwd_str);
+
+	// Add new entry at the beginning
+	let timestamp = chrono::Utc::now().to_rfc3339();
+	history.insert(0, HistoryEntry {
+		path: cwd_str,
+		timestamp,
+	});
+
+	// Keep only last 5 entries
+	history.truncate(5);
+
+	// Write back
+	let content = serde_json::to_string_pretty(&history)?;
+	fs::write(&history_path, content)?;
+
+	Ok(())
+}
+
+pub(crate) fn find_by_path(path: &Path) -> Result<Vec<Session>> {
+	let session_dir = get_session_dir()?;
+	if !session_dir.exists() {
+		return Ok(Vec::new());
+	}
+
+	let mut matching_sessions = Vec::new();
+	let target_path = path.to_string_lossy().to_string();
+
+	for entry in fs::read_dir(session_dir)? {
+		let entry = entry?;
+		let session_path = entry.path();
+		if session_path.is_dir() {
+			let history_path = session_path.join("history.json");
+			if history_path.exists() {
+				if let Ok(content) = fs::read_to_string(&history_path) {
+					if let Ok(history) = serde_json::from_str::<Vec<HistoryEntry>>(&content) {
+						// Check if any entry matches the target path
+						for history_entry in &history {
+							if history_entry.path == target_path {
+								// Load session metadata
+								let meta_path = session_path.join("metadata.json");
+								if let Ok(session_content) = fs::read_to_string(&meta_path) {
+									if let Ok(session) = serde_json::from_str::<Session>(&session_content) {
+										// Get timestamp from history for sorting
+										matching_sessions.push((session, history_entry.timestamp.clone()));
+									}
+								}
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Sort by timestamp descending (most recent first)
+	matching_sessions.sort_by(|(_, a_ts), (_, b_ts)| b_ts.cmp(a_ts));
+
+	Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
 }

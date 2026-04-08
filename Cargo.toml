@@ -24,6 +24,7 @@ github-actions = { repository = "z1-0/ah.sh" }
 anyhow = "1.0"
 blake3 = "1.8"
 clap = { version = "4.6.0", features = ["derive"] }
+chrono = "0.4"
 comfy-table = "7.2"
 console = "0.16"
 directories = "6"
