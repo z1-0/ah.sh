@@ -1,6 +1,7 @@
 .claude/
 .devenv/
 .direnv/
+.worktrees/
 
 docs/
 target/
