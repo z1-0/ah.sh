@@ -175,26 +175,22 @@ pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, DateTime<Utc>)>>
         let session_path = entry.path();
         if session_path.is_dir() {
             let history_path = session_path.join("history.json");
-            if history_path.exists() {
-                if let Ok(content) = fs::read_to_string(&history_path) {
-                    if let Ok(history) = serde_json::from_str::<Vec<HistoryEntry>>(&content) {
-                        // Check if any entry matches the target path
-                        for history_entry in &history {
-                            if history_entry.path == target_path {
-                                // Load session metadata
-                                let meta_path = session_path.join("metadata.json");
-                                if let Ok(session_content) = fs::read_to_string(&meta_path) {
-                                    if let Ok(session) =
-                                        serde_json::from_str::<Session>(&session_content)
-                                    {
-                                        // Get timestamp from history for sorting
-                                        matching_sessions
-                                            .push((session, history_entry.timestamp.clone()));
-                                    }
-                                }
-                                break;
-                            }
+            if history_path.exists()
+                && let Ok(content) = fs::read_to_string(&history_path)
+                && let Ok(history) = serde_json::from_str::<Vec<HistoryEntry>>(&content)
+            {
+                // Check if any entry matches the target path
+                for history_entry in &history {
+                    if history_entry.path == target_path {
+                        // Load session metadata
+                        let meta_path = session_path.join("metadata.json");
+                        if let Ok(session_content) = fs::read_to_string(&meta_path)
+                            && let Ok(session) = serde_json::from_str::<Session>(&session_content)
+                        {
+                            // Get timestamp from history for sorting
+                            matching_sessions.push((session, history_entry.timestamp));
                         }
+                        break;
                     }
                 }
             }
