@@ -37,6 +37,14 @@ pub fn clear_sessions() -> Result<usize> {
     storage::clear_sessions()
 }
 
+pub fn find_by_path(path: &std::path::Path) -> Result<Vec<Session>> {
+    storage::find_by_path(path)
+}
+
+pub fn update_history(session: &Session, cwd: &std::path::Path) -> Result<()> {
+    storage::update_history(session, cwd)
+}
+
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult>> {
     if keys.is_empty() {
         return Ok(None);
