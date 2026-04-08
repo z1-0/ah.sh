@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::DateTime;
 use comfy_table::{Attribute, Cell, Color, Table, presets::UTF8_FULL};
 use console::{Term, style};
 use std::collections::HashMap;
@@ -177,6 +178,34 @@ pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Print session history prompt for current directory
+pub fn print_session_history(sessions: &[Session], history_timestamps: &[String]) {
+	println!();
+	println!("╭─ Session History ──────────────────────────────────────────╮");
+	for (i, session) in sessions.iter().enumerate().take(5) {
+		let langs = session.languages.join(", ");
+		let timestamp = history_timestamps
+			.get(i)
+			.map(|ts| {
+				// Parse RFC3339 and format as "2024-01-15 18:30"
+				if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
+					dt.format("%Y-%m-%d %H:%M").to_string()
+				} else {
+					ts.clone()
+				}
+			})
+			.unwrap_or_else(|| "Unknown".to_string());
+		println!("│ │");
+		println!("│ #{} {} │", i + 1, session.id);
+		println!("│ {} ({}) │", langs, session.provider);
+		println!("│ Last used: {} │", timestamp);
+	}
+	println!("│ │");
+	println!("╰────────────────────────────────────────────────────────────────╯");
+	print!(" Enter session number to restore, or press Enter to skip: ");
+	let _ = std::io::stdout().flush();
 }
 
 fn write_provider_languages(pt: ProviderType) -> Result<()> {
