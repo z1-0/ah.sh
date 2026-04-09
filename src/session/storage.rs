@@ -137,13 +137,13 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     };
 
     // Remove existing entry for this path (if any)
-    let cwd_str = cwd.to_string_lossy().to_string();
+    let cwd_str = cwd.to_string_lossy().into_owned();
     history.retain(|entry| *entry != cwd_str);
 
     // Add new entry at the beginning
     history.insert(0, cwd_str);
 
-    // Keep only last 5 entries
+    // Keep only last HISTORY_LIMIT entries
     history.truncate(HISTORY_LIMIT);
 
     // Write back
@@ -160,7 +160,7 @@ pub(crate) fn find_by_path(path: &Path) -> Result<Vec<Session>> {
     }
 
     let mut matching_sessions: Vec<(Session, SystemTime)> = Vec::new();
-    let target_path = path.to_string_lossy().to_string();
+    let target_path = path.to_string_lossy().into_owned();
 
     for entry in fs::read_dir(session_dir)? {
         let entry = entry?;
