@@ -43,7 +43,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 
     if !result.removed_ids.is_empty() {
         // Check if current session was removed
-        if let Ok(Some(current_id)) = crate::paths::read_current_session() {
+        if let Some(current_id) = crate::paths::read_current_session()? {
             if result.removed_ids.contains(&current_id) {
                 crate::paths::clear_current_session()?;
             }
