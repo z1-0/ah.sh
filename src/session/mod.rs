@@ -8,16 +8,20 @@ use std::collections::HashSet;
 pub use storage::*;
 pub use types::*;
 
+/// Generate session ID from provider and languages
+pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
+    let input = format!("{}:{}", provider, languages.join(","));
+    let digest = blake3::hash(input.as_bytes());
+    digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
+}
+
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
     let supported_languages = to_supported_languages(provider, languages)?;
 
-    let session_id = storage::generate_id(provider, &supported_languages);
-    let session = storage::find_session(&SessionKey::Id(session_id))?;
+    let session_id = generate_id(provider, &supported_languages);
+    let sessions = list_sessions()?;
+    let session = storage::resolve_by_key(&sessions, &SessionKey::Id(session_id))?;
     Ok(Some(session))
-}
-
-pub fn resolve_session_dir(key: &SessionKey) -> Result<Session> {
-    storage::find_session(key)
 }
 
 /// Remove sessions by keys (with deduplication logic)
@@ -26,8 +30,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
         return Ok(None);
     }
 
-    // Load sessions only once
-    let sessions = storage::list_sessions()?;
+    let sessions = list_sessions()?;
     if sessions.is_empty() {
         return Ok(None);
     }
@@ -37,13 +40,11 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     let mut deduped_session_ids = HashSet::new();
 
     for key in keys {
-        // Use storage::resolve_session directly instead of find_session
-        // to avoid calling list_sessions again inside the loop
-        match storage::resolve_session(&sessions, key) {
+        match storage::resolve_by_key(&sessions, key) {
             Ok(session) => {
                 if deduped_session_ids.insert(session.id.clone()) {
                     let session_id = session.id.clone();
-                    if storage::remove_session(&session_id)? {
+                    if remove_session(&session_id)? {
                         removed_ids.push(session_id);
                     } else {
                         missing_keys.push(session_id);
@@ -67,7 +68,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
 pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Result<Session> {
     let supported_languages = to_supported_languages(provider, &languages)?;
 
-    let session_id = storage::generate_id(provider, &supported_languages);
+    let session_id = generate_id(provider, &supported_languages);
 
     let session = Session {
         id: session_id,
@@ -75,7 +76,7 @@ pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Resul
         languages: supported_languages,
     };
 
-    storage::save_session(&session)?;
+    save_session(&session)?;
 
     Ok(session)
 }

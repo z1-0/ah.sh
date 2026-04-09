@@ -1,18 +1,12 @@
 use crate::paths::get_session_dir;
-use crate::provider::{ProviderType, get_flake_contents};
+use crate::provider::get_flake_contents;
 
-use crate::session::types::{HISTORY_LIMIT, SESSION_ID_LEN, Session, SessionKey};
+use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
 use anyhow::Result;
 use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
-
-pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
-    let input = format!("{}:{}", provider, languages.join(","));
-    let digest = blake3::hash(input.as_bytes());
-    digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
-}
 
 pub fn list_sessions() -> Result<Vec<Session>> {
     let session_dir = get_session_dir()?;
@@ -73,7 +67,8 @@ pub fn save_session(session: &Session) -> Result<()> {
     Ok(())
 }
 
-pub fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session> {
+/// Resolve a session from a list by key
+pub fn resolve_by_key(sessions: &[Session], key: &SessionKey) -> Result<Session> {
     match key {
         SessionKey::Index(idx) => {
             if *idx > 0 && *idx <= sessions.len() {
@@ -90,9 +85,9 @@ pub fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session
     }
 }
 
-pub fn find_session(key: &SessionKey) -> Result<Session> {
+pub fn find_by_key(key: &SessionKey) -> Result<Session> {
     let sessions = list_sessions()?;
-    resolve_session(&sessions, key)
+    resolve_by_key(&sessions, key)
 }
 
 pub fn remove_session(session_id: &str) -> Result<bool> {
@@ -129,7 +124,6 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let session_dir = session.get_dir()?;
     let history_path = session_dir.join("history.json");
 
-    // Read existing history
     let mut history: Vec<String> = if history_path.exists() {
         let content = fs::read_to_string(&history_path)?;
         serde_json::from_str(&content).unwrap_or_default()
@@ -137,17 +131,11 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
         Vec::new()
     };
 
-    // Remove existing entry for this path (if any)
     let cwd_str = cwd.to_string_lossy().into_owned();
     history.retain(|entry| *entry != cwd_str);
-
-    // Add new entry at the beginning
     history.insert(0, cwd_str);
-
-    // Keep only last HISTORY_LIMIT entries
     history.truncate(HISTORY_LIMIT);
 
-    // Write back
     let content = serde_json::to_string_pretty(&history)?;
     fs::write(&history_path, content)?;
 
@@ -172,15 +160,12 @@ pub fn find_by_path(path: &Path) -> Result<Vec<Session>> {
                 && let Ok(content) = fs::read_to_string(&history_path)
                 && let Ok(history) = serde_json::from_str::<Vec<String>>(&content)
             {
-                // Check if any entry matches the target path
                 for history_entry in &history {
                     if *history_entry == target_path {
-                        // Load session metadata
                         let meta_path = session_path.join("metadata.json");
                         if let Ok(session_content) = fs::read_to_string(&meta_path)
                             && let Ok(session) = serde_json::from_str::<Session>(&session_content)
                         {
-                            // Get session dir mtime for sorting
                             let mtime = entry
                                 .metadata()
                                 .and_then(|m| m.modified())
@@ -194,7 +179,6 @@ pub fn find_by_path(path: &Path) -> Result<Vec<Session>> {
         }
     }
 
-    // Sort by mtime descending (most recent first)
     matching_sessions.sort_by(|(_, a_mtime), (_, b_mtime)| b_mtime.cmp(a_mtime));
 
     Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
