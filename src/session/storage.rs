@@ -119,6 +119,26 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
+pub fn find_session_by_id(session_id: &str) -> Result<Option<Session>> {
+    let session_path = get_session_dir()?.join(session_id);
+    if !session_path.exists() {
+        return Ok(None);
+    }
+    let meta_path = session_path.join("metadata.json");
+    let content = fs::read_to_string(&meta_path)?;
+    let session = serde_json::from_str(&content)?;
+    Ok(Some(session))
+}
+
+pub fn find_session_by_index(idx: usize) -> Result<Option<Session>> {
+    let sessions = list_sessions()?;
+    if idx > 0 && idx <= sessions.len() {
+        Ok(Some(sessions[idx - 1].clone()))
+    } else {
+        Ok(None)
+    }
+}
+
 pub fn find_by_path(path: &Path) -> Result<Vec<Session>> {
     let session_dir = get_session_dir()?;
     if !session_dir.exists() {
