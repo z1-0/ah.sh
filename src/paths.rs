@@ -53,3 +53,11 @@ pub fn save_current_session(session_id: &str) -> Result<()> {
     std::fs::write(&path, session_id)?;
     Ok(())
 }
+
+pub fn clear_current_session() -> Result<()> {
+    let path = get_current_session_path()?;
+    if path.exists() {
+        std::fs::remove_file(path)?;
+    }
+    Ok(())
+}

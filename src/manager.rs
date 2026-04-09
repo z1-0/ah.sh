@@ -11,6 +11,9 @@ pub fn clear_sessions() -> Result<()> {
     }
 
     let removed = session::service::clear_sessions()?;
+    if removed > 0 {
+        crate::paths::clear_current_session()?;
+    }
     print_success(format!("Cleared {} session(s).", removed));
     Ok(())
 }
@@ -39,6 +42,13 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
     };
 
     if !result.removed_ids.is_empty() {
+        // Check if current session was removed
+        if let Ok(Some(current_id)) = crate::paths::read_current_session() {
+            if result.removed_ids.contains(&current_id) {
+                crate::paths::clear_current_session()?;
+            }
+        }
+
         print_success(format!(
             "Removed {} session(s): {}",
             result.removed_ids.len(),
