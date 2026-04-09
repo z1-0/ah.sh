@@ -61,10 +61,9 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
         None => {
             // Show session history for current directory
             let cwd = crate::paths::get_cwd()?;
-            if let Ok(sessions_with_ts) = session::service::find_by_path(&cwd)
-                && !sessions_with_ts.is_empty()
+            if let Ok(sessions) = session::service::find_by_path(&cwd)
+                && !sessions.is_empty()
             {
-                let sessions: Vec<_> = sessions_with_ts.into_iter().map(|(s, _)| s).collect();
                 print_session_history(&sessions);
 
                 let mut input = String::new();

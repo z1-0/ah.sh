@@ -1,8 +1,7 @@
 use crate::paths::get_session_dir;
 use crate::provider::{ProviderType, get_flake_contents};
-use crate::session::types::{HISTORY_LIMIT, HistoryEntry, SESSION_ID_LEN, Session, SessionKey};
+use crate::session::types::{HISTORY_LIMIT, SESSION_ID_LEN, Session, SessionKey};
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
@@ -130,7 +129,7 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let history_path = session_dir.join("history.json");
 
     // Read existing history
-    let mut history: Vec<HistoryEntry> = if history_path.exists() {
+    let mut history: Vec<String> = if history_path.exists() {
         let content = fs::read_to_string(&history_path)?;
         serde_json::from_str(&content).unwrap_or_default()
     } else {
@@ -139,17 +138,10 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 
     // Remove existing entry for this path (if any)
     let cwd_str = cwd.to_string_lossy().to_string();
-    history.retain(|entry| entry.path != cwd_str);
+    history.retain(|entry| *entry != cwd_str);
 
     // Add new entry at the beginning
-    let timestamp = Utc::now();
-    history.insert(
-        0,
-        HistoryEntry {
-            path: cwd_str,
-            timestamp,
-        },
-    );
+    history.insert(0, cwd_str);
 
     // Keep only last 5 entries
     history.truncate(HISTORY_LIMIT);
@@ -161,13 +153,13 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, DateTime<Utc>)>> {
+pub(crate) fn find_by_path(path: &Path) -> Result<Vec<Session>> {
     let session_dir = get_session_dir()?;
     if !session_dir.exists() {
         return Ok(Vec::new());
     }
 
-    let mut matching_sessions = Vec::new();
+    let mut matching_sessions: Vec<(Session, SystemTime)> = Vec::new();
     let target_path = path.to_string_lossy().to_string();
 
     for entry in fs::read_dir(session_dir)? {
@@ -177,18 +169,22 @@ pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, DateTime<Utc>)>>
             let history_path = session_path.join("history.json");
             if history_path.exists()
                 && let Ok(content) = fs::read_to_string(&history_path)
-                && let Ok(history) = serde_json::from_str::<Vec<HistoryEntry>>(&content)
+                && let Ok(history) = serde_json::from_str::<Vec<String>>(&content)
             {
                 // Check if any entry matches the target path
                 for history_entry in &history {
-                    if history_entry.path == target_path {
+                    if *history_entry == target_path {
                         // Load session metadata
                         let meta_path = session_path.join("metadata.json");
                         if let Ok(session_content) = fs::read_to_string(&meta_path)
                             && let Ok(session) = serde_json::from_str::<Session>(&session_content)
                         {
-                            // Get timestamp from history for sorting
-                            matching_sessions.push((session, history_entry.timestamp));
+                            // Get session dir mtime for sorting
+                            let mtime = entry
+                                .metadata()
+                                .and_then(|m| m.modified())
+                                .unwrap_or(SystemTime::UNIX_EPOCH);
+                            matching_sessions.push((session, mtime));
                         }
                         break;
                     }
@@ -197,8 +193,8 @@ pub(crate) fn find_by_path(path: &Path) -> Result<Vec<(Session, DateTime<Utc>)>>
         }
     }
 
-    // Sort by timestamp descending (most recent first)
-    matching_sessions.sort_by(|(_, a_ts), (_, b_ts)| b_ts.cmp(a_ts));
+    // Sort by mtime descending (most recent first)
+    matching_sessions.sort_by(|(_, a_mtime), (_, b_mtime)| b_mtime.cmp(a_mtime));
 
-    Ok(matching_sessions)
+    Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
 }

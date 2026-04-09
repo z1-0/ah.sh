@@ -3,7 +3,6 @@ use crate::provider::{Language, ProviderType, to_supported_languages};
 use crate::session::storage;
 use crate::session::types::{Session, SessionKey, SessionRemoveResult};
 use anyhow::Result;
-use chrono::DateTime;
 use std::collections::HashSet;
 
 /// Find an existing session by provider + language list
@@ -38,7 +37,7 @@ pub fn clear_sessions() -> Result<usize> {
     storage::clear_sessions()
 }
 
-pub fn find_by_path(path: &std::path::Path) -> Result<Vec<(Session, DateTime<chrono::Utc>)>> {
+pub fn find_by_path(path: &std::path::Path) -> Result<Vec<Session>> {
     storage::find_by_path(path)
 }
 
