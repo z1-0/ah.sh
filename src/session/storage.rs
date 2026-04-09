@@ -1,7 +1,7 @@
 use crate::paths::get_session_dir;
 use crate::provider::get_flake_contents;
 
-use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
+use crate::session::types::{HISTORY_LIMIT, Session};
 use anyhow::Result;
 use std::cmp::Ordering;
 use std::fs;
@@ -65,29 +65,6 @@ pub fn save_session(session: &Session) -> Result<()> {
     let content = serde_json::to_string_pretty(&session)?;
     std::fs::write(&meta_path, content)?;
     Ok(())
-}
-
-/// Resolve a session from a list by key
-pub fn resolve_by_key(sessions: &[Session], key: &SessionKey) -> Result<Session> {
-    match key {
-        SessionKey::Index(idx) => {
-            if *idx > 0 && *idx <= sessions.len() {
-                Ok(sessions[idx - 1].clone())
-            } else {
-                anyhow::bail!("session '{}' not found", key)
-            }
-        }
-        SessionKey::Id(id) => sessions
-            .iter()
-            .find(|s| s.id == *id)
-            .cloned()
-            .ok_or_else(|| anyhow::anyhow!("session '{}' not found", id)),
-    }
-}
-
-pub fn find_by_key(key: &SessionKey) -> Result<Session> {
-    let sessions = list_sessions()?;
-    resolve_by_key(&sessions, key)
 }
 
 pub fn remove_session(session_id: &str) -> Result<bool> {

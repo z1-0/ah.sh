@@ -8,11 +8,32 @@ use std::collections::HashSet;
 pub use storage::*;
 pub use types::*;
 
-/// Generate session ID from provider and languages
 pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
     let input = format!("{}:{}", provider, languages.join(","));
     let digest = blake3::hash(input.as_bytes());
     digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
+}
+
+pub fn find_in_list(sessions: &[Session], key: &SessionKey) -> Result<Session> {
+    match key {
+        SessionKey::Index(idx) => {
+            if *idx > 0 && *idx <= sessions.len() {
+                Ok(sessions[idx - 1].clone())
+            } else {
+                anyhow::bail!("session '{}' not found", key)
+            }
+        }
+        SessionKey::Id(id) => sessions
+            .iter()
+            .find(|s| s.id == *id)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("session '{}' not found", id)),
+    }
+}
+
+pub fn find_by_key(key: &SessionKey) -> Result<Session> {
+    let sessions = list_sessions()?;
+    find_in_list(&sessions, key)
 }
 
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
@@ -20,11 +41,10 @@ pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Op
 
     let session_id = generate_id(provider, &supported_languages);
     let sessions = list_sessions()?;
-    let session = storage::resolve_by_key(&sessions, &SessionKey::Id(session_id))?;
+    let session = find_in_list(&sessions, &SessionKey::Id(session_id))?;
     Ok(Some(session))
 }
 
-/// Remove sessions by keys (with deduplication logic)
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult>> {
     if keys.is_empty() {
         return Ok(None);
@@ -40,7 +60,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     let mut deduped_session_ids = HashSet::new();
 
     for key in keys {
-        match storage::resolve_by_key(&sessions, key) {
+        match find_in_list(&sessions, key) {
             Ok(session) => {
                 if deduped_session_ids.insert(session.id.clone()) {
                     let session_id = session.id.clone();
@@ -64,7 +84,6 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     }))
 }
 
-/// Create a new session
 pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Result<Session> {
     let supported_languages = to_supported_languages(provider, &languages)?;
 
