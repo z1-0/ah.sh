@@ -1,5 +1,6 @@
 use crate::paths::get_session_dir;
 use crate::provider::{ProviderType, get_flake_contents};
+
 use crate::session::types::{HISTORY_LIMIT, SESSION_ID_LEN, Session, SessionKey};
 use anyhow::Result;
 use std::cmp::Ordering;
@@ -7,13 +8,13 @@ use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 
-pub(crate) fn generate_id(provider: ProviderType, languages: &[String]) -> String {
+pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
     let input = format!("{}:{}", provider, languages.join(","));
     let digest = blake3::hash(input.as_bytes());
     digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
 }
 
-pub(crate) fn list_sessions() -> Result<Vec<Session>> {
+pub fn list_sessions() -> Result<Vec<Session>> {
     let session_dir = get_session_dir()?;
 
     if !session_dir.exists() {
@@ -56,7 +57,7 @@ pub(crate) fn list_sessions() -> Result<Vec<Session>> {
     Ok(sessions.into_iter().map(|(session, _)| session).collect())
 }
 
-pub(crate) fn save_session(session: &Session) -> Result<()> {
+pub fn save_session(session: &Session) -> Result<()> {
     let session_dir = &session.get_dir()?;
     if !session_dir.exists() {
         std::fs::create_dir_all(session_dir)?;
@@ -89,12 +90,12 @@ pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<
     }
 }
 
-pub(crate) fn find_session(key: &SessionKey) -> Result<Session> {
+pub fn find_session(key: &SessionKey) -> Result<Session> {
     let sessions = list_sessions()?;
     resolve_session(&sessions, key)
 }
 
-pub(crate) fn remove_session(session_id: &str) -> Result<bool> {
+pub fn remove_session(session_id: &str) -> Result<bool> {
     let session_path = get_session_dir()?.join(session_id);
     if !session_path.exists() {
         return Ok(false);
@@ -103,7 +104,7 @@ pub(crate) fn remove_session(session_id: &str) -> Result<bool> {
     Ok(true)
 }
 
-pub(crate) fn clear_sessions() -> Result<usize> {
+pub fn clear_sessions() -> Result<usize> {
     let session_dir = get_session_dir()?;
 
     if !session_dir.exists() {
@@ -124,7 +125,7 @@ pub(crate) fn clear_sessions() -> Result<usize> {
     Ok(removed)
 }
 
-pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
+pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let session_dir = session.get_dir()?;
     let history_path = session_dir.join("history.json");
 
@@ -153,7 +154,7 @@ pub(crate) fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn find_by_path(path: &Path) -> Result<Vec<Session>> {
+pub fn find_by_path(path: &Path) -> Result<Vec<Session>> {
     let session_dir = get_session_dir()?;
     if !session_dir.exists() {
         return Ok(Vec::new());

@@ -17,7 +17,7 @@ pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> R
 
     // Update session history with current working directory
     let cwd = get_cwd()?;
-    if let Err(e) = crate::session::service::update_history(&session, &cwd) {
+    if let Err(e) = crate::session::update_history(&session, &cwd) {
         eprintln!("Warning: failed to update session history: {}", e);
     }
 

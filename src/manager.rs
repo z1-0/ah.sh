@@ -10,7 +10,7 @@ pub fn clear_sessions() -> Result<()> {
         return Ok(());
     }
 
-    let removed = session::service::clear_sessions()?;
+    let removed = session::clear_sessions()?;
     if removed > 0 {
         crate::paths::clear_current_session()?;
     }
@@ -25,7 +25,7 @@ pub fn list_provider() -> Result<()> {
 }
 
 pub fn list_sessions() -> Result<()> {
-    let sessions = session::service::list_sessions()?;
+    let sessions = session::list_sessions()?;
     if sessions.is_empty() {
         print_info("No sessions found.");
         return Ok(());
@@ -36,17 +36,17 @@ pub fn list_sessions() -> Result<()> {
 }
 
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
-    let Some(result) = session::service::remove_sessions(keys)? else {
+    let Some(result) = session::remove_sessions(keys)? else {
         print_info("No sessions found.");
         return Ok(());
     };
 
     if !result.removed_ids.is_empty() {
         // Check if current session was removed
-        if let Some(current_id) = crate::paths::read_current_session()? {
-            if result.removed_ids.contains(&current_id) {
-                crate::paths::clear_current_session()?;
-            }
+        if let Some(current_id) = crate::paths::read_current_session()?
+            && result.removed_ids.contains(&current_id)
+        {
+            crate::paths::clear_current_session()?;
         }
 
         print_success(format!(
@@ -65,13 +65,13 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
     match key {
         Some(k) => {
-            let session = session::service::resolve_session_dir(k)?;
+            let session = session::resolve_session_dir(k)?;
             nix_develop_of_session(session, true)
         }
         None => {
             // Show session history for current directory
             let cwd = crate::paths::get_cwd()?;
-            if let Ok(sessions) = session::service::find_by_path(&cwd)
+            if let Ok(sessions) = session::find_by_path(&cwd)
                 && !sessions.is_empty()
             {
                 print_session_history(&sessions);
@@ -109,12 +109,12 @@ pub fn show_provider(provider: ProviderShowSelector) -> Result<()> {
 
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     let session = match key {
-        Some(k) => session::service::resolve_session_dir(k)?,
+        Some(k) => session::resolve_session_dir(k)?,
         None => {
             let current_id = crate::paths::read_current_session()?.ok_or_else(|| {
                 anyhow::anyhow!("No current session. Specify a session with 'ah update <index|id>'")
             })?;
-            session::service::resolve_session_dir(&SessionKey::Id(current_id))?
+            session::resolve_session_dir(&SessionKey::Id(current_id))?
         }
     };
 
@@ -145,7 +145,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 }
 
 pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> Result<()> {
-    match session::service::find_session(provider_type, &languages)? {
+    match session::find_session(provider_type, &languages)? {
         Some(session) => {
             print_session_found(
                 &session.id,
@@ -159,7 +159,7 @@ pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> R
             let lang_strings: Vec<String> = languages.iter().map(|l| l.to_string()).collect();
             print_no_session(&provider_type.to_string(), &lang_strings);
             print_bold("Creating develop shell...");
-            let session = session::service::create_session(provider_type, languages)?;
+            let session = session::create_session(provider_type, languages)?;
             nix_develop_of_session(session, false)
         }
     }
