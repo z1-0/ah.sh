@@ -1,11 +1,10 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use comfy_table::{Attribute, Cell, Color, Table, presets::UTF8_FULL};
 use console::{Term, style};
 use std::collections::HashMap;
 use std::io::Write;
 
-use crate::{provider::ProviderType, session::Session, session::types::HISTORY_LIMIT};
+use crate::{provider::ProviderType, session::Session};
 
 /// Language grouping by first letter range
 struct LanguageGroup {
@@ -181,23 +180,12 @@ pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
 }
 
 /// Print session history prompt for current directory
-pub fn print_session_history(sessions: &[Session], history_timestamps: &[DateTime<Utc>]) {
+/// Reuses print_sessions_list for consistent styling
+pub fn print_session_history(sessions: &[Session]) {
     println!();
-    println!("╭─ Session History ──────────────────────────────────────────╮");
-    for (i, session) in sessions.iter().enumerate().take(HISTORY_LIMIT) {
-        let langs = session.languages.join(", ");
-        let timestamp = history_timestamps
-            .get(i)
-            .map(|ts| ts.format("%Y-%m-%d %H:%M").to_string())
-            .unwrap_or_else(|| "Unknown".to_string());
-        println!("│ │");
-        println!("│ #{} {} │", i + 1, session.id);
-        println!("│ {} ({}) │", langs, session.provider);
-        println!("│ Last used: {} │", timestamp);
-    }
-    println!("│ │");
-    println!("╰────────────────────────────────────────────────────────────────╯");
-    print!(" Enter session number to restore, or press Enter to skip: ");
+    print_sessions_list(sessions);
+    println!();
+    print!("Enter session number to restore, or press Enter to skip: ");
     let _ = std::io::stdout().flush();
 }
 

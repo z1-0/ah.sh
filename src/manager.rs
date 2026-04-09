@@ -64,8 +64,8 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
             if let Ok(sessions_with_ts) = session::service::find_by_path(&cwd)
                 && !sessions_with_ts.is_empty()
             {
-                let (sessions, timestamps): (Vec<_>, Vec<_>) = sessions_with_ts.into_iter().unzip();
-                print_session_history(&sessions, &timestamps);
+                let sessions: Vec<_> = sessions_with_ts.into_iter().map(|(s, _)| s).collect();
+                print_session_history(&sessions);
 
                 let mut input = String::new();
                 if std::io::stdin().read_line(&mut input).is_ok() {
