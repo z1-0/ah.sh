@@ -20,11 +20,13 @@ pub fn resolve_session_dir(key: &SessionKey) -> Result<Session> {
     storage::find_session(key)
 }
 
+/// Remove sessions by keys (with deduplication logic)
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult>> {
     if keys.is_empty() {
         return Ok(None);
     }
 
+    // Load sessions only once
     let sessions = storage::list_sessions()?;
     if sessions.is_empty() {
         return Ok(None);
@@ -35,7 +37,9 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     let mut deduped_session_ids = HashSet::new();
 
     for key in keys {
-        match storage::find_session(key) {
+        // Use storage::resolve_session directly instead of find_session
+        // to avoid calling list_sessions again inside the loop
+        match storage::resolve_session(&sessions, key) {
             Ok(session) => {
                 if deduped_session_ids.insert(session.id.clone()) {
                     let session_id = session.id.clone();
@@ -59,6 +63,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     }))
 }
 
+/// Create a new session
 pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Result<Session> {
     let supported_languages = to_supported_languages(provider, &languages)?;
 

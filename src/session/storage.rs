@@ -58,22 +58,22 @@ pub fn list_sessions() -> Result<Vec<Session>> {
 }
 
 pub fn save_session(session: &Session) -> Result<()> {
-    let session_dir = &session.get_dir()?;
+    let session_dir = session.get_dir()?;
     if !session_dir.exists() {
-        std::fs::create_dir_all(session_dir)?;
+        std::fs::create_dir_all(&session_dir)?;
     }
 
     let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
     let flake_path = session_dir.join("flake.nix");
     std::fs::write(flake_path, flake_contents)?;
 
-    let meta_path = session.get_dir()?.join("metadata.json");
+    let meta_path = session_dir.join("metadata.json");
     let content = serde_json::to_string_pretty(&session)?;
     std::fs::write(&meta_path, content)?;
     Ok(())
 }
 
-pub(crate) fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session> {
+pub fn resolve_session(sessions: &[Session], key: &SessionKey) -> Result<Session> {
     match key {
         SessionKey::Index(idx) => {
             if *idx > 0 && *idx <= sessions.len() {
