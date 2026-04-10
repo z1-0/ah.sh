@@ -1,14 +1,13 @@
+use crate::paths::get_session_dir;
+use crate::provider::ProviderType;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::paths::get_session_dir;
-use crate::provider::ProviderType;
-
 pub const SESSION_ID_LEN: usize = 8;
-pub const HISTORY_LIMIT: usize = 3;
+pub const HISTORY_LIMIT: usize = 64;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
