@@ -1,7 +1,7 @@
 use crate::paths::get_session_dir;
 use crate::provider::get_flake_contents;
 
-use crate::session::types::{HISTORY_LIMIT, Session};
+use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
 use anyhow::Result;
 use std::cmp::Ordering;
 use std::fs;
@@ -119,7 +119,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
-pub fn find_session_by_id(session_id: &str) -> Result<Option<Session>> {
+pub(crate) fn find_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = get_session_dir()?.join(session_id);
     if !session_path.exists() {
         return Ok(None);
@@ -130,13 +130,24 @@ pub fn find_session_by_id(session_id: &str) -> Result<Option<Session>> {
     Ok(Some(session))
 }
 
-pub fn find_session_by_index(idx: usize) -> Result<Option<Session>> {
+pub(crate) fn find_session_by_index(idx: usize) -> Result<Option<Session>> {
     let sessions = list_sessions()?;
     if idx > 0 && idx <= sessions.len() {
         Ok(Some(sessions[idx - 1].clone()))
     } else {
         Ok(None)
     }
+}
+
+pub(crate) fn find_session_by_key(key: &SessionKey) -> Result<Option<Session>> {
+    match key {
+        SessionKey::Id(id) => find_session_by_id(id),
+        SessionKey::Index(idx) => find_session_by_index(*idx),
+    }
+}
+
+pub fn find_by_key(key: &SessionKey) -> Result<Session> {
+    find_session_by_key(key)?.ok_or_else(|| anyhow::anyhow!("session '{}' not found", key))
 }
 
 pub fn find_by_path(path: &Path) -> Result<Vec<Session>> {

@@ -2,7 +2,7 @@ mod storage;
 mod types;
 
 use crate::provider::{Language, ProviderType, to_supported_languages};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::collections::HashSet;
 
 pub use storage::*;
@@ -12,14 +12,6 @@ pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
     let input = format!("{}:{}", provider, languages.join(","));
     let digest = blake3::hash(input.as_bytes());
     digest.to_hex().to_string()[..SESSION_ID_LEN].to_string()
-}
-
-pub fn find_by_key(key: &SessionKey) -> Result<Session> {
-    match key {
-        SessionKey::Id(id) => find_session_by_id(id),
-        SessionKey::Index(idx) => find_session_by_index(*idx),
-    }
-    .and_then(|opt| opt.context(format!("session '{}' not found", key)))
 }
 
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
@@ -38,10 +30,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     let mut deduped_session_ids = HashSet::new();
 
     for key in keys {
-        let session = match key {
-            SessionKey::Id(id) => find_session_by_id(id),
-            SessionKey::Index(idx) => find_session_by_index(*idx),
-        }?;
+        let session = find_session_by_key(key)?;
 
         if let Some(session) = session {
             if deduped_session_ids.insert(session.id.clone()) {
