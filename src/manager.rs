@@ -65,13 +65,11 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
     match key {
         Some(k) => {
-            let session = session::find_by_key(k)?;
+            let session = session::find_session_by_key(k)?;
             nix_develop_of_session(session, true)
         }
         None => {
-            // Show session history for current directory
-            let cwd = crate::paths::get_cwd()?;
-            if let Ok(sessions) = session::find_by_path(&cwd)
+            if let Ok(sessions) = session::find_session_by_history()
                 && !sessions.is_empty()
             {
                 print_session_history(&sessions);
@@ -109,12 +107,12 @@ pub fn show_provider(provider: ProviderShowSelector) -> Result<()> {
 
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     let session = match key {
-        Some(k) => session::find_by_key(k)?,
+        Some(k) => session::find_session_by_key(k)?,
         None => {
             let current_id = crate::paths::read_current_session()?.ok_or_else(|| {
                 anyhow::anyhow!("No current session. Specify a session with 'ah update <index|id>'")
             })?;
-            session::find_by_key(&SessionKey::Id(current_id))?
+            session::find_session_by_key(&SessionKey::Id(current_id))?
         }
     };
 

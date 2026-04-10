@@ -17,7 +17,7 @@ pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
     let supported_languages = to_supported_languages(provider, languages)?;
     let session_id = generate_id(provider, &supported_languages);
-    find_session_by_id(&session_id)
+    try_session_by_id(&session_id)
 }
 
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult>> {
@@ -30,7 +30,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     let mut deduped_session_ids = HashSet::new();
 
     for key in keys {
-        let session = find_session_by_key(key)?;
+        let session = try_session_by_key(key)?;
 
         if let Some(session) = session {
             if deduped_session_ids.insert(session.id.clone()) {
