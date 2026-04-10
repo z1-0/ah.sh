@@ -10,21 +10,20 @@ use std::time::SystemTime;
 
 fn read_session_from_path(path: &Path) -> Option<Session> {
     let meta_path = path.join("metadata.json");
-    if !meta_path.exists() {
-        return None;
-    }
     let content = fs::read_to_string(meta_path).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
+fn read_history(session_dir: &Path) -> Option<Vec<String>> {
+    let history_path = session_dir.join("history.json");
+    let content = fs::read_to_string(history_path).ok()?;
     serde_json::from_str(&content).ok()
 }
 
 fn try_iter_sessions() -> Result<Vec<(Session, SystemTime)>> {
     let session_dir = get_session_dir()?;
 
-    if !session_dir.exists() {
-        return Ok(Vec::new());
-    }
-
-    let sessions: Vec<Result<(Session, SystemTime)>> = fs::read_dir(session_dir)?
+    let sessions: Vec<(Session, SystemTime)> = fs::read_dir(session_dir)?
         .flatten()
         .filter_map(|entry: std::fs::DirEntry| {
             let path = entry.path();
@@ -38,11 +37,11 @@ fn try_iter_sessions() -> Result<Vec<(Session, SystemTime)>> {
                 .and_then(|m| m.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH);
 
-            Some(Ok((session, mtime)))
+            Some((session, mtime))
         })
         .collect();
 
-    sessions.into_iter().collect()
+    Ok(sessions)
 }
 
 pub fn list_sessions() -> Result<Vec<Session>> {
@@ -126,9 +125,6 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = get_session_dir()?.join(session_id);
-    if !session_path.exists() {
-        return Ok(None);
-    }
     Ok(read_session_from_path(&session_path))
 }
 
@@ -156,36 +152,18 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
     let cwd = crate::paths::get_cwd()?;
     let target_path = cwd.to_string_lossy().into_owned();
 
+    let session_base_dir = get_session_dir()?;
     let sessions = try_iter_sessions()?;
 
     let matching_sessions: Vec<_> = sessions
         .into_iter()
         .filter(|(session, _)| {
-            let session_dir = match session.get_dir() {
-                Ok(dir) => dir,
-                _ => return false,
-            };
-            let history_path = session_dir.join("history.json");
-            if !history_path.exists() {
-                return false;
-            }
-
-            let content = match fs::read_to_string(&history_path) {
-                Ok(c) => c,
-                _ => return false,
-            };
-
-            let history: Vec<String> = match serde_json::from_str(&content) {
-                Ok(h) => h,
-                _ => return false,
-            };
-
-            history.iter().any(|entry| entry == &target_path)
+            let session_dir = session_base_dir.join(&session.id);
+            read_history(&session_dir)
+                .map(|history| history.iter().any(|entry| entry == &target_path))
+                .unwrap_or(false)
         })
         .collect();
 
-    let mut sorted: Vec<_> = matching_sessions;
-    sorted.sort_by(|(_, a_mtime), (_, b_mtime)| b_mtime.cmp(a_mtime));
-
-    Ok(sorted.into_iter().map(|(s, _)| s).collect())
+    Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
 }
