@@ -1,6 +1,5 @@
 use crate::paths::get_session_dir;
 use crate::provider::get_flake_contents;
-
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
 use anyhow::Result;
 use std::cmp::Ordering;
@@ -8,19 +7,14 @@ use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 
-fn read_session_from_path(path: &Path) -> Option<Session> {
-    let meta_path = path.join("metadata.json");
-    let content = fs::read_to_string(meta_path).ok()?;
-    serde_json::from_str(&content).ok()
-}
-
-fn read_history(session_dir: &Path) -> Option<Vec<String>> {
+fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     let history_path = session_dir.join("history.json");
-    let content = fs::read_to_string(history_path).ok()?;
-    serde_json::from_str(&content).ok()
+    let content = fs::read_to_string(history_path)?;
+    let history: Vec<String> = serde_json::from_str(&content)?;
+    Ok(history)
 }
 
-fn try_iter_sessions() -> Result<Vec<(Session, SystemTime)>> {
+fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
     let session_dir = get_session_dir()?;
 
     let sessions: Vec<(Session, SystemTime)> = fs::read_dir(session_dir)?
@@ -31,7 +25,8 @@ fn try_iter_sessions() -> Result<Vec<(Session, SystemTime)>> {
                 return None;
             }
 
-            let session = read_session_from_path(&path)?;
+            let session_id = entry.file_name().to_string_lossy().into_owned();
+            let session = try_session_by_id(&session_id).ok().flatten()?;
             let mtime = path
                 .metadata()
                 .and_then(|m| m.modified())
@@ -45,7 +40,7 @@ fn try_iter_sessions() -> Result<Vec<(Session, SystemTime)>> {
 }
 
 pub fn list_sessions() -> Result<Vec<Session>> {
-    let mut sessions = try_iter_sessions()?;
+    let mut sessions = get_sessions_with_mtime()?;
 
     sessions.sort_by(|(a, a_mtime), (b, b_mtime)| match b_mtime.cmp(a_mtime) {
         Ordering::Equal => a.id.cmp(&b.id),
@@ -53,6 +48,26 @@ pub fn list_sessions() -> Result<Vec<Session>> {
     });
 
     Ok(sessions.into_iter().map(|(session, _)| session).collect())
+}
+
+pub fn find_session_by_history() -> Result<Vec<Session>> {
+    let cwd = crate::paths::get_cwd()?;
+    let target_path = cwd.to_string_lossy().into_owned();
+
+    let session_base_dir = get_session_dir()?;
+    let sessions = get_sessions_with_mtime()?;
+
+    let matching_sessions: Vec<_> = sessions
+        .into_iter()
+        .filter(|(session, _)| {
+            let session_dir = session_base_dir.join(&session.id);
+            read_history(&session_dir)
+                .map(|history| history.iter().any(|entry| entry == &target_path))
+                .unwrap_or(false)
+        })
+        .collect();
+
+    Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
 }
 
 pub fn save_session(session: &Session) -> Result<()> {
@@ -125,7 +140,10 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = get_session_dir()?.join(session_id);
-    Ok(read_session_from_path(&session_path))
+    let meta_path = session_path.join("metadata.json");
+    let content = fs::read_to_string(meta_path)?;
+    let session = serde_json::from_str(&content)?;
+    Ok(Some(session))
 }
 
 pub(crate) fn try_session_by_index(idx: usize) -> Result<Option<Session>> {
@@ -146,24 +164,4 @@ pub(crate) fn try_session_by_key(key: &SessionKey) -> Result<Option<Session>> {
 
 pub fn find_session_by_key(key: &SessionKey) -> Result<Session> {
     try_session_by_key(key)?.ok_or_else(|| anyhow::anyhow!("session '{}' not found", key))
-}
-
-pub fn find_session_by_history() -> Result<Vec<Session>> {
-    let cwd = crate::paths::get_cwd()?;
-    let target_path = cwd.to_string_lossy().into_owned();
-
-    let session_base_dir = get_session_dir()?;
-    let sessions = try_iter_sessions()?;
-
-    let matching_sessions: Vec<_> = sessions
-        .into_iter()
-        .filter(|(session, _)| {
-            let session_dir = session_base_dir.join(&session.id);
-            read_history(&session_dir)
-                .map(|history| history.iter().any(|entry| entry == &target_path))
-                .unwrap_or(false)
-        })
-        .collect();
-
-    Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
 }
