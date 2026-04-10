@@ -10,6 +10,9 @@ use std::time::SystemTime;
 
 fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     let history_path = session_dir.join(HISTORY_FILE);
+    if !history_path.exists() {
+        return Ok(Vec::new());
+    }
     let content = fs::read_to_string(history_path)?;
     let history: Vec<String> = serde_json::from_str(&content)?;
     Ok(history)
@@ -18,6 +21,9 @@ fn read_history(session_dir: &Path) -> Result<Vec<String>> {
 fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
     let session_dir = get_session_dir()?;
 
+    if !session_dir.exists() {
+        return Ok(Vec::new());
+    }
     let sessions: Vec<(Session, SystemTime)> = fs::read_dir(session_dir)?
         .flatten()
         .filter_map(|entry: std::fs::DirEntry| {
@@ -142,7 +148,10 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = get_session_dir()?.join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
-    let content = fs::read_to_string(meta_path)?;
+    if !meta_path.exists() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(&meta_path)?;
     let session = serde_json::from_str(&content)?;
     Ok(Some(session))
 }

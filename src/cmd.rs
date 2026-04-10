@@ -8,7 +8,7 @@ use crate::{
     session::Session,
 };
 
-pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> Result<()> {
+pub fn nix_develop_of_session(session: Session, use_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
     let profile_path = flake_dir.join(NIX_PROFILE_DIR);
 
@@ -24,7 +24,7 @@ pub fn nix_develop_of_session(session: Session, use_existing_profile: bool) -> R
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
 
-    if use_existing_profile {
+    if use_profile && profile_path.exists() {
         cmd.arg(&profile_path);
     } else {
         cmd.arg(&flake_dir).arg("--profile").arg(&profile_path);
