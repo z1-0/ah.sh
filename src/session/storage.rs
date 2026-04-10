@@ -1,4 +1,5 @@
 use crate::paths::get_session_dir;
+use crate::paths::session::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
 use anyhow::Result;
@@ -8,7 +9,7 @@ use std::path::Path;
 use std::time::SystemTime;
 
 fn read_history(session_dir: &Path) -> Result<Vec<String>> {
-    let history_path = session_dir.join("history.json");
+    let history_path = session_dir.join(HISTORY_FILE);
     let content = fs::read_to_string(history_path)?;
     let history: Vec<String> = serde_json::from_str(&content)?;
     Ok(history)
@@ -77,10 +78,10 @@ pub fn save_session(session: &Session) -> Result<()> {
     }
 
     let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
-    let flake_path = session_dir.join("flake.nix");
+    let flake_path = session_dir.join(FLAKE_FILE);
     std::fs::write(flake_path, flake_contents)?;
 
-    let meta_path = session_dir.join("metadata.json");
+    let meta_path = session_dir.join(METADATA_FILE);
     let content = serde_json::to_string_pretty(&session)?;
     std::fs::write(&meta_path, content)?;
     Ok(())
@@ -118,7 +119,7 @@ pub fn clear_sessions() -> Result<usize> {
 
 pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let session_dir = session.get_dir()?;
-    let history_path = session_dir.join("history.json");
+    let history_path = session_dir.join(HISTORY_FILE);
 
     let mut history: Vec<String> = if history_path.exists() {
         let content = fs::read_to_string(&history_path)?;
@@ -140,7 +141,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = get_session_dir()?.join(session_id);
-    let meta_path = session_path.join("metadata.json");
+    let meta_path = session_path.join(METADATA_FILE);
     let content = fs::read_to_string(meta_path)?;
     let session = serde_json::from_str(&content)?;
     Ok(Some(session))

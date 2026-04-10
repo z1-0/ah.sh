@@ -10,3 +10,7 @@ result*
 result-*
 
 .pre-commit-config.yaml
+
+AGENTS.md
+CLAUDE.md
+GEMINI.md

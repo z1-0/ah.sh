@@ -4,6 +4,16 @@ use std::path::PathBuf;
 
 use crate::APP_NAME;
 
+pub mod session {
+    pub const CURRENT_FILE: &str = "current_session";
+    pub const DIR_NAME: &str = "sessions";
+    pub const FLAKE_FILE: &str = "flake.nix";
+    pub const FLAKE_LOCK_FILE: &str = "flake.lock";
+    pub const HISTORY_FILE: &str = "history.json";
+    pub const METADATA_FILE: &str = "metadata.json";
+    pub const NIX_PROFILE_DIR: &str = "nix-profile";
+}
+
 fn get_project_dirs() -> Result<ProjectDirs> {
     ProjectDirs::from("", "", APP_NAME)
         .ok_or_else(|| anyhow::anyhow!("Could not determine project directories"))
@@ -22,7 +32,7 @@ pub fn get_cache_dir() -> Result<PathBuf> {
 }
 
 pub fn get_session_dir() -> Result<PathBuf> {
-    let dir = get_cache_dir()?.join("sessions");
+    let dir = get_cache_dir()?.join(session::DIR_NAME);
     Ok(dir)
 }
 
@@ -31,7 +41,7 @@ pub fn get_cwd() -> Result<PathBuf> {
 }
 
 fn get_current_session_path() -> Result<PathBuf> {
-    let path = get_cache_dir()?.join("current_session");
+    let path = get_cache_dir()?.join(session::CURRENT_FILE);
     Ok(path)
 }
 

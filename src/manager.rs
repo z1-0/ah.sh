@@ -1,4 +1,5 @@
 use crate::cmd::{nix_develop_of_session, nix_flake_update_of_session};
+use crate::paths::session::FLAKE_LOCK_FILE;
 use crate::provider::{Language, ProviderShowSelector, ProviderType};
 use crate::session::SessionKey;
 use crate::{output::*, session};
@@ -117,7 +118,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     };
 
     let session_dir = session.get_dir()?;
-    let lock_path = session_dir.join("flake.lock");
+    let lock_path = session_dir.join(FLAKE_LOCK_FILE);
 
     let mtime_before = lock_path.metadata().and_then(|m| m.modified()).ok();
 
