@@ -8,7 +8,7 @@ use crate::{
     session::Session,
 };
 
-pub fn nix_develop_of_session(session: Session, use_profile: bool) -> Result<()> {
+pub fn nix_develop_of_session(session: Session, _use_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
     let profile_path = flake_dir.join(NIX_PROFILE_FILE);
 
@@ -24,7 +24,9 @@ pub fn nix_develop_of_session(session: Session, use_profile: bool) -> Result<()>
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
 
-    if use_profile && profile_path.exists() {
+    // If profile file exists, restore from it directly
+    // Otherwise, record environment to profile
+    if profile_path.exists() {
         cmd.arg(&profile_path);
     } else {
         cmd.arg(&flake_dir).arg("--profile").arg(&profile_path);
