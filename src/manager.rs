@@ -1,6 +1,6 @@
 use crate::cmd::{nix_develop_of_session, nix_flake_update_of_session};
 use crate::paths::session::FLAKE_LOCK_FILE;
-use crate::provider::{Language, ProviderShowSelector, ProviderType};
+use crate::provider::{Language, ProviderType};
 use crate::session::SessionKey;
 use crate::{output::*, session};
 use anyhow::Result;
@@ -20,8 +20,7 @@ pub fn clear_sessions() -> Result<()> {
 }
 
 pub fn list_provider() -> Result<()> {
-    let providers = ProviderShowSelector::All.as_provider_types();
-    print_provider_list(providers)?;
+    print_provider_list(&[ProviderType::Devenv, ProviderType::DevTemplates])?;
     Ok(())
 }
 
@@ -100,9 +99,8 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
     }
 }
 
-pub fn show_provider(provider: ProviderShowSelector) -> Result<()> {
-    let providers = provider.as_provider_types();
-    print_provider_show(providers)?;
+pub fn show_provider(provider: ProviderType) -> Result<()> {
+    print_provider_show(&[provider])?;
     Ok(())
 }
 

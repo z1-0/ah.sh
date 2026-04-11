@@ -1,5 +1,5 @@
 use crate::APP_NAME;
-use crate::provider::{Language, ProviderShowSelector, ProviderType};
+use crate::provider::{Language, ProviderType};
 use crate::session::SessionKey;
 use clap::{Parser, Subcommand};
 
@@ -105,7 +105,7 @@ pub enum ProviderCommands {
 
     /// Show supported languages for a provider
     Show {
-        /// Provider name (devenv, dev-templates) or "all"
-        provider: ProviderShowSelector,
+        /// Provider name (devenv, dev-templates)
+        provider: ProviderType,
     },
 }

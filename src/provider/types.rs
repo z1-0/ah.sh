@@ -27,24 +27,6 @@ impl ProviderType {
     }
 }
 
-/// Target of `ah provider show`: select a provider, or choose all.
-#[derive(clap::ValueEnum, Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ProviderShowSelector {
-    Devenv,
-    DevTemplates,
-    All,
-}
-
-impl ProviderShowSelector {
-    pub fn as_provider_types(&self) -> &'static [ProviderType] {
-        match self {
-            ProviderShowSelector::Devenv => &[ProviderType::Devenv],
-            ProviderShowSelector::DevTemplates => &[ProviderType::DevTemplates],
-            ProviderShowSelector::All => &[ProviderType::Devenv, ProviderType::DevTemplates],
-        }
-    }
-}
-
 pub type Language = String;
 pub type Supported = String;
 pub type Alias = String;
