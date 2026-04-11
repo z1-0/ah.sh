@@ -67,7 +67,7 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
     match key {
         Some(k) => {
             let session = session::find_session_by_key(k)?;
-            nix_develop_of_session(session, true)
+            nix_develop_of_session(session)
         }
         None => {
             if let Ok(sessions) = session::find_session_by_history()
@@ -89,7 +89,7 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
                             &session.languages,
                         );
                         print_bold("Restoring develop shell...");
-                        return nix_develop_of_session(session.clone(), true);
+                        return nix_develop_of_session(session.clone());
                     }
                 }
                 println!();
@@ -135,7 +135,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     if was_updated {
         print_success("Dependencies updated.");
         print_bold("Entering develop shell...");
-        nix_develop_of_session(session, false)?
+        nix_develop_of_session(session)?
     } else {
         print_info("Dependencies are already up to date.");
     }
@@ -152,14 +152,14 @@ pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> R
                 &session.languages,
             );
             print_bold("Restoring develop shell...");
-            nix_develop_of_session(session, true)
+            nix_develop_of_session(session)
         }
         None => {
             let lang_strings: Vec<String> = languages.iter().map(|l| l.to_string()).collect();
             print_no_session(&provider_type.to_string(), &lang_strings);
             print_bold("Creating develop shell...");
             let session = session::create_session(provider_type, languages)?;
-            nix_develop_of_session(session, false)
+            nix_develop_of_session(session)
         }
     }
 }
