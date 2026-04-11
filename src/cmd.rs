@@ -3,14 +3,14 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 
 use crate::{
-    paths::{get_cwd, save_current_session, session::NIX_PROFILE_DIR},
+    paths::{get_cwd, save_current_session, session::NIX_PROFILE_FILE},
     provider::ProviderType,
     session::Session,
 };
 
 pub fn nix_develop_of_session(session: Session, use_profile: bool) -> Result<()> {
     let flake_dir = session.get_dir()?;
-    let profile_path = flake_dir.join(NIX_PROFILE_DIR);
+    let profile_path = flake_dir.join(NIX_PROFILE_FILE);
 
     // Record current session before entering
     save_current_session(&session.id)?;
