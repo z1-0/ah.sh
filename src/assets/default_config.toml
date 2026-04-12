@@ -1,0 +1,9 @@
+# 配置文件示例
+# 复制此文件到配置目录后，可以根据需要修改
+
+# 提供商类型：devenv 或 dev-templates
+provider = "dev-templates"
+
+# 自定义 shell 路径（可选）
+# 留空则使用 $SHELL 环境变量
+# shell = "/bin/bash"

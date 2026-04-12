@@ -13,6 +13,7 @@ use std::collections::HashMap;
     strum::Display,
     strum::EnumString,
     strum::EnumIter,
+    schemars::JsonSchema,
 )]
 #[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
