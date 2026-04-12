@@ -14,6 +14,26 @@ pub mod session {
     pub const SESSIONS_DIR: &str = "sessions";
 }
 
+pub mod config {
+    use super::*;
+    use anyhow::Result;
+
+    /// 配置文件文件名
+    pub const CONFIG_FILE: &str = "config.toml";
+
+    /// 获取完整配置文件路径: ~/.config/ah/config.toml
+    pub fn get_config_path() -> Result<PathBuf> {
+        let config_dir = get_config_dir()?;
+        Ok(config_dir.join(CONFIG_FILE))
+    }
+
+    /// 获取配置目录: ~/.config/ah/
+    pub fn get_config_dir() -> Result<PathBuf> {
+        let project_dirs = get_project_dirs()?;
+        Ok(project_dirs.config_dir().to_path_buf())
+    }
+}
+
 fn get_project_dirs() -> Result<ProjectDirs> {
     ProjectDirs::from("", "", APP_NAME)
         .ok_or_else(|| anyhow::anyhow!("Could not determine project directories"))
