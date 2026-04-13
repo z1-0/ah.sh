@@ -6,28 +6,23 @@ use std::io::Write;
 
 use crate::{provider::ProviderType, session::Session};
 
-/// Language grouping by first letter range
 struct LanguageGroup {
     range: String,
     languages: Vec<String>,
 }
 
-/// Print warning message
 pub fn print_warning<S: ToString>(msg: S) {
     println!("{}: {}", style("WARNING").yellow(), msg.to_string());
 }
 
-/// Print success message
 pub fn print_success<S: ToString>(msg: S) {
     println!("{}", style(msg.to_string()).green());
 }
 
-/// Print error message
 pub fn print_error<S: ToString>(msg: S) {
     eprintln!("{}", style(msg.to_string()).red());
 }
 
-/// Print info message
 pub fn print_info<S: ToString>(msg: S) {
     println!("{}", msg.to_string());
 }
@@ -36,12 +31,10 @@ pub fn print_bold<S: ToString>(msg: S) {
     println!("{}", style(msg.to_string()).bold());
 }
 
-/// Check if output should use colors (not piped)
 pub fn is_terminal() -> bool {
     Term::stderr().is_term()
 }
 
-/// Ask for user confirmation, returns true if confirmed
 pub fn ask_confirmation(prompt: &str) -> bool {
     print!("{}", prompt);
     if std::io::stdout().flush().is_err() {
@@ -54,7 +47,6 @@ pub fn ask_confirmation(prompt: &str) -> bool {
     matches!(input.trim().to_ascii_lowercase().as_str(), "y" | "yes")
 }
 
-/// Print session found info (multi-line)
 pub fn print_session_found(id: &str, provider: &str, languages: &[String]) {
     print_success("Session found");
     println!("  ID:       {}", id);
@@ -63,7 +55,6 @@ pub fn print_session_found(id: &str, provider: &str, languages: &[String]) {
     println!();
 }
 
-/// Print no existing session info (multi-line)
 pub fn print_no_session(provider: &str, languages: &[String]) {
     print_info("No existing session");
     println!("  Provider: {}", provider);
@@ -71,10 +62,8 @@ pub fn print_no_session(provider: &str, languages: &[String]) {
     println!();
 }
 
-/// Sessions table with default headers
 pub fn print_sessions_list(sessions: &[Session]) {
     let default_headers = ["Index", "ID", "Provider", "Languages"];
-    // Build table data
     let mut rows: Vec<Vec<String>> = Vec::with_capacity(sessions.len());
 
     for (i, s) in sessions.iter().enumerate() {
@@ -89,14 +78,12 @@ pub fn print_sessions_list(sessions: &[Session]) {
     print_sessions_table(&default_headers, &rows);
 }
 
-/// Sessions table printer using comfy-table
 fn print_sessions_table(headers: &[&str], rows: &[Vec<String>]) {
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
         .set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
 
-    // Set header with blue bold cells
     let header_cells: Vec<Cell> = headers
         .iter()
         .map(|h| Cell::new(*h).add_attribute(Attribute::Bold).fg(Color::Blue))
@@ -135,8 +122,6 @@ pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
     Ok(())
 }
 
-/// Provider list table using comfy-table
-/// Provider info: (name, languages_count)
 fn print_provider_table(providers: &[(String, usize)]) {
     let mut table = Table::new();
     table
@@ -179,8 +164,6 @@ pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
     Ok(())
 }
 
-/// Print session history prompt for current directory
-/// Reuses print_sessions_list for consistent styling
 pub fn print_session_history(sessions: &[Session]) {
     println!();
     print_sessions_list(sessions);
@@ -284,7 +267,6 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
     groups
 }
 
-/// Print language groups with inline aliases
 fn print_language_groups(provider: &str, languages: &[String], aliases: &[(String, String)]) {
     // Build language -> aliases map
     let mut lang_to_aliases: HashMap<String, Vec<String>> = HashMap::new();
@@ -311,7 +293,6 @@ fn print_language_groups(provider: &str, languages: &[String], aliases: &[(Strin
             println!();
         }
 
-        // Print group range header
         print_bold(&group.range);
 
         // Build line with inline aliases

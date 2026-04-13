@@ -1,5 +1,4 @@
-use crate::paths::get_session_dir;
-use crate::paths::session::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
+use crate::paths::cache::session::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE, get_session_dir};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
 use anyhow::Result;

@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use config::{Config as ConfigBuilder, File, FileFormat};
 use serde::{Deserialize, Serialize};
 
-use crate::paths::config::get_config_path;
 use crate::provider::ProviderType;
 
 /// User configuration structure
@@ -32,14 +31,15 @@ impl AppConfig {
 /// - If config file exists, load and validate
 /// - Return clear error messages on config errors
 pub fn load_config() -> Result<AppConfig> {
-    let config_path = get_config_path().context("Failed to determine config file path")?;
+    let config_path =
+        crate::paths::config::get_config_file().context("Failed to determine config file path")?;
 
     // First use: copy the default config file
     if !config_path.exists() {
         create_default_config(&config_path).context("Failed to create default config")?;
     }
 
-    // 加载并验证配置
+    // Load and validate configuration
     let config = ConfigBuilder::builder()
         .add_source(
             File::from(config_path.as_path())
@@ -66,7 +66,7 @@ fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
         fs::create_dir_all(parent).context("Failed to create config directory")?;
     }
 
-    // 嵌入默认配置内容
+    // Embed default config content
     let default_config = include_str!("assets/default_config.toml");
     fs::write(dest_path, default_config).context("Failed to write default config file")?;
 

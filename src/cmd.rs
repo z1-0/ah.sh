@@ -2,21 +2,17 @@ use anyhow::{Context, Result};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-use crate::{
-    paths::{get_cwd, save_current_session, session::NIX_PROFILE_FILE},
-    provider::ProviderType,
-    session::Session,
-};
+use crate::paths;
+use crate::provider::ProviderType;
+use crate::session::Session;
 
 pub fn nix_develop_of_session(session: Session) -> Result<()> {
     let flake_dir = session.get_dir()?;
-    let profile_file = flake_dir.join(NIX_PROFILE_FILE);
+    let profile_file = flake_dir.join(paths::cache::session::NIX_PROFILE_FILE);
 
-    // Record current session before entering
-    save_current_session(&session.id)?;
+    paths::cache::save_current_session(&session.id)?;
 
-    // Update session history with current working directory
-    let cwd = get_cwd()?;
+    let cwd = paths::get_cwd()?;
     if let Err(e) = crate::session::update_history(&session, &cwd) {
         eprintln!("Warning: failed to update session history: {}", e);
     }

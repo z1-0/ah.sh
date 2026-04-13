@@ -1,4 +1,4 @@
-use crate::paths::get_session_dir;
+use crate::paths::cache::session::get_session_dir;
 use crate::provider::ProviderType;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

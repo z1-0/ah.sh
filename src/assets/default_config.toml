@@ -1,9 +1,7 @@
 # Example configuration file
-# Copy this file to the config directory and modify as needed
 
 # Provider type: devenv or dev-templates
 provider = "dev-templates"
 
-# Custom shell path (optional)
 # Leave empty to use the $SHELL environment variable
 # shell = "/bin/bash"

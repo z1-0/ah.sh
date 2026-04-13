@@ -1,8 +1,10 @@
 use crate::cmd::{nix_develop_of_session, nix_flake_update_of_session};
-use crate::paths::session::FLAKE_LOCK_FILE;
+use crate::paths::cache::session::FLAKE_LOCK_FILE;
+use crate::paths::cache::{clear_current_session, read_current_session};
 use crate::provider::{Language, ProviderType};
 use crate::session::SessionKey;
 use crate::{output::*, session};
+
 use anyhow::Result;
 
 pub fn clear_sessions() -> Result<()> {
@@ -13,7 +15,7 @@ pub fn clear_sessions() -> Result<()> {
 
     let removed = session::clear_sessions()?;
     if removed > 0 {
-        crate::paths::clear_current_session()?;
+        clear_current_session()?;
     }
     print_success(format!("Cleared {} session(s).", removed));
     Ok(())
@@ -43,10 +45,10 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 
     if !result.removed_ids.is_empty() {
         // Check if current session was removed
-        if let Some(current_id) = crate::paths::read_current_session()?
+        if let Some(current_id) = read_current_session()?
             && result.removed_ids.contains(&current_id)
         {
-            crate::paths::clear_current_session()?;
+            clear_current_session()?;
         }
 
         print_success(format!(
@@ -108,7 +110,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     let session = match key {
         Some(k) => session::find_session_by_key(k)?,
         None => {
-            let current_id = crate::paths::read_current_session()?.ok_or_else(|| {
+            let current_id = read_current_session()?.ok_or_else(|| {
                 anyhow::anyhow!("No current session. Specify a session with 'ah update <index|id>'")
             })?;
             session::find_session_by_key(&SessionKey::Id(current_id))?
