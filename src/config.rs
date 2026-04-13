@@ -1,13 +1,12 @@
 use anyhow::{Context, Result};
 use config::{Config as ConfigBuilder, File, FileFormat};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::paths::config::get_config_path;
 use crate::provider::ProviderType;
 
 /// 用户配置文件结构
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     /// 提供商类型: "devenv" 或 "dev-templates"
     pub provider: ProviderType,
