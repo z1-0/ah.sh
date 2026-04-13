@@ -10,7 +10,7 @@ use clap::Parser;
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
 pub fn run() -> Result<()> {
-    // 预加载配置：首次运行会自动创建 ~/.config/ah/config.toml
+    // Preload config: first run will auto-create ~/.config/ah/config.toml
     let _config = crate::config::load_config().context("Failed to load configuration")?;
 
     let args = preprocess_args();

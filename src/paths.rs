@@ -18,16 +18,16 @@ pub mod config {
     use super::*;
     use anyhow::Result;
 
-    /// 配置文件文件名
+    /// Config file name
     pub const CONFIG_FILE: &str = "config.toml";
 
-    /// 获取完整配置文件路径: ~/.config/ah/config.toml
+    /// Get full config file path: ~/.config/ah/config.toml
     pub fn get_config_path() -> Result<PathBuf> {
         let config_dir = get_config_dir()?;
         Ok(config_dir.join(CONFIG_FILE))
     }
 
-    /// 获取配置目录: ~/.config/ah/
+    /// Get config directory: ~/.config/ah/
     pub fn get_config_dir() -> Result<PathBuf> {
         let project_dirs = get_project_dirs()?;
         Ok(project_dirs.config_dir().to_path_buf())

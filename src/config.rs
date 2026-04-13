@@ -5,19 +5,19 @@ use serde::{Deserialize, Serialize};
 use crate::paths::config::get_config_path;
 use crate::provider::ProviderType;
 
-/// 用户配置文件结构
+/// User configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
-    /// 提供商类型: "devenv" 或 "dev-templates"
+    /// Provider type: "devenv" or "dev-templates"
     pub provider: ProviderType,
 
-    /// 自定义 shell 路径，留空则使用 $SHELL 环境变量
+    /// Custom shell path, leave empty to use the $SHELL environment variable
     #[serde(default)]
     pub shell: Option<String>,
 }
 
 impl AppConfig {
-    /// 默认配置值（用于创建默认配置文件）
+    /// Default configuration values (used to create the default config file)
     pub fn default_values() -> Self {
         Self {
             provider: ProviderType::DevTemplates,
@@ -26,15 +26,15 @@ impl AppConfig {
     }
 }
 
-/// 加载用户配置
+/// Load user configuration
 ///
-/// - 如果配置文件不存在，自动创建默认配置
-/// - 如果配置文件存在，加载并验证
-/// - 配置错误时返回清晰的错误信息
+/// - If config file doesn't exist, auto-create default config
+/// - If config file exists, load and validate
+/// - Return clear error messages on config errors
 pub fn load_config() -> Result<AppConfig> {
     let config_path = get_config_path().context("Failed to determine config file path")?;
 
-    // 首次使用：复制默认配置文件
+    // First use: copy the default config file
     if !config_path.exists() {
         create_default_config(&config_path).context("Failed to create default config")?;
     }
@@ -58,7 +58,7 @@ pub fn load_config() -> Result<AppConfig> {
     Ok(config)
 }
 
-/// 从 assets 复制默认配置到用户目录
+/// Copy default config from assets to user directory
 fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
     use std::fs;
 
