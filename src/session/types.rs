@@ -1,4 +1,3 @@
-use crate::paths::cache::session::get_session_dir;
 use crate::provider::ProviderType;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -18,7 +17,7 @@ pub struct Session {
 
 impl Session {
     pub fn get_dir(&self) -> Result<PathBuf> {
-        Ok(get_session_dir()?.join(&self.id))
+        Ok(crate::path::cache::sessions::get_dir()?.join(&self.id))
     }
 }
 

@@ -4,4 +4,4 @@
 provider = "dev-templates"
 
 # Leave empty to use the $SHELL environment variable
-# shell = "/bin/bash"
+# shell = "zsh"

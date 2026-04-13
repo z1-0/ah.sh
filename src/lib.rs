@@ -3,7 +3,7 @@ pub mod cmd;
 pub mod config;
 pub mod manager;
 pub mod output;
-pub mod paths;
+pub mod path;
 pub mod provider;
 pub mod session;
 

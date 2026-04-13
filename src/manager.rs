@@ -1,6 +1,6 @@
 use crate::cmd::{nix_develop_of_session, nix_flake_update_of_session};
-use crate::paths::cache::session::FLAKE_LOCK_FILE;
-use crate::paths::cache::{clear_current_session, read_current_session};
+use crate::path::cache::sessions::FLAKE_LOCK_FILE;
+use crate::path::cache::{clear_current_session, read_current_session};
 use crate::provider::{Language, ProviderType};
 use crate::session::SessionKey;
 use crate::{output::*, session};

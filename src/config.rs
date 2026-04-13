@@ -32,7 +32,7 @@ impl AppConfig {
 /// - Return clear error messages on config errors
 pub fn load_config() -> Result<AppConfig> {
     let config_path =
-        crate::paths::config::get_config_file().context("Failed to determine config file path")?;
+        crate::path::config::get_config_file().context("Failed to determine config file path")?;
 
     // First use: copy the default config file
     if !config_path.exists() {
