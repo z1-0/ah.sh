@@ -1,18 +1,11 @@
 use anyhow::Context;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
-static PROJECT_DIRS: OnceLock<anyhow::Result<directories::ProjectDirs>> = OnceLock::new();
-
-fn get_project_dirs() -> anyhow::Result<&'static directories::ProjectDirs> {
-    match PROJECT_DIRS.get_or_init(|| {
-        directories::ProjectDirs::from("", "", crate::APP_NAME)
-            .ok_or_else(|| anyhow::anyhow!("Could not determine project directories"))
-    }) {
-        Ok(dirs) => Ok(dirs),
-        Err(e) => Err(anyhow::anyhow!("{e}")),
-    }
-}
+static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
+    directories::ProjectDirs::from("", "", crate::APP_NAME)
+        .expect("Could not determine project directories")
+});
 
 pub fn get_cwd() -> anyhow::Result<PathBuf> {
     std::env::current_dir().context("failed to get current directory")
@@ -24,7 +17,7 @@ pub mod config {
     pub const CONFIG_FILE: &str = "config.toml";
 
     fn get_dir() -> anyhow::Result<PathBuf> {
-        Ok(get_project_dirs()?.config_dir().to_path_buf())
+        Ok(PROJECT_DIRS.config_dir().to_path_buf())
     }
 
     pub fn get_config_file() -> anyhow::Result<PathBuf> {
@@ -53,7 +46,7 @@ pub mod cache {
     }
 
     fn get_dir() -> anyhow::Result<PathBuf> {
-        Ok(get_project_dirs()?.cache_dir().to_path_buf())
+        Ok(PROJECT_DIRS.cache_dir().to_path_buf())
     }
 
     fn get_current_session() -> anyhow::Result<PathBuf> {

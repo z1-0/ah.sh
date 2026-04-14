@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use config::{Config as ConfigBuilder, File, FileFormat};
+use config::{Config as ConfigBuilder, Environment, File, FileFormat};
 use serde::{Deserialize, Serialize};
 
 use crate::provider::ProviderType;
@@ -10,15 +10,6 @@ pub struct AppConfig {
 
     #[serde(default)]
     pub shell: Option<String>,
-}
-
-impl AppConfig {
-    pub fn default_values() -> Self {
-        Self {
-            provider: ProviderType::DevTemplates,
-            shell: None,
-        }
-    }
 }
 
 pub fn load_config() -> Result<AppConfig> {
@@ -35,6 +26,7 @@ pub fn load_config() -> Result<AppConfig> {
                 .format(FileFormat::Toml)
                 .required(true),
         )
+        .add_source(Environment::with_prefix("AH"))
         .build()
         .context("Failed to build config loader")?
         .try_deserialize()

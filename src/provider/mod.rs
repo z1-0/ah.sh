@@ -4,19 +4,9 @@ pub mod types;
 
 use anyhow::{Context, Result};
 use serde_json::from_str;
-use std::{collections::HashMap, sync::OnceLock};
+use std::{collections::HashMap, sync::LazyLock};
 
 pub use types::*;
-
-static PROVIDER_DEVENV: OnceLock<Result<Provider>> = OnceLock::new();
-static PROVIDER_DEV_TEMPLATES: OnceLock<Result<Provider>> = OnceLock::new();
-
-fn get_provider_once_lock(provider: ProviderType) -> &'static OnceLock<Result<Provider>> {
-    match provider {
-        ProviderType::Devenv => &PROVIDER_DEVENV,
-        ProviderType::DevTemplates => &PROVIDER_DEV_TEMPLATES,
-    }
-}
 
 fn supported_languages_json(provider: ProviderType) -> &'static str {
     match provider {
@@ -38,13 +28,6 @@ fn language_aliases_json(provider: ProviderType) -> &'static str {
             include_str!("../assets/providers/dev-templates/language_aliases.json")
         }
     }
-}
-
-fn get_or_init_provider(provider: ProviderType) -> Result<&'static Provider> {
-    get_provider_once_lock(provider)
-        .get_or_init(|| init_provider(provider))
-        .as_ref()
-        .map_err(|e| anyhow::anyhow!("Language map not loaded for {provider}: {e}"))
 }
 
 fn init_provider(provider: ProviderType) -> Result<Provider> {
@@ -72,11 +55,26 @@ fn init_provider(provider: ProviderType) -> Result<Provider> {
     ))
 }
 
+pub fn get_provider(provider: ProviderType) -> &'static Provider {
+    static PROVIDER_DEVENV: LazyLock<Provider> = LazyLock::new(|| {
+        init_provider(ProviderType::Devenv).expect("Failed to initialize devenv provider")
+    });
+    static PROVIDER_DEV_TEMPLATES: LazyLock<Provider> = LazyLock::new(|| {
+        init_provider(ProviderType::DevTemplates)
+            .expect("Failed to initialize dev-templates provider")
+    });
+
+    match provider {
+        ProviderType::Devenv => &PROVIDER_DEVENV,
+        ProviderType::DevTemplates => &PROVIDER_DEV_TEMPLATES,
+    }
+}
+
 pub fn to_supported_languages(
     provider: ProviderType,
     languages: &[Language],
 ) -> Result<Vec<Supported>> {
-    let alias_to_language = provider.to_provider()?.get_alias_to_language();
+    let alias_to_language = get_provider(provider).get_alias_to_language();
     let mut supported_languages = Vec::with_capacity(languages.len());
     let mut unsupported_languages = Vec::new();
 

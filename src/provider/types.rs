@@ -22,12 +22,6 @@ pub enum ProviderType {
     DevTemplates,
 }
 
-impl ProviderType {
-    pub fn to_provider(self) -> anyhow::Result<&'static super::Provider> {
-        super::get_or_init_provider(self)
-    }
-}
-
 pub type Language = String;
 pub type Supported = String;
 pub type Alias = String;

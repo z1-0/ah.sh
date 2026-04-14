@@ -115,7 +115,7 @@ pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
     let mut provider_info: Vec<(String, usize)> = Vec::with_capacity(providers.len());
 
     for p in providers {
-        let langs = p.to_provider()?.get_supported_languages();
+        let langs = crate::provider::get_provider(*p).get_supported_languages();
         provider_info.push((p.to_string(), langs.len()));
     }
     print_provider_table(&provider_info);
@@ -173,7 +173,7 @@ pub fn print_session_history(sessions: &[Session]) {
 }
 
 fn write_provider_languages(pt: ProviderType) -> Result<()> {
-    let provider = pt.to_provider()?;
+    let provider = crate::provider::get_provider(pt);
     let supported_languages = provider.get_supported_languages();
     let language_to_aliases = provider.get_language_to_aliases();
 

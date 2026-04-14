@@ -35,7 +35,7 @@ fn should_implicit_use_command(cmd: &Command, arg: &str) -> bool {
 }
 
 fn is_maybe_language(provider: ProviderType, language: &str) -> Result<bool> {
-    let alias_to_language = provider.to_provider()?.get_alias_to_language();
+    let alias_to_language = crate::provider::get_provider(provider).get_alias_to_language();
     Ok(alias_to_language.contains_key(language))
 }
 
