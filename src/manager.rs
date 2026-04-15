@@ -4,6 +4,7 @@ use crate::path::cache::{clear_current_session, read_current_session};
 use crate::provider::{Language, ProviderType};
 use crate::session::SessionKey;
 use crate::{output::*, session};
+use strum::IntoEnumIterator;
 
 use anyhow::Result;
 
@@ -22,7 +23,8 @@ pub fn clear_sessions() -> Result<()> {
 }
 
 pub fn list_provider() -> Result<()> {
-    print_provider_list(&[ProviderType::Devenv, ProviderType::DevTemplates])?;
+    let providers = ProviderType::iter().collect::<Vec<_>>();
+    print_provider_list(&providers)?;
     Ok(())
 }
 

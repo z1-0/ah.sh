@@ -111,7 +111,6 @@ fn print_sessions_table(headers: &[&str], rows: &[Vec<String>]) {
 }
 
 pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
-    // Build provider info: (name, languages_count)
     let mut provider_info: Vec<(String, usize)> = Vec::with_capacity(providers.len());
 
     for p in providers {

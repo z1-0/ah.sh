@@ -11,6 +11,7 @@ use std::collections::HashMap;
     serde::Deserialize,
     serde::Serialize,
     strum::Display,
+    strum::EnumIter,
     schemars::JsonSchema,
 )]
 #[strum(serialize_all = "kebab-case")]

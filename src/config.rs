@@ -9,7 +9,6 @@ use crate::provider::ProviderType;
 pub struct AppConfig {
     pub provider: ProviderType,
 
-    #[serde(default)]
     pub shell: Option<String>,
 }
 

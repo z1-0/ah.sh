@@ -38,7 +38,9 @@ fn init_provider(provider: ProviderType) -> Result<Provider> {
         from_str(language_aliases_json(provider))
             .with_context(|| format!("Failed to parse language mappings for {provider}"))?;
 
-    let mut alias_to_language = HashMap::new();
+    let capacity =
+        supported_languages.len() + language_to_aliases.values().map(Vec::len).sum::<usize>();
+    let mut alias_to_language = HashMap::with_capacity(capacity);
     for lang in &supported_languages {
         alias_to_language.insert(lang.clone(), lang.clone());
     }
