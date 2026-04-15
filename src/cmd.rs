@@ -20,8 +20,6 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
 
-    // If profile file exists, restore from it directly
-    // Otherwise, record environment to profile
     if profile_file.exists() {
         cmd.arg(&profile_file);
     } else {
@@ -65,7 +63,7 @@ fn run(mut cmd: Command) -> Result<String> {
     let command = command_to_string(&cmd);
     let output = cmd
         .output()
-        .context(format!("failed to start command: {}", command))?;
+        .with_context(|| format!("failed to start command: {}", command))?;
 
     if !output.status.success() {
         let details = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -78,13 +76,13 @@ fn run(mut cmd: Command) -> Result<String> {
         anyhow::bail!("command `{}` failed: {}", command, details);
     }
 
-    String::from_utf8(output.stdout).context(format!("invalid UTF-8 output from `{}`", command))
+    String::from_utf8(output.stdout)
+        .with_context(|| format!("invalid UTF-8 output from `{}`", command))
 }
 
 fn exec(mut cmd: Command) -> Result<()> {
     let command = command_to_string(&cmd);
 
-    // Only print command in debug mode
     #[cfg(debug_assertions)]
     println!("{command}");
 

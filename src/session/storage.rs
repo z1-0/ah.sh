@@ -1,7 +1,7 @@
 use crate::path::cache::sessions::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
@@ -12,8 +12,10 @@ fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     if !history_path.exists() {
         return Ok(Vec::new());
     }
-    let content = fs::read_to_string(history_path)?;
-    let history: Vec<String> = serde_json::from_str(&content)?;
+    let content = fs::read_to_string(&history_path)
+        .with_context(|| format!("failed to read history file: {:?}", history_path))?;
+    let history: Vec<String> = serde_json::from_str(&content)
+        .with_context(|| format!("failed to parse history file: {:?}", history_path))?;
     Ok(history)
 }
 
@@ -79,16 +81,19 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
 pub fn save_session(session: &Session) -> Result<()> {
     let session_dir = session.get_dir();
     if !session_dir.exists() {
-        std::fs::create_dir_all(&session_dir)?;
+        std::fs::create_dir_all(&session_dir)
+            .with_context(|| format!("failed to create session directory: {:?}", session_dir))?;
     }
 
     let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
     let flake_path = session_dir.join(FLAKE_FILE);
-    std::fs::write(flake_path, flake_contents)?;
+    std::fs::write(&flake_path, flake_contents)
+        .with_context(|| format!("failed to write flake.nix: {:?}", flake_path))?;
 
     let meta_path = session_dir.join(METADATA_FILE);
     let content = serde_json::to_string_pretty(&session)?;
-    std::fs::write(&meta_path, content)?;
+    std::fs::write(&meta_path, content)
+        .with_context(|| format!("failed to write metadata file: {:?}", meta_path))?;
     Ok(())
 }
 
@@ -97,7 +102,8 @@ pub fn remove_session(session_id: &str) -> Result<bool> {
     if !session_path.exists() {
         return Ok(false);
     }
-    fs::remove_dir_all(session_path)?;
+    fs::remove_dir_all(&session_path)
+        .with_context(|| format!("failed to remove session directory: {:?}", session_path))?;
     Ok(true)
 }
 
@@ -127,7 +133,8 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let history_path = session_dir.join(HISTORY_FILE);
 
     let mut history: Vec<String> = if history_path.exists() {
-        let content = fs::read_to_string(&history_path)?;
+        let content = fs::read_to_string(&history_path)
+            .with_context(|| format!("failed to read history file: {:?}", history_path))?;
         serde_json::from_str(&content).unwrap_or_default()
     } else {
         Vec::new()
@@ -139,7 +146,8 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     history.truncate(HISTORY_LIMIT);
 
     let content = serde_json::to_string_pretty(&history)?;
-    fs::write(&history_path, content)?;
+    fs::write(&history_path, content)
+        .with_context(|| format!("failed to update history file: {:?}", history_path))?;
 
     Ok(())
 }
@@ -150,8 +158,10 @@ pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     if !meta_path.exists() {
         return Ok(None);
     }
-    let content = fs::read_to_string(&meta_path)?;
-    let session = serde_json::from_str(&content)?;
+    let content = fs::read_to_string(&meta_path)
+        .with_context(|| format!("failed to read session metadata: {:?}", meta_path))?;
+    let session = serde_json::from_str(&content)
+        .with_context(|| format!("failed to parse session metadata: {:?}", meta_path))?;
     Ok(Some(session))
 }
 

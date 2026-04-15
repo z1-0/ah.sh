@@ -1,4 +1,3 @@
-use anyhow::Context;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -8,7 +7,7 @@ static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
 });
 
 pub fn get_cwd() -> anyhow::Result<PathBuf> {
-    std::env::current_dir().context("failed to get current directory")
+    Ok(std::env::current_dir()?)
 }
 
 pub mod config {

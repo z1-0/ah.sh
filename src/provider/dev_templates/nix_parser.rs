@@ -40,7 +40,6 @@ fn is_mk_shell_call(apply: &Apply) -> bool {
 }
 
 fn extract_attributes(attr_set: &AttrSet, shell_attrs: &mut ShellAttrs) {
-    // Get all attributes in the mkShell AttrSet
     for node in attr_set.syntax().children() {
         if let Some(attrpath_value) = AttrpathValue::cast(node) {
             let Some(attrpath) = attrpath_value.attrpath() else {
@@ -60,7 +59,6 @@ fn extract_attributes(attr_set: &AttrSet, shell_attrs: &mut ShellAttrs) {
                     continue;
                 }
 
-                // Handle nested 'env' attribute set special case
                 "env" => {
                     if let Expr::AttrSet(inner_set) = value {
                         for inner_node in inner_set.syntax().children() {
@@ -74,14 +72,12 @@ fn extract_attributes(attr_set: &AttrSet, shell_attrs: &mut ShellAttrs) {
                             }
                         }
                     } else {
-                        // If it's not an attrset, just treat it as an extra attribute
                         shell_attrs
                             .extra_attrs
                             .push(("env".to_string(), value_text));
                     }
                 }
 
-                // Collect everything else
                 _ => {
                     shell_attrs.extra_attrs.push((attr_name, value_text));
                 }

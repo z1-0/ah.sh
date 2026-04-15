@@ -24,7 +24,6 @@ pub fn get_flake_contents(languages: &[String]) -> Result<String> {
         .cloned()
         .collect();
 
-    // Single prefetch for the main dev-templates repo
     let prefetch_raw = cmd::prefetch_dev_templates()?;
     let nix_store_path = get_nix_store_path(prefetch_raw)?;
 
@@ -39,8 +38,7 @@ pub fn get_flake_contents(languages: &[String]) -> Result<String> {
 }
 
 fn get_nix_store_path(prefetch_raw: String) -> Result<String> {
-    let json: serde_json::Value =
-        serde_json::from_str(&prefetch_raw).context("failed to parse prefetch response as JSON")?;
+    let json: serde_json::Value = serde_json::from_str(&prefetch_raw)?;
 
     let store_path = json
         .get("storePath")

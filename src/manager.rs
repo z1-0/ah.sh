@@ -46,7 +46,6 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
     };
 
     if !result.removed_ids.is_empty() {
-        // Check if current session was removed
         if let Some(current_id) = read_current_session()?
             && result.removed_ids.contains(&current_id)
         {
@@ -157,8 +156,7 @@ pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> R
             nix_develop_of_session(session)
         }
         None => {
-            let lang_strings: Vec<String> = languages.iter().map(|l| l.to_string()).collect();
-            print_no_session(&provider_type.to_string(), &lang_strings);
+            print_no_session(&provider_type.to_string(), &languages);
             print_bold("Creating develop shell...");
             let session = session::create_session(provider_type, languages)?;
             nix_develop_of_session(session)

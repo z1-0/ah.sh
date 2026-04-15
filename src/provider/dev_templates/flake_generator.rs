@@ -50,7 +50,6 @@ pub fn generate_dev_templates_flake(languages: &[String], parsed_attrs: &[ShellA
         };
 
         for (k, _) in &attrs.extra_attrs {
-            // Use the 'shells' attrset defined in the Nix template
             let expr = format!("shells.\"{}\".{}", lang, k);
             extra_attrs_map.entry(k.clone()).or_default().push(expr);
         }
@@ -64,13 +63,11 @@ pub fn generate_dev_templates_flake(languages: &[String], parsed_attrs: &[ShellA
 
     let mut extra_attrs_str = String::new();
 
-    // Render extra attributes in stable key order.
     let mut extra_attr_keys: Vec<&String> = extra_attrs_map.keys().collect();
     extra_attr_keys.sort_unstable();
     for key in extra_attr_keys {
         let exprs = &extra_attrs_map[key];
         if key == "postShellHook" || key == "shellHook" || key == "preHook" {
-            // Concatenate hooks
             writeln!(
                 extra_attrs_str,
                 "            {} = {};",
@@ -85,7 +82,6 @@ pub fn generate_dev_templates_flake(languages: &[String], parsed_attrs: &[ShellA
         }
     }
 
-    // Render env in stable key order.
     if !env_map.is_empty() {
         extra_attrs_str.push_str("            env = {\n");
         let mut env_keys: Vec<&String> = env_map.keys().collect();

@@ -90,14 +90,12 @@ fn print_sessions_table(headers: &[&str], rows: &[Vec<String>]) {
         .collect();
     table.set_header(header_cells);
 
-    // Add rows
     for row in rows {
         let row_cells: Vec<Cell> = row
             .iter()
             .enumerate()
             .map(|(i, cell)| {
                 if i == 1 {
-                    // Provider column - green
                     Cell::new(cell.as_str()).fg(Color::Green)
                 } else {
                     Cell::new(cell.as_str())
@@ -127,7 +125,6 @@ fn print_provider_table(providers: &[(String, usize)]) {
         .load_preset(UTF8_FULL)
         .set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
 
-    // Header
     table.set_header(vec![
         Cell::new("Index")
             .add_attribute(Attribute::Bold)
@@ -140,7 +137,6 @@ fn print_provider_table(providers: &[(String, usize)]) {
             .fg(Color::Blue),
     ]);
 
-    // Rows
     for (i, (name, lang_count)) in providers.iter().enumerate() {
         table.add_row(vec![
             Cell::new(i + 1),
@@ -176,7 +172,6 @@ fn write_provider_languages(pt: ProviderType) -> Result<()> {
     let supported_languages = provider.get_supported_languages();
     let language_to_aliases = provider.get_language_to_aliases();
 
-    // Build aliases list
     let mut aliases: Vec<(String, String)> = Vec::new();
     for language in supported_languages {
         if let Some(lang_aliases) = language_to_aliases.get(language) {
@@ -198,7 +193,6 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
     let mut current_languages: Vec<String> = Vec::new();
     let mut last_range_idx: Option<usize> = None;
 
-    // Define ranges as (start_char, end_char, range_label)
     let ranges: [(char, char, &str); 5] = [
         ('A', 'E', "A-E"),
         ('F', 'J', "F-J"),
@@ -210,7 +204,6 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
     for lang in languages {
         let first_char = lang.chars().next().unwrap_or('A').to_ascii_uppercase();
 
-        // Find which range this language belongs to
         let range_idx = ranges
             .iter()
             .position(|(s, e, _)| first_char >= *s && first_char <= *e);
@@ -218,10 +211,8 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
         match range_idx {
             Some(idx) => {
                 if Some(idx) == last_range_idx {
-                    // Same range, add to current group
                     current_languages.push(lang.clone());
                 } else {
-                    // New range, save current and start new
                     if !current_languages.is_empty() {
                         groups.push(LanguageGroup {
                             range: current_range.clone(),
@@ -255,7 +246,6 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
         }
     }
 
-    // Add last group
     if !current_languages.is_empty() {
         groups.push(LanguageGroup {
             range: current_range,
@@ -267,7 +257,6 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
 }
 
 fn print_language_groups(provider: &str, languages: &[String], aliases: &[(String, String)]) {
-    // Build language -> aliases map
     let mut lang_to_aliases: HashMap<String, Vec<String>> = HashMap::new();
     for (lang, alias) in aliases {
         lang_to_aliases
@@ -278,7 +267,6 @@ fn print_language_groups(provider: &str, languages: &[String], aliases: &[(Strin
 
     let groups = group_languages_by_alphabet(languages);
 
-    // Print header
     println!(
         "{} ─────────────────────────────────────────────────",
         style(format!("Provider: {}", provider)).blue().bold()
@@ -286,7 +274,6 @@ fn print_language_groups(provider: &str, languages: &[String], aliases: &[(Strin
     print_bold(format!("{} languages:", languages.len()));
     println!();
 
-    // Print groups with blank line between them
     for (i, group) in groups.iter().enumerate() {
         if i > 0 {
             println!();
@@ -294,7 +281,6 @@ fn print_language_groups(provider: &str, languages: &[String], aliases: &[(Strin
 
         print_bold(&group.range);
 
-        // Build line with inline aliases
         let mut line_parts: Vec<String> = Vec::new();
         for lang in &group.languages {
             if let Some(alias_list) = lang_to_aliases.get(lang) {
