@@ -28,11 +28,11 @@ comfy-table = "7.2"
 config = "0.15"
 console = "0.16"
 directories = "6"
-rayon = "1.11"
+rayon = "1.12"
 rnix = "0.14"
 rowan = "0.16"
 schemars = "0.8"
-serde = { version = "1.0.228" ,features = ["derive"]}
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 strum = { version = "0.28", features = ["derive"] }
 toml = "0.8"

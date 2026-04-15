@@ -34,12 +34,12 @@ pub fn load_config() -> Result<AppConfig> {
         )
         .add_source(Environment::with_prefix(crate::APP_NAME))
         .build()
-        .context("Failed to build config loader")?
+        .context("Failed to read or parse config.toml. Please check for TOML syntax errors.")?
         .try_deserialize()
         .context(
-            "Failed to parse config.toml. \
-             Check syntax and field types. \
-             See config.schema.json for reference",
+            "Configuration data is invalid. \
+             Ensure all fields match the required types and structure. \
+             See https://github.com/z1-0/ah.sh/blob/main/src/assets/config.schema.json for reference",
         )?;
 
     Ok(config)
@@ -56,4 +56,23 @@ fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
     fs::write(dest_path, default_config).context("Failed to write default config file")?;
 
     Ok(())
+}
+
+#[test]
+fn ensure_schema_is_up_to_date() {
+    use std::path::PathBuf;
+
+    let schema = schemars::schema_for!(AppConfig);
+    let current_schema = serde_json::to_string_pretty(&schema).unwrap();
+
+    let mut schema_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    schema_path.push("src");
+    schema_path.push("assets");
+    schema_path.push("config.schema.json");
+    let existing_schema = std::fs::read_to_string(&schema_path).unwrap_or_default();
+
+    if current_schema != existing_schema {
+        std::fs::write(&schema_path, current_schema).unwrap();
+        panic!("Schema was out of date and has been updated. Please commit the changes.");
+    }
 }

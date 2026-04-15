@@ -106,6 +106,7 @@
           treefmt.programs = {
             nixfmt.enable = true;
             prettier.enable = true;
+            taplo.enable = true;
             rustfmt = {
               enable = true;
               package = pkgs.rust-bin.stable.latest.rustfmt;
