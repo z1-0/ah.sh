@@ -9,13 +9,9 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fs;
 
-/// Special language name representing an empty/languageless shell.
-/// Matches the "empty" template in dev-templates.
 const EMPTY_LANGUAGE: &str = "empty";
 
 pub fn get_flake_contents(languages: &[String]) -> Result<String> {
-    // Filter out empty language first, then deduplicate while preserving order.
-    // Order preservation is critical for matching parsed_attrs index to language.
     let mut seen = HashSet::new();
     let deduped_languages: Vec<String> = languages
         .iter()

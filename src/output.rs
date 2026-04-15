@@ -1,4 +1,3 @@
-use anyhow::Result;
 use comfy_table::{Attribute, Cell, Color, Table, presets::UTF8_FULL};
 use console::{Term, style};
 use std::collections::HashMap;
@@ -108,7 +107,7 @@ fn print_sessions_table(headers: &[&str], rows: &[Vec<String>]) {
     println!("{table}");
 }
 
-pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
+pub fn print_provider_list(providers: &[ProviderType]) {
     let mut provider_info: Vec<(String, usize)> = Vec::with_capacity(providers.len());
 
     for p in providers {
@@ -116,7 +115,6 @@ pub fn print_provider_list(providers: &[ProviderType]) -> Result<()> {
         provider_info.push((p.to_string(), langs.len()));
     }
     print_provider_table(&provider_info);
-    Ok(())
 }
 
 fn print_provider_table(providers: &[(String, usize)]) {
@@ -148,15 +146,13 @@ fn print_provider_table(providers: &[(String, usize)]) {
     println!("{table}");
 }
 
-pub fn print_provider_show(providers: &[ProviderType]) -> Result<()> {
+pub fn print_provider_show(providers: &[ProviderType]) {
     for (i, provider_type) in providers.iter().enumerate() {
         if i > 0 {
             println!();
         }
-        write_provider_languages(*provider_type)?;
+        write_provider_languages(*provider_type);
     }
-
-    Ok(())
 }
 
 pub fn print_session_history(sessions: &[Session]) {
@@ -167,7 +163,7 @@ pub fn print_session_history(sessions: &[Session]) {
     let _ = std::io::stdout().flush();
 }
 
-fn write_provider_languages(pt: ProviderType) -> Result<()> {
+fn write_provider_languages(pt: ProviderType) {
     let provider = crate::provider::get_provider(pt);
     let supported_languages = provider.get_supported_languages();
     let language_to_aliases = provider.get_language_to_aliases();
@@ -182,8 +178,6 @@ fn write_provider_languages(pt: ProviderType) -> Result<()> {
     }
 
     print_language_groups(&pt.to_string(), supported_languages, &aliases);
-
-    Ok(())
 }
 
 /// Group languages by alphabet ranges (A-E, F-J, K-O, P-T, U-Z)

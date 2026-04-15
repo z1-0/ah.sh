@@ -16,7 +16,7 @@ pub fn clear_sessions() -> Result<()> {
 
     let removed = session::clear_sessions()?;
     if removed > 0 {
-        clear_current_session()?;
+        clear_current_session();
     }
     print_success(format!("Cleared {} session(s).", removed));
     Ok(())
@@ -24,7 +24,7 @@ pub fn clear_sessions() -> Result<()> {
 
 pub fn list_provider() -> Result<()> {
     let providers = ProviderType::iter().collect::<Vec<_>>();
-    print_provider_list(&providers)?;
+    print_provider_list(&providers);
     Ok(())
 }
 
@@ -49,7 +49,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
         if let Some(current_id) = read_current_session()?
             && result.removed_ids.contains(&current_id)
         {
-            clear_current_session()?;
+            clear_current_session();
         }
 
         print_success(format!(
@@ -103,7 +103,7 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
 }
 
 pub fn show_provider(provider: ProviderType) -> Result<()> {
-    print_provider_show(&[provider])?;
+    print_provider_show(&[provider]);
     Ok(())
 }
 

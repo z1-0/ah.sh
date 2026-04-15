@@ -1,13 +1,15 @@
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
+use anyhow::Context;
+
 static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
     directories::ProjectDirs::from("", "", crate::APP_NAME)
         .expect("Could not determine project directories")
 });
 
 pub fn get_cwd() -> anyhow::Result<PathBuf> {
-    Ok(std::env::current_dir()?)
+    std::env::current_dir().context("failed to get current directory")
 }
 
 pub mod config {
@@ -70,8 +72,7 @@ pub mod cache {
         Ok(())
     }
 
-    pub fn clear_current_session() -> anyhow::Result<()> {
+    pub fn clear_current_session() {
         let _ = std::fs::remove_file(get_current_session());
-        Ok(())
     }
 }
