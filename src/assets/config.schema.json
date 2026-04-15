@@ -7,14 +7,22 @@
       "$ref": "#/$defs/ProviderType"
     },
     "shell": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
-  "required": ["provider"],
+  "required": [
+    "provider"
+  ],
   "$defs": {
     "ProviderType": {
       "type": "string",
-      "enum": ["devenv", "dev-templates"]
+      "enum": [
+        "devenv",
+        "dev-templates"
+      ]
     }
   }
 }
