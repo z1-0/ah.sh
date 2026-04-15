@@ -1,4 +1,4 @@
-# Example configuration file
+# $schema: https://raw.githubusercontent.com/z1-0/ah.sh/main/src/assets/config.schema.json
 
 # Provider type: devenv or dev-templates
 provider = "dev-templates"

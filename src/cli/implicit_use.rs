@@ -1,4 +1,3 @@
-use anyhow::Result;
 use clap::Command;
 use std::ffi::OsString;
 
@@ -30,13 +29,12 @@ fn is_top_level_flag(cmd: &Command, arg: &str) -> bool {
 }
 
 fn should_implicit_use_command(cmd: &Command, arg: &str) -> bool {
-    is_maybe_language(ProviderType::DevTemplates, arg).unwrap_or(false)
-        || is_use_command_flag(cmd, arg)
+    is_maybe_language(ProviderType::DevTemplates, arg) || is_use_command_flag(cmd, arg)
 }
 
-fn is_maybe_language(provider: ProviderType, language: &str) -> Result<bool> {
+fn is_maybe_language(provider: ProviderType, language: &str) -> bool {
     let alias_to_language = crate::provider::get_provider(provider).get_alias_to_language();
-    Ok(alias_to_language.contains_key(language))
+    alias_to_language.contains_key(language)
 }
 
 fn is_use_command_flag(cmd: &Command, arg: &str) -> bool {
