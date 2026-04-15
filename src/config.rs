@@ -21,14 +21,21 @@ pub fn load_config() -> Result<()> {
     let config_path = crate::path::config::get_config_file();
 
     if !config_path.exists() {
-        create_default_config(&config_path).context("Failed to create default config")?;
+        create_default_config(&config_path)?
     }
 
     let config_data = ConfigBuilder::builder()
         .add_source(File::from(config_path.as_path()).format(FileFormat::Toml).required(true))
         .add_source(Environment::with_prefix(crate::APP_NAME))
         .build()
-        .context("Failed to read or parse config.toml. Please check for TOML syntax errors.")?
+        .map_err(|e| match e {
+            config::ConfigError::FileParse { .. } => {
+                anyhow::Error::new(e).context("Failed to parse config.toml. Please check for TOML syntax errors.")
+            }
+            _ => {
+                anyhow::Error::new(e).context("Failed to build configuration. Please check your environment variables.")
+            }
+        })?
         .try_deserialize::<AppConfig>()
         .context(
             "Configuration data is invalid. \
