@@ -1,15 +1,22 @@
+use std::sync::OnceLock;
+
 use anyhow::{Context, Result};
 use config::{Config as ConfigBuilder, Environment, File, FileFormat};
-use serde::{Deserialize, Serialize};
 
 use crate::provider::ProviderType;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 pub struct AppConfig {
     pub provider: ProviderType,
 
     #[serde(default)]
     pub shell: Option<String>,
+}
+
+pub fn get() -> &'static AppConfig {
+    static CONFIG: OnceLock<AppConfig> = OnceLock::new();
+
+    CONFIG.get_or_init(|| load_config().expect("Failed to load config"))
 }
 
 pub fn load_config() -> Result<AppConfig> {
@@ -26,7 +33,7 @@ pub fn load_config() -> Result<AppConfig> {
                 .format(FileFormat::Toml)
                 .required(true),
         )
-        .add_source(Environment::with_prefix("AH"))
+        .add_source(Environment::with_prefix(crate::APP_NAME))
         .build()
         .context("Failed to build config loader")?
         .try_deserialize()

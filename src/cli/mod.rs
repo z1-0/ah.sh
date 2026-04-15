@@ -3,22 +3,18 @@ mod types;
 
 use crate::cli::implicit_use::maybe_implicit_use_command;
 use crate::manager;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::CommandFactory;
 use clap::Parser;
 
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
 pub fn run() -> Result<()> {
-    // Preload config: first run will auto-create ~/.config/ah/config.toml
-    let _config = crate::config::load_config().context("Failed to load configuration")?;
-
     let args = preprocess_args();
     let cli = Cli::try_parse_from(args)?;
     handle_command(cli.command)
 }
 
-/// Preprocesses command-line arguments to support the implicit use command.
 fn preprocess_args() -> Vec<std::ffi::OsString> {
     let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
     let mut cmd = Cli::command();
@@ -26,7 +22,6 @@ fn preprocess_args() -> Vec<std::ffi::OsString> {
     maybe_implicit_use_command(args, &cmd)
 }
 
-/// Dispatches the parsed command to the appropriate manager logic.
 fn handle_command(command: Commands) -> Result<()> {
     match command {
         Commands::Use {

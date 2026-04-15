@@ -1,7 +1,6 @@
 use crate::provider::ProviderType;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -26,52 +25,32 @@ pub struct SessionRemoveResult {
     pub missing_keys: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(strum::Display, Debug, Clone, PartialEq, Eq)]
 pub enum SessionKey {
     Index(usize),
     Id(String),
 }
 
-impl fmt::Display for SessionKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SessionKey::Index(i) => write!(f, "{i}"),
-            SessionKey::Id(id) => write!(f, "{id}"),
-        }
-    }
-}
-
 impl FromStr for SessionKey {
     type Err = anyhow::Error;
 
-    fn from_str(input: &str) -> std::result::Result<Self, Self::Err> {
+    fn from_str(input: &str) -> Result<Self> {
         if input.is_empty() {
-            anyhow::bail!("invalid session key: session target cannot be empty");
+            anyhow::bail!("session target cannot be empty");
         }
 
         if input.chars().all(|c| c.is_ascii_digit()) {
-            let index = input
-                .parse::<usize>()
-                .map_err(|_| anyhow::anyhow!("invalid session key: invalid session index"))?;
+            let index = input.parse::<usize>()?;
             if index == 0 {
-                anyhow::bail!("invalid session key: session index must be greater than 0");
+                anyhow::bail!("session index must be greater than 0");
             }
             return Ok(SessionKey::Index(index));
         }
 
-        if !input.chars().all(|c| c.is_ascii_hexdigit()) {
-            anyhow::bail!(
-                "invalid session key: session id must contain only hexadecimal characters"
-            );
+        if input.len() != 8 || !input.chars().all(|c| c.is_ascii_hexdigit()) {
+            anyhow::bail!("session id must be exactly 8 hexadecimal characters");
         }
 
-        if input.len() != SESSION_ID_LEN {
-            anyhow::bail!(
-                "invalid session key: session id must be exactly {} hexadecimal characters",
-                SESSION_ID_LEN
-            );
-        }
-
-        Ok(SessionKey::Id(input.to_string()))
+        Ok(SessionKey::Id(input.to_lowercase()))
     }
 }
