@@ -15,8 +15,8 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn get_dir(&self) -> Result<PathBuf> {
-        Ok(crate::path::cache::sessions::get_dir()?.join(&self.id))
+    pub fn get_dir(&self) -> PathBuf {
+        crate::path::cache::sessions::get_dir().join(&self.id)
     }
 }
 

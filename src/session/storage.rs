@@ -18,7 +18,7 @@ fn read_history(session_dir: &Path) -> Result<Vec<String>> {
 }
 
 fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
-    let session_dir = crate::path::cache::sessions::get_dir()?;
+    let session_dir = crate::path::cache::sessions::get_dir();
 
     if !session_dir.exists() {
         return Ok(Vec::new());
@@ -60,7 +60,7 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
     let cwd = crate::path::get_cwd()?;
     let target_path = cwd.to_string_lossy().into_owned();
 
-    let session_base_dir = crate::path::cache::sessions::get_dir()?;
+    let session_base_dir = crate::path::cache::sessions::get_dir();
     let sessions = get_sessions_with_mtime()?;
 
     let matching_sessions: Vec<_> = sessions
@@ -77,7 +77,7 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
 }
 
 pub fn save_session(session: &Session) -> Result<()> {
-    let session_dir = session.get_dir()?;
+    let session_dir = session.get_dir();
     if !session_dir.exists() {
         std::fs::create_dir_all(&session_dir)?;
     }
@@ -93,7 +93,7 @@ pub fn save_session(session: &Session) -> Result<()> {
 }
 
 pub fn remove_session(session_id: &str) -> Result<bool> {
-    let session_path = crate::path::cache::sessions::get_dir()?.join(session_id);
+    let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     if !session_path.exists() {
         return Ok(false);
     }
@@ -102,7 +102,7 @@ pub fn remove_session(session_id: &str) -> Result<bool> {
 }
 
 pub fn clear_sessions() -> Result<usize> {
-    let session_dir = crate::path::cache::sessions::get_dir()?;
+    let session_dir = crate::path::cache::sessions::get_dir();
 
     if !session_dir.exists() {
         return Ok(0);
@@ -123,7 +123,7 @@ pub fn clear_sessions() -> Result<usize> {
 }
 
 pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
-    let session_dir = session.get_dir()?;
+    let session_dir = session.get_dir();
     let history_path = session_dir.join(HISTORY_FILE);
 
     let mut history: Vec<String> = if history_path.exists() {
@@ -145,7 +145,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 }
 
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
-    let session_path = crate::path::cache::sessions::get_dir()?.join(session_id);
+    let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
     if !meta_path.exists() {
         return Ok(None);

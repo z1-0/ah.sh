@@ -119,7 +119,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
         }
     };
 
-    let session_dir = session.get_dir()?;
+    let session_dir = session.get_dir();
     let lock_path = session_dir.join(FLAKE_LOCK_FILE);
 
     let mtime_before = lock_path.metadata().and_then(|m| m.modified()).ok();

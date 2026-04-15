@@ -8,52 +8,48 @@ use crate::provider::ProviderType;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 pub struct AppConfig {
     pub provider: ProviderType,
-
     pub shell: Option<String>,
 }
 
-pub fn get() -> &'static AppConfig {
-    static CONFIG: OnceLock<AppConfig> = OnceLock::new();
+static CONFIG: OnceLock<AppConfig> = OnceLock::new();
 
-    CONFIG.get_or_init(|| load_config().expect("Failed to load config"))
+pub fn get() -> &'static AppConfig {
+    CONFIG.get().unwrap()
 }
 
-pub fn load_config() -> Result<AppConfig> {
-    let config_path =
-        crate::path::config::get_config_file().context("Failed to determine config file path")?;
+pub fn load_config() -> Result<()> {
+    let config_path = crate::path::config::get_config_file();
 
     if !config_path.exists() {
         create_default_config(&config_path).context("Failed to create default config")?;
     }
 
-    let config = ConfigBuilder::builder()
-        .add_source(
-            File::from(config_path.as_path())
-                .format(FileFormat::Toml)
-                .required(true),
-        )
+    let config_data = ConfigBuilder::builder()
+        .add_source(File::from(config_path.as_path()).format(FileFormat::Toml).required(true))
         .add_source(Environment::with_prefix(crate::APP_NAME))
         .build()
         .context("Failed to read or parse config.toml. Please check for TOML syntax errors.")?
-        .try_deserialize()
+        .try_deserialize::<AppConfig>()
         .context(
             "Configuration data is invalid. \
              Ensure all fields match the required types and structure. \
              See https://github.com/z1-0/ah.sh/blob/main/src/assets/config.schema.json for reference",
         )?;
 
-    Ok(config)
+    CONFIG
+        .set(config_data)
+        .map_err(|_| anyhow::anyhow!("Config already initialized"))?;
+
+    Ok(())
 }
 
 fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
-    use std::fs;
-
     if let Some(parent) = dest_path.parent() {
-        fs::create_dir_all(parent).context("Failed to create config directory")?;
+        std::fs::create_dir_all(parent).context("Failed to create config directory")?;
     }
 
     let default_config = include_str!("assets/default_config.toml");
-    fs::write(dest_path, default_config).context("Failed to write default config file")?;
+    std::fs::write(dest_path, default_config).context("Failed to write default config file")?;
 
     Ok(())
 }

@@ -16,12 +16,12 @@ pub mod config {
 
     pub const CONFIG_FILE: &str = "config.toml";
 
-    fn get_dir() -> anyhow::Result<PathBuf> {
-        Ok(PROJECT_DIRS.config_dir().to_path_buf())
+    fn get_dir() -> PathBuf {
+        PROJECT_DIRS.config_dir().to_path_buf()
     }
 
-    pub fn get_config_file() -> anyhow::Result<PathBuf> {
-        Ok(get_dir()?.join(CONFIG_FILE))
+    pub fn get_config_file() -> PathBuf {
+        get_dir().join(CONFIG_FILE)
     }
 }
 
@@ -40,21 +40,21 @@ pub mod cache {
         pub const NIX_PROFILE_FILE: &str = "nix-profile";
         pub const SESSIONS_DIR: &str = "sessions";
 
-        pub fn get_dir() -> anyhow::Result<PathBuf> {
-            Ok(super::get_dir()?.join(SESSIONS_DIR))
+        pub fn get_dir() -> PathBuf {
+            super::get_dir().join(SESSIONS_DIR)
         }
     }
 
-    fn get_dir() -> anyhow::Result<PathBuf> {
-        Ok(PROJECT_DIRS.cache_dir().to_path_buf())
+    fn get_dir() -> PathBuf {
+        PROJECT_DIRS.cache_dir().to_path_buf()
     }
 
-    fn get_current_session() -> anyhow::Result<PathBuf> {
-        Ok(get_dir()?.join(CURRENT_FILE))
+    fn get_current_session() -> PathBuf {
+        get_dir().join(CURRENT_FILE)
     }
 
     pub fn read_current_session() -> anyhow::Result<Option<String>> {
-        let path = get_current_session()?;
+        let path = get_current_session();
         if path.exists() {
             Ok(Some(std::fs::read_to_string(path)?.trim().to_string()))
         } else {
@@ -63,7 +63,7 @@ pub mod cache {
     }
 
     pub fn save_current_session(session_id: &str) -> anyhow::Result<()> {
-        let path = get_current_session()?;
+        let path = get_current_session();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -72,7 +72,7 @@ pub mod cache {
     }
 
     pub fn clear_current_session() -> anyhow::Result<()> {
-        let _ = std::fs::remove_file(get_current_session()?);
+        let _ = std::fs::remove_file(get_current_session());
         Ok(())
     }
 }

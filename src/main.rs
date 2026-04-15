@@ -1,9 +1,8 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    println!("{:?}", ah::config::get());
-
-    ah::cli::run()
+    ah::config::load_config()
+        .and_then(|_| ah::cli::run())
         .map(|_| ExitCode::SUCCESS)
         .unwrap_or_else(|e| {
             e.downcast_ref::<clap::Error>()

@@ -7,7 +7,7 @@ use crate::provider::ProviderType;
 use crate::session::Session;
 
 pub fn nix_develop_of_session(session: Session) -> Result<()> {
-    let flake_dir = session.get_dir()?;
+    let flake_dir = session.get_dir();
     let profile_file = flake_dir.join(path::cache::sessions::NIX_PROFILE_FILE);
 
     path::cache::save_current_session(&session.id)?;
@@ -46,7 +46,7 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
         .arg("update")
-        .current_dir(session.get_dir()?);
+        .current_dir(session.get_dir());
 
     run(cmd)
 }
