@@ -40,7 +40,6 @@ pub enum Commands {
     #[command(hide = true)]
     Restore {
         /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
-        #[arg(required = false)]
         key: Option<SessionKey>,
     },
 
@@ -64,8 +63,8 @@ pub enum Commands {
         languages: Vec<Language>,
 
         /// Which provider to use
-        #[arg(short, long, value_enum, default_value = "dev-templates")]
-        provider: ProviderType,
+        #[arg(short, long, value_enum)]
+        provider: Option<ProviderType>,
     },
 }
 
@@ -87,7 +86,6 @@ pub enum SessionCommands {
     /// Restore a session by index, ID, or show history for current directory
     Restore {
         /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
-        #[arg(required = false)]
         key: Option<SessionKey>,
     },
 
