@@ -43,7 +43,12 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     }
 
     build_nix_develop_cmd(&mut cmd, session.provider);
-    exec(cmd)
+
+    #[cfg(debug_assertions)]
+    eprintln!("exec: {:?}", cmd);
+
+    let err = cmd.exec();
+    bail!("failed to execute nix develop: {err}")
 }
 
 /// Common setup for nix develop commands: devenv flags and shell configuration
@@ -62,7 +67,12 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
         .arg("update")
         .current_dir(session.get_dir());
 
-    run(cmd)
+    let output = cmd.output().context("failed to run nix flake update")?;
+    if !output.status.success() {
+        bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+    }
+
+    String::from_utf8(output.stdout).context("failed to decode nix output")
 }
 
 pub fn prefetch_dev_templates() -> Result<String> {
@@ -72,45 +82,10 @@ pub fn prefetch_dev_templates() -> Result<String> {
         .arg("--json")
         .arg("github:the-nix-way/dev-templates");
 
-    run(cmd)
-}
-
-fn run(mut cmd: Command) -> Result<String> {
-    let command = command_to_string(&cmd);
-    let output = cmd
-        .output()
-        .with_context(|| format!("failed to start command: {}", command))?;
-
+    let output = cmd.output().context("failed to run nix flake prefetch")?;
     if !output.status.success() {
-        let details = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let details = if details.is_empty() {
-            format!("exit status {}", output.status)
-        } else {
-            details
-        };
-
-        anyhow::bail!("command `{}` failed: {}", command, details);
+        bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
     }
 
-    String::from_utf8(output.stdout)
-        .with_context(|| format!("invalid UTF-8 output from `{}`", command))
-}
-
-fn exec(mut cmd: Command) -> Result<()> {
-    let command = command_to_string(&cmd);
-
-    #[cfg(debug_assertions)]
-    println!("{command}");
-
-    let source = cmd.exec();
-    anyhow::bail!("failed to exec: {}: {}", command, source)
-}
-
-fn command_to_string(cmd: &Command) -> String {
-    let mut parts = vec![cmd.get_program().to_string_lossy().into_owned()];
-    parts.extend(
-        cmd.get_args()
-            .map(|value| value.to_string_lossy().into_owned()),
-    );
-    parts.join(" ")
+    String::from_utf8(output.stdout).context("failed to decode nix output")
 }
