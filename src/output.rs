@@ -180,13 +180,7 @@ fn write_provider_languages(pt: ProviderType) {
     print_language_groups(&pt.to_string(), supported_languages, &aliases);
 }
 
-/// Group languages by alphabet ranges (A-E, F-J, K-O, P-T, U-Z)
 fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
-    let mut groups: Vec<LanguageGroup> = Vec::new();
-    let mut current_range = String::new();
-    let mut current_languages: Vec<String> = Vec::new();
-    let mut last_range_idx: Option<usize> = None;
-
     let ranges: [(char, char, &str); 5] = [
         ('A', 'E', "A-E"),
         ('F', 'J', "F-J"),
@@ -195,59 +189,25 @@ fn group_languages_by_alphabet(languages: &[String]) -> Vec<LanguageGroup> {
         ('U', 'Z', "U-Z"),
     ];
 
+    let mut buckets: [Vec<String>; 5] = [vec![], vec![], vec![], vec![], vec![]];
     for lang in languages {
         let first_char = lang.chars().next().unwrap_or('A').to_ascii_uppercase();
-
-        let range_idx = ranges
+        let idx = ranges
             .iter()
-            .position(|(s, e, _)| first_char >= *s && first_char <= *e);
-
-        match range_idx {
-            Some(idx) => {
-                if Some(idx) == last_range_idx {
-                    current_languages.push(lang.clone());
-                } else {
-                    if !current_languages.is_empty() {
-                        groups.push(LanguageGroup {
-                            range: current_range.clone(),
-                            languages: current_languages.clone(),
-                        });
-                    }
-                    current_range = ranges[idx].2.to_string();
-                    current_languages = vec![lang.clone()];
-                    last_range_idx = Some(idx);
-                }
-            }
-            None => {
-                // Outside A-Z, put in first group if empty
-                if current_languages.is_empty() && !groups.is_empty() {
-                    // Add to last group
-                    groups.last_mut().unwrap().languages.push(lang.clone());
-                } else if current_languages.is_empty() {
-                    current_range = "A-E".to_string();
-                    current_languages.push(lang.clone());
-                    last_range_idx = Some(0);
-                } else {
-                    groups.push(LanguageGroup {
-                        range: current_range.clone(),
-                        languages: current_languages.clone(),
-                    });
-                    current_range = "A-E".to_string();
-                    current_languages = vec![lang.clone()];
-                    last_range_idx = Some(0);
-                }
-            }
-        }
+            .position(|(s, e, _)| first_char >= *s && first_char <= *e)
+            .unwrap_or(0);
+        buckets[idx].push(lang.clone());
     }
 
-    if !current_languages.is_empty() {
-        groups.push(LanguageGroup {
-            range: current_range,
-            languages: current_languages,
-        });
-    }
-
-    groups
+    ranges
+        .into_iter()
+        .zip(buckets)
+        .filter(|(_, langs)| !langs.is_empty())
+        .map(|((_, _, name), languages)| LanguageGroup {
+            range: name.to_string(),
+            languages,
+        })
+        .collect()
 }
 
 fn print_language_groups(provider: &str, languages: &[String], aliases: &[(String, String)]) {
