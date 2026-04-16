@@ -12,6 +12,7 @@ use types::{Cli, Commands, ProviderCommands, SessionCommands};
 pub fn run() -> Result<()> {
     let args = preprocess_args();
     let cli = Cli::try_parse_from(args)?;
+    crate::cmd::check_nix_available()?;
     handle_command(cli.command)
 }
 
