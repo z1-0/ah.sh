@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -7,7 +7,7 @@ static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
         .expect("Could not determine project directories")
 });
 
-pub fn get_cwd() -> anyhow::Result<PathBuf> {
+pub fn get_cwd() -> Result<PathBuf> {
     std::env::current_dir().context("failed to get current directory")
 }
 
@@ -53,7 +53,7 @@ pub mod cache {
         get_dir().join(CURRENT_FILE)
     }
 
-    pub fn read_current_session() -> anyhow::Result<Option<String>> {
+    pub fn read_current_session() -> Result<Option<String>> {
         let path = get_current_session();
         if path.exists() {
             Ok(Some(std::fs::read_to_string(path)?.trim().to_string()))
@@ -62,7 +62,7 @@ pub mod cache {
         }
     }
 
-    pub fn save_current_session(session_id: &str) -> anyhow::Result<()> {
+    pub fn save_current_session(session_id: &str) -> Result<()> {
         let path = get_current_session();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

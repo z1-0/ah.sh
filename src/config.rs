@@ -30,10 +30,10 @@ pub fn load_config() -> Result<()> {
         .build()
         .map_err(|e| match e {
             config::ConfigError::FileParse { .. } => {
-                anyhow::Error::new(e).context("Failed to parse config.toml. Please check for TOML syntax errors.")
+                anyhow::Error::from(e).context("Failed to parse config.toml. Please check for TOML syntax errors.")
             }
             _ => {
-                anyhow::Error::new(e).context("Failed to build configuration. Please check your environment variables.")
+                anyhow::Error::from(e).context("Failed to build configuration. Please check your environment variables.")
             }
         })?
         .try_deserialize::<AppConfig>()

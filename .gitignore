@@ -3,8 +3,7 @@
 .direnv/
 .worktrees/
 
-docs/superpowers/specs/
-docs/other/
+docs/
 target/
 
 result*
