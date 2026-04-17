@@ -56,7 +56,7 @@ fn build_nix_develop_cmd(cmd: &mut Command, provider: ProviderType) {
         cmd.arg("--no-pure-eval");
     }
 
-    if let Some(shell) = crate::utils::get_shell() {
+    if let Some(shell) = crate::util::get_shell() {
         cmd.arg("--command").arg(shell);
     }
 }

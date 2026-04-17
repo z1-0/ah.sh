@@ -11,7 +11,7 @@ pub fn get_shell() -> Option<String> {
     })
 }
 
-pub fn get_shell_by_pwd() -> Option<String> {
+fn get_shell_by_pwd() -> Option<String> {
     let mut passwd = unsafe { mem::zeroed::<libc::passwd>() };
     let mut buf = vec![0; 2048];
     let mut result = ptr::null_mut::<libc::passwd>();
@@ -30,14 +30,7 @@ pub fn get_shell_by_pwd() -> Option<String> {
         buf.resize(newsize, 0);
     }
 
-    if result.is_null() {
-        // There is no such user, or an error has occurred.
-        // errno gets set if there’s an error.
-        return None;
-    }
-
-    if result != &mut passwd {
-        // The result of getpwuid_r should be its input passwd.
+    if result.is_null() || result != &mut passwd {
         return None;
     }
 
