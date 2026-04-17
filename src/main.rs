@@ -1,5 +1,7 @@
 use std::process::ExitCode;
 
+use ah::output::print_error;
+
 fn main() -> ExitCode {
     ah::config::load_config()
         .and_then(|_| ah::cli::run())
@@ -11,7 +13,7 @@ fn main() -> ExitCode {
                     ExitCode::from(clap_err.exit_code() as u8)
                 })
                 .unwrap_or_else(|| {
-                    eprintln!("{:#}", e);
+                    print_error(&format!("{:#}", e));
                     ExitCode::FAILURE
                 })
         })
