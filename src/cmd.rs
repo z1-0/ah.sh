@@ -51,14 +51,14 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     bail!("failed to execute nix develop: {err}")
 }
 
-/// Common setup for nix develop commands: devenv flags and shell configuration
 fn build_nix_develop_cmd(cmd: &mut Command, provider: ProviderType) {
     if provider == ProviderType::Devenv {
         cmd.arg("--no-pure-eval");
     }
 
-    let env_shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-    cmd.arg("--command").arg(env_shell);
+    if let Some(shell) = crate::utils::get_shell() {
+        cmd.arg("--command").arg(shell);
+    }
 }
 
 pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {

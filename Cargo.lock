@@ -13,6 +13,7 @@ dependencies = [
  "config",
  "console",
  "directories",
+ "libc",
  "rayon",
  "rnix",
  "rowan",

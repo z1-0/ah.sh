@@ -144,8 +144,9 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     Ok(())
 }
 
-pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> Result<()> {
-    match session::find_session(provider_type, &languages)? {
+pub fn use_languages(provider: Option<ProviderType>, languages: Vec<Language>) -> Result<()> {
+    let provider = provider.unwrap_or(crate::config::get().provider);
+    match session::find_session(provider, &languages)? {
         Some(session) => {
             print_session_found(
                 &session.id,
@@ -156,9 +157,9 @@ pub fn use_languages(provider_type: ProviderType, languages: Vec<Language>) -> R
             nix_develop_of_session(session)
         }
         None => {
-            print_no_session(&provider_type.to_string(), &languages);
+            print_no_session(&provider.to_string(), &languages);
             print_bold("Creating develop shell...");
-            let session = session::create_session(provider_type, languages)?;
+            let session = session::create_session(provider, languages)?;
             nix_develop_of_session(session)
         }
     }

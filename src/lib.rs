@@ -6,5 +6,6 @@ pub mod output;
 pub mod path;
 pub mod provider;
 pub mod session;
+pub mod utils;
 
 pub const APP_NAME: &str = "ah";
