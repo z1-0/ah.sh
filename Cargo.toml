@@ -26,7 +26,7 @@ blake3 = "1.8"
 clap = { version = "4.6", features = ["derive"] }
 comfy-table = "7.2"
 config = "0.15"
-console = "0.16"
+crossterm = "0.29"
 directories = "6"
 libc = "0.2"
 rayon = "1.12"

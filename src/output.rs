@@ -1,7 +1,7 @@
 use comfy_table::{Attribute, Cell, Color, Table, presets::UTF8_FULL};
-use console::{Term, style};
-use std::collections::HashMap;
-use std::io::Write;
+use crossterm::style::Stylize;
+use std::io::{IsTerminal, Write, stdout};
+use std::{collections::HashMap, io::stdin};
 
 use crate::{provider::ProviderType, session::Session};
 
@@ -11,15 +11,15 @@ struct LanguageGroup {
 }
 
 pub fn print_warning<S: ToString>(msg: S) {
-    println!("{}: {}", style("WARNING").yellow(), msg.to_string());
+    println!("{}", msg.to_string().yellow());
 }
 
 pub fn print_success<S: ToString>(msg: S) {
-    println!("{}", style(msg.to_string()).green());
+    println!("{}", msg.to_string().green());
 }
 
 pub fn print_error<S: ToString>(msg: S) {
-    eprintln!("{}", style(msg.to_string()).red());
+    eprintln!("{}", msg.to_string().red());
 }
 
 pub fn print_info<S: ToString>(msg: S) {
@@ -27,15 +27,15 @@ pub fn print_info<S: ToString>(msg: S) {
 }
 
 pub fn print_bold<S: ToString>(msg: S) {
-    println!("{}", style(msg.to_string()).bold());
+    println!("{}", msg.to_string().bold());
 }
 
-pub fn is_terminal() -> bool {
-    Term::stderr().is_term()
+pub fn is_interactive() -> bool {
+    stdin().is_terminal() && stdout().is_terminal()
 }
 
 pub fn ask_confirmation(prompt: &str) -> bool {
-    print!("{}", prompt);
+    print!("{}", prompt.yellow());
     if std::io::stdout().flush().is_err() {
         return false;
     }
@@ -223,7 +223,7 @@ fn print_language_groups(provider: &str, languages: &[String], aliases: &[(Strin
 
     println!(
         "{} ─────────────────────────────────────────────────",
-        style(format!("Provider: {}", provider)).blue().bold()
+        format!("Provider: {}", provider).blue().bold()
     );
     print_bold(format!("{} languages:", languages.len()));
     println!();
