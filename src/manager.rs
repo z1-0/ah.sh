@@ -95,6 +95,8 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
                     }
                 }
                 println!();
+            } else {
+                print_info("No session history found for current directory.");
             }
             Ok(())
         }
