@@ -1,6 +1,5 @@
-use anyhow::Result;
-
 use crate::provider::devenv::flake_generator::generate_devenv_flake;
+use anyhow::Result;
 
 pub mod flake_generator;
 

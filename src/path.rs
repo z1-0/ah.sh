@@ -1,7 +1,6 @@
+use anyhow::Context;
 use std::path::PathBuf;
 use std::sync::LazyLock;
-
-use anyhow::Context;
 
 static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
     directories::ProjectDirs::from("", "", crate::APP_NAME)
