@@ -25,7 +25,13 @@ Use \x1b[1;3mah <COMMAND> --help\x1b[0m for more information about a command.
 #[command(name = APP_NAME, version, about = ABOUT, before_help = BEFORE_HELP, after_help = AFTER_LONG_HELP, disable_help_subcommand = true)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
+
+    #[arg(hide = true)]
+    pub languages: Option<Vec<Language>>,
+
+    #[arg(hide = true, short, long)]
+    pub provider: Option<ProviderType>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -63,7 +69,7 @@ pub enum Commands {
         languages: Vec<Language>,
 
         /// Which provider to use
-        #[arg(short, long, value_enum)]
+        #[arg(short, long)]
         provider: Option<ProviderType>,
     },
 }
@@ -102,8 +108,5 @@ pub enum ProviderCommands {
     List,
 
     /// Show supported languages for a provider
-    Show {
-        /// Provider name (devenv, dev-templates)
-        provider: ProviderType,
-    },
+    Show { provider: ProviderType },
 }
