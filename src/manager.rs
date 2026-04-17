@@ -9,7 +9,7 @@ use strum::IntoEnumIterator;
 use anyhow::Result;
 
 pub fn clear_sessions() -> Result<()> {
-    if is_terminal() && !ask_confirmation("This will remove all sessions. Continue? [y/N]: ") {
+    if is_interactive() && !ask_confirmation("This will remove all sessions. Continue? [y/N]: ") {
         print_info("Cancelled.");
         return Ok(());
     }
