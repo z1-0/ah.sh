@@ -42,23 +42,16 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
         cmd.arg(&flake_dir).arg("--profile").arg(&profile_file);
     }
 
-    build_nix_develop_cmd(&mut cmd, session.provider);
-
-    #[cfg(debug_assertions)]
-    eprintln!("exec: {:?}", cmd);
-
-    let err = cmd.exec();
-    bail!("failed to execute nix develop: {err}")
-}
-
-fn build_nix_develop_cmd(cmd: &mut Command, provider: ProviderType) {
-    if provider == ProviderType::Devenv {
+    if session.provider == ProviderType::Devenv {
         cmd.arg("--no-pure-eval");
     }
 
     if let Some(shell) = crate::util::get_shell() {
         cmd.arg("--command").arg(shell);
     }
+
+    let err = cmd.exec();
+    bail!("failed to execute nix develop: {err}")
 }
 
 pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {

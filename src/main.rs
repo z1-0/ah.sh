@@ -13,7 +13,7 @@ fn main() -> ExitCode {
                     ExitCode::from(clap_err.exit_code() as u8)
                 })
                 .unwrap_or_else(|| {
-                    print_error(&format!("{:#}", e));
+                    print_error(format!("{:#}", e));
                     ExitCode::FAILURE
                 })
         })
