@@ -1,21 +1,11 @@
 mod types;
-
-use crate::cmd;
 use crate::manager;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
-
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
-
-    cmd::check_nix_available()?;
-
-    transform_cli(cli)
-}
-
-fn transform_cli(cli: Cli) -> Result<()> {
     match cli.command {
         None => match cli.languages {
             Some(languages) => manager::use_languages(cli.provider, languages),

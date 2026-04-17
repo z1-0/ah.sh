@@ -6,7 +6,7 @@ use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-pub fn check_nix_available() -> anyhow::Result<()> {
+fn check_nix_available() -> anyhow::Result<()> {
     Command::new("nix")
         .arg("--version")
         .output()
@@ -25,6 +25,8 @@ pub fn check_nix_available() -> anyhow::Result<()> {
 }
 
 pub fn nix_develop_of_session(session: Session) -> anyhow::Result<()> {
+    check_nix_available()?;
+
     let flake_dir = session.get_dir();
     let profile_file = flake_dir.join(path::cache::sessions::NIX_PROFILE_FILE);
 
@@ -57,6 +59,8 @@ pub fn nix_develop_of_session(session: Session) -> anyhow::Result<()> {
 }
 
 pub fn nix_flake_update_of_session(session: &Session) -> anyhow::Result<String> {
+    check_nix_available()?;
+
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
         .arg("update")
@@ -71,6 +75,8 @@ pub fn nix_flake_update_of_session(session: &Session) -> anyhow::Result<String> 
 }
 
 pub fn prefetch_dev_templates() -> anyhow::Result<String> {
+    check_nix_available()?;
+
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
         .arg("prefetch")
