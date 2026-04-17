@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
@@ -8,18 +8,21 @@ use crate::provider::ProviderType;
 use crate::session::Session;
 
 pub fn check_nix_available() -> Result<()> {
-    let cmd = Command::new("nix").arg("--version").output();
-    match cmd {
-        Ok(_) => Ok(()),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            bail!(
-                "Nix is not installed.\n\n\
-                 Install with the Determinate Nix Installer:\n  \
-                 curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
-            );
-        }
-        Err(e) => Err(e).with_context(|| "failed to check Nix availability"),
-    }
+    Command::new("nix")
+        .arg("--version")
+        .output()
+        .map(|_| ())
+        .map_err(|e| {
+            if e.kind() == io::ErrorKind::NotFound {
+                anyhow!(
+                    "Nix is not installed.\n\n\
+Install with the Determinate Nix Installer:\n \
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
+                )
+            } else {
+                anyhow::Error::from(e).context("failed to check Nix availability")
+            }
+        })
 }
 
 pub fn nix_develop_of_session(session: Session) -> Result<()> {
