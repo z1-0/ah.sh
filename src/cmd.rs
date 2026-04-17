@@ -1,23 +1,22 @@
-use anyhow::{Context, Result, anyhow, bail};
+use crate::path;
+use crate::provider::ProviderType;
+use crate::session::Session;
+use anyhow::Context;
 use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-use crate::path;
-use crate::provider::ProviderType;
-use crate::session::Session;
-
-pub fn check_nix_available() -> Result<()> {
+pub fn check_nix_available() -> anyhow::Result<()> {
     Command::new("nix")
         .arg("--version")
         .output()
         .map(|_| ())
         .map_err(|e| {
             if e.kind() == io::ErrorKind::NotFound {
-                anyhow!(
+                anyhow::anyhow!(
                     "Nix is not installed.\n\n\
-Install with the Determinate Nix Installer:\n \
-curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
+                     Install with the Determinate Nix Installer:\n  \
+                     curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
                 )
             } else {
                 anyhow::Error::from(e).context("failed to check Nix availability")
@@ -25,7 +24,7 @@ curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
         })
 }
 
-pub fn nix_develop_of_session(session: Session) -> Result<()> {
+pub fn nix_develop_of_session(session: Session) -> anyhow::Result<()> {
     let flake_dir = session.get_dir();
     let profile_file = flake_dir.join(path::cache::sessions::NIX_PROFILE_FILE);
 
@@ -54,10 +53,10 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     }
 
     let err = cmd.exec();
-    bail!("failed to execute nix develop: {err}")
+    anyhow::bail!("failed to execute nix develop: {err}")
 }
 
-pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
+pub fn nix_flake_update_of_session(session: &Session) -> anyhow::Result<String> {
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
         .arg("update")
@@ -65,13 +64,13 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
 
     let output = cmd.output().context("failed to run nix flake update")?;
     if !output.status.success() {
-        bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
     }
 
     String::from_utf8(output.stdout).context("failed to decode nix output")
 }
 
-pub fn prefetch_dev_templates() -> Result<String> {
+pub fn prefetch_dev_templates() -> anyhow::Result<String> {
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
         .arg("prefetch")
@@ -80,7 +79,7 @@ pub fn prefetch_dev_templates() -> Result<String> {
 
     let output = cmd.output().context("failed to run nix flake prefetch")?;
     if !output.status.success() {
-        bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
+        anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
     }
 
     String::from_utf8(output.stdout).context("failed to decode nix output")
