@@ -3,6 +3,7 @@ use std::process::ExitCode;
 use ah::output::print_error;
 
 fn main() -> ExitCode {
+    ah::logging::init();
     ah::config::load_config()
         .and_then(|_| ah::cli::run())
         .map(|_| ExitCode::SUCCESS)
