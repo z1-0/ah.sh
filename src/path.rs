@@ -25,10 +25,18 @@ pub mod config {
     }
 }
 
-pub fn log_dir() -> std::path::PathBuf {
-    directories::ProjectDirs::from("", "", crate::APP_NAME)
-        .map(|dirs| dirs.data_local_dir().join("logs"))
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default().join("logs"))
+pub mod local {
+    use super::*;
+
+    pub const LOGS_DIR: &str = "logs";
+
+    fn get_dir() -> PathBuf {
+        PROJECT_DIRS.data_local_dir().to_path_buf()
+    }
+
+    pub fn get_logs_dir() -> PathBuf {
+        get_dir().join("logs")
+    }
 }
 
 pub mod cache {

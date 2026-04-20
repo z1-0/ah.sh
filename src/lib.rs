@@ -1,7 +1,7 @@
 pub mod cli;
 pub mod cmd;
 pub mod config;
-pub mod logging;
+pub mod log;
 pub mod manager;
 pub mod output;
 pub mod path;
