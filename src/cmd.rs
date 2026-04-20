@@ -1,6 +1,6 @@
-use crate::path;
 use crate::provider::ProviderType;
 use crate::session::Session;
+use crate::{log, path};
 use anyhow::{Context, Result};
 use std::io;
 use std::os::unix::process::CommandExt;
@@ -53,6 +53,8 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     if let Some(shell) = crate::util::get_shell() {
         cmd.arg("--command").arg(shell);
     }
+
+    log::shutdown();
 
     let err = cmd.exec();
     anyhow::bail!("failed to execute nix develop: {err}")
