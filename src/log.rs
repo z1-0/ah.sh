@@ -17,7 +17,7 @@ pub fn initialize() {
 
     let file_layer = fmt::layer().json().with_writer(non_blocking);
 
-    let stderr_layer = fmt::layer()
+    let console_layer = fmt::layer()
         .with_timer(fmt::time::uptime())
         .with_ansi(std::io::stderr().is_terminal())
         .with_writer(std::io::stderr)
@@ -31,7 +31,7 @@ pub fn initialize() {
 
     tracing_subscriber::registry()
         .with(file_layer)
-        .with(stderr_layer)
+        .with(console_layer)
         .try_init()
         .ok();
 
