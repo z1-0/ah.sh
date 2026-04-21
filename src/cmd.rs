@@ -8,29 +8,21 @@ use std::process::Command;
 use tracing::{debug, error, info, warn};
 
 fn check_nix_available() -> Result<()> {
-    {
-        #[allow(clippy::manual_inspect)]
-        Command::new("nix")
-            .arg("--version")
-            .output()
-            .map(|output| {
-                if output.status.success() {
-                    debug!(target: "ah::cmd", "Nix available");
-                }
-            })
-            .map(|_| ())
-    }
-    .map_err(|e| {
-        if e.kind() == io::ErrorKind::NotFound {
-            anyhow::anyhow!(
-                "Nix is not installed.\n\n\
-                     Install with the Determinate Nix Installer:\n  \
-                     curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
-            )
-        } else {
-            anyhow::Error::from(e).context("failed to check Nix availability")
+    match Command::new("nix").arg("--version").output() {
+        Ok(output) if output.status.success() => {
+            debug!(target: "ah::cmd", "Nix available");
+            Ok(())
         }
-    })
+        Ok(_) => Ok(()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            anyhow::bail!(
+                "Nix is not installed.\n\n\
+Install with the Determinate Nix Installer:\n\
+  curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
+            );
+        }
+        Err(e) => Err(anyhow::Error::from(e).context("failed to check Nix availability")),
+    }
 }
 
 pub fn nix_develop_of_session(session: Session) -> Result<()> {
