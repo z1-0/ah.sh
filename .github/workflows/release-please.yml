@@ -1,0 +1,57 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          release-type: rust
+
+      # 使用 git-worktree 完美修复 Cargo.lock 失步问题
+      - name: Fixup Cargo.lock in Release PR
+        if: ${{ steps.release.outputs.pr }}
+        run: |
+          # 1. 获取 PR 的分支信息
+          PR_BRANCH="${{ fromJson(steps.release.outputs.pr).branch }}"
+          echo "Repairing Cargo.lock on branch: $PR_BRANCH"
+
+          # 2. 检出代码并拉取最新远程分支
+          git fetch origin $PR_BRANCH
+
+          # 3. 创建临时工作树来处理 lock 文件
+          # 我们将其放在 ../fixup 目录，以免干扰当前检出
+          git worktree add ../fixup origin/$PR_BRANCH
+
+          cd ../fixup
+
+          # 4. 同步版本到 Cargo.lock
+          # 由于 release-please 已经改了 Cargo.toml 的版本号，
+          # 运行 cargo update --workspace 会精准更新 lock 文件
+          cargo update --workspace
+
+          # 5. 检查变化并推送
+          if [ -n "$(git status --porcelain Cargo.lock)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add Cargo.lock
+            git commit -m "chore: update Cargo.lock"
+            git push origin HEAD:$PR_BRANCH
+            echo "Cargo.lock updated and pushed."
+          else
+            echo "No changes needed for Cargo.lock."
+          fi
+
+          # 6. 清理工作树
+          cd $GITHUB_WORKSPACE
+          git worktree remove ../fixup

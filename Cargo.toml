@@ -1,7 +1,8 @@
 [package]
 name = "ah-sh"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2024"
+publish = false
 description = "Magic development environments powered by Nix"
 authors = ["zion <ox7a696f6e@outlook.com>"]
 license = "MIT"
@@ -38,7 +39,6 @@ serde_json = "1.0"
 strum = { version = "0.28", features = ["derive"] }
 tracing = "0.1"
 tracing-appender = "0.2"
-tracing-attributes = "0.1"
 tracing-subscriber = { version = "0.3", features = [
   "json",
   "env-filter",
