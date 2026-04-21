@@ -10,15 +10,16 @@ use tracing::{debug, error, info, warn};
 fn check_nix_available() -> Result<()> {
     match Command::new("nix").arg("--version").output() {
         Ok(output) if output.status.success() => {
-            debug!(target: "ah::cmd", "Nix available");
+            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            debug!(target: "ah::cmd", nix_version = %version, "Nix available");
             Ok(())
         }
         Ok(_) => Ok(()),
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             anyhow::bail!(
-                "Nix is not installed.\n\n\
-Install with the Determinate Nix Installer:\n\
-  curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
+                "Nix is not installed.\n\n  \
+                 Install with the Determinate Nix Installer:\n\
+                 curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
             );
         }
         Err(e) => Err(anyhow::Error::from(e).context("failed to check Nix availability")),
@@ -97,6 +98,8 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
 }
 
 pub fn prefetch_dev_templates() -> Result<String> {
+    check_nix_available()?;
+
     info!(target: "ah::cmd", "Starting dev-templates prefetch");
 
     let mut cmd = Command::new("nix");
