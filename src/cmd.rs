@@ -105,8 +105,6 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
 }
 
 pub fn prefetch_dev_templates() -> Result<String> {
-    check_nix_available()?;
-
     info!(target: "ah::cmd", "Starting dev-templates prefetch");
 
     let mut cmd = Command::new("nix");

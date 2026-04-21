@@ -9,6 +9,7 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fs;
 use tracing::{debug, error, info};
+use tracing_attributes::instrument;
 
 const EMPTY_LANGUAGE: &str = "empty";
 
@@ -51,6 +52,7 @@ fn get_nix_store_path(prefetch_raw: String) -> Result<String> {
     Ok(store_path.to_string())
 }
 
+#[instrument(skip_all, fields(language))]
 fn parse_flake(store_path: &str, language: &str) -> Result<ShellAttrs> {
     let flake_path = format!("{store_path}/{language}/flake.nix");
 

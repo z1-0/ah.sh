@@ -4,11 +4,10 @@ use crate::provider::{Language, ProviderType, to_supported_languages};
 use anyhow::Result;
 use std::collections::HashSet;
 pub use storage::*;
-use tracing::{info, warn};
+use tracing::info;
 use tracing_attributes::instrument;
 pub use types::*;
 
-#[instrument(skip_all)]
 pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
     let input = format!("{}:{}", provider, languages.join(","));
     let digest = blake3::hash(input.as_bytes());
@@ -65,17 +64,6 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
             }
         } else {
             missing_keys.push(key.to_string());
-        }
-    }
-
-    if !removed_ids.is_empty() {
-        for id in &removed_ids {
-            info!(target: "ah::session", session_id = %id, "Session removed");
-        }
-    }
-    if !missing_keys.is_empty() {
-        for key in &missing_keys {
-            warn!(target: "ah::session", key = %key, "Session key not found");
         }
     }
 
