@@ -5,6 +5,7 @@ pub mod types;
 use anyhow::{Context, Result};
 use serde_json::from_str;
 use std::{collections::HashMap, sync::LazyLock};
+use tracing_attributes::instrument;
 
 pub use types::*;
 
@@ -30,6 +31,7 @@ fn language_aliases_json(provider: ProviderType) -> &'static str {
     }
 }
 
+#[instrument(skip_all)]
 fn init_provider(provider: ProviderType) -> Result<Provider> {
     let supported_languages: Vec<Supported> = from_str(supported_languages_json(provider))
         .with_context(|| format!("Failed to parse supported languages for {provider}"))?;
@@ -57,6 +59,7 @@ fn init_provider(provider: ProviderType) -> Result<Provider> {
     ))
 }
 
+#[instrument(skip_all)]
 pub fn get_provider(provider: ProviderType) -> &'static Provider {
     static PROVIDER_DEVENV: LazyLock<Provider> = LazyLock::new(|| {
         init_provider(ProviderType::Devenv).expect("Failed to initialize devenv provider")
@@ -72,6 +75,7 @@ pub fn get_provider(provider: ProviderType) -> &'static Provider {
     }
 }
 
+#[instrument(skip_all)]
 pub fn to_supported_languages(
     provider: ProviderType,
     languages: &[Language],
@@ -97,6 +101,7 @@ pub fn to_supported_languages(
     Ok(supported_languages)
 }
 
+#[instrument(skip_all)]
 pub fn get_flake_contents(provider: ProviderType) -> fn(&[String]) -> Result<String> {
     match provider {
         ProviderType::Devenv => devenv::get_flake_contents,

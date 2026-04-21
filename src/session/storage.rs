@@ -6,6 +6,7 @@ use std::cmp::Ordering;
 use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
+use tracing_attributes::instrument;
 
 fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     let history_path = session_dir.join(HISTORY_FILE);
@@ -47,6 +48,7 @@ fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
     Ok(sessions)
 }
 
+#[instrument(skip_all)]
 pub fn list_sessions() -> Result<Vec<Session>> {
     let mut sessions = get_sessions_with_mtime()?;
 
@@ -58,6 +60,7 @@ pub fn list_sessions() -> Result<Vec<Session>> {
     Ok(sessions.into_iter().map(|(session, _)| session).collect())
 }
 
+#[instrument(skip_all)]
 pub fn find_session_by_history() -> Result<Vec<Session>> {
     let cwd = crate::path::get_cwd()?;
     let target_path = cwd.to_string_lossy().into_owned();
@@ -78,6 +81,7 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
     Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
 }
 
+#[instrument(skip_all, fields(session_id = %session.id))]
 pub fn save_session(session: &Session) -> Result<()> {
     let session_dir = session.get_dir();
     if !session_dir.exists() {
@@ -97,6 +101,7 @@ pub fn save_session(session: &Session) -> Result<()> {
     Ok(())
 }
 
+#[instrument(skip_all, fields(session_id = %session_id))]
 pub fn remove_session(session_id: &str) -> Result<bool> {
     let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     if !session_path.exists() {
@@ -107,6 +112,7 @@ pub fn remove_session(session_id: &str) -> Result<bool> {
     Ok(true)
 }
 
+#[instrument(skip_all)]
 pub fn clear_sessions() -> Result<usize> {
     let session_dir = crate::path::cache::sessions::get_dir();
 
@@ -128,6 +134,7 @@ pub fn clear_sessions() -> Result<usize> {
     Ok(removed)
 }
 
+#[instrument(skip_all, fields(session_id = %session.id, cwd = %cwd.display()))]
 pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let session_dir = session.get_dir();
     let history_path = session_dir.join(HISTORY_FILE);
@@ -152,6 +159,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     Ok(())
 }
 
+#[instrument(skip_all, fields(session_id = %session_id))]
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
@@ -165,6 +173,7 @@ pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     Ok(Some(session))
 }
 
+#[instrument(skip_all, fields(idx = %idx))]
 pub(crate) fn try_session_by_index(idx: usize) -> Result<Option<Session>> {
     let sessions = list_sessions()?;
     if idx > 0 && idx <= sessions.len() {
@@ -174,6 +183,7 @@ pub(crate) fn try_session_by_index(idx: usize) -> Result<Option<Session>> {
     }
 }
 
+#[instrument(skip_all, fields(key = %key))]
 pub(crate) fn try_session_by_key(key: &SessionKey) -> Result<Option<Session>> {
     match key {
         SessionKey::Id(id) => try_session_by_id(id),
@@ -181,6 +191,7 @@ pub(crate) fn try_session_by_key(key: &SessionKey) -> Result<Option<Session>> {
     }
 }
 
+#[instrument(skip_all, fields(key = %key))]
 pub fn find_session_by_key(key: &SessionKey) -> Result<Session> {
     try_session_by_key(key)?.ok_or_else(|| anyhow::anyhow!("session '{}' not found", key))
 }

@@ -2,6 +2,7 @@ use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use config::{Config as ConfigBuilder, Environment, File, FileFormat};
+use tracing_attributes::instrument;
 
 use crate::provider::ProviderType;
 
@@ -17,6 +18,7 @@ pub fn get() -> &'static AppConfig {
     CONFIG.get().unwrap()
 }
 
+#[instrument(skip_all)]
 pub fn load_config() -> Result<()> {
     let config_path = crate::path::config::get_config_file();
 
@@ -50,6 +52,7 @@ pub fn load_config() -> Result<()> {
     Ok(())
 }
 
+#[instrument(skip_all)]
 fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
     if let Some(parent) = dest_path.parent() {
         std::fs::create_dir_all(parent).context("Failed to create config directory")?;

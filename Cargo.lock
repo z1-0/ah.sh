@@ -23,6 +23,7 @@ dependencies = [
  "strum",
  "tracing",
  "tracing-appender",
+ "tracing-attributes",
  "tracing-subscriber",
 ]
 

@@ -1,6 +1,7 @@
 use rnix::Root;
 use rnix::ast::{Apply, AttrSet, AttrpathValue, Expr};
 use rowan::ast::AstNode;
+use tracing_attributes::instrument;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ShellAttrs {
@@ -10,6 +11,7 @@ pub struct ShellAttrs {
     pub extra_attrs: Vec<(String, String)>,
 }
 
+#[instrument(skip(source), fields(language = %source.split_whitespace().next().unwrap_or("unknown")))]
 pub fn parse_flake_shell(source: &str) -> ShellAttrs {
     let parse = Root::parse(source);
     let root = parse.tree();

@@ -1,6 +1,7 @@
 use super::nix_parser::ShellAttrs;
 use std::collections::HashMap;
 use std::fmt::Write;
+use tracing_attributes::instrument;
 
 /// Generates a dev-templates flake.nix that combines multiple language shells.
 ///
@@ -11,6 +12,7 @@ use std::fmt::Write;
 /// # Important
 /// The two slices must have the same length, and `parsed_attrs[i]` must
 /// correspond to `languages[i]`. This is enforced by the caller in `mod.rs`.
+#[instrument(skip_all, fields(provider = "dev_templates", language_count = %languages.len()))]
 pub fn generate_dev_templates_flake(languages: &[String], parsed_attrs: &[ShellAttrs]) -> String {
     let input_names: Vec<String> = languages
         .iter()

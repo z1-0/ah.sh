@@ -4,8 +4,11 @@ use crate::provider::{Language, ProviderType, to_supported_languages};
 use anyhow::Result;
 use std::collections::HashSet;
 pub use storage::*;
+use tracing::{info, warn};
+use tracing_attributes::instrument;
 pub use types::*;
 
+#[instrument(skip_all)]
 pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
     let input = format!("{}:{}", provider, languages.join(","));
     let digest = blake3::hash(input.as_bytes());
@@ -15,7 +18,28 @@ pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
     let supported_languages = to_supported_languages(provider, languages)?;
     let session_id = generate_id(provider, &supported_languages);
-    try_session_by_id(&session_id)
+    let result = try_session_by_id(&session_id);
+    match &result {
+        Ok(Some(session)) => {
+            info!(
+                target: "ah::session",
+                session_id = %session.id,
+                provider = %session.provider,
+                languages = ?session.languages,
+                "Session restored"
+            );
+        }
+        Ok(None) => {
+            info!(
+                target: "ah::session",
+                provider = %provider,
+                languages = ?supported_languages,
+                "No session found, will create"
+            );
+        }
+        Err(_) => {}
+    }
+    result
 }
 
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult>> {
@@ -44,12 +68,24 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
         }
     }
 
+    if !removed_ids.is_empty() {
+        for id in &removed_ids {
+            info!(target: "ah::session", session_id = %id, "Session removed");
+        }
+    }
+    if !missing_keys.is_empty() {
+        for key in &missing_keys {
+            warn!(target: "ah::session", key = %key, "Session key not found");
+        }
+    }
+
     Ok(Some(SessionRemoveResult {
         removed_ids,
         missing_keys,
     }))
 }
 
+#[instrument(skip_all, fields(provider = %provider, language_count = %languages.len()))]
 pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Result<Session> {
     let supported_languages = to_supported_languages(provider, &languages)?;
 

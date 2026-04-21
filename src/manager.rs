@@ -7,10 +7,12 @@ use crate::{output::*, session};
 use strum::IntoEnumIterator;
 
 use anyhow::Result;
+use tracing::{debug, info, warn};
 
 pub fn clear_sessions() -> Result<()> {
     if is_interactive() && !ask_confirmation("This will remove all sessions. Continue? [y/N]: ") {
         print_info("Cancelled.");
+        info!(target: "ah::manager", "Session clear cancelled by user");
         return Ok(());
     }
 
@@ -18,6 +20,7 @@ pub fn clear_sessions() -> Result<()> {
     if removed > 0 {
         clear_current_session();
     }
+    warn!(target: "ah::manager", count = %removed, "All sessions cleared");
     print_success(format!("Cleared {} session(s).", removed));
     Ok(())
 }
@@ -35,11 +38,13 @@ pub fn list_sessions() -> Result<()> {
         return Ok(());
     }
 
+    info!(target: "ah::manager", count = %sessions.len(), "Listed sessions");
     print_sessions_list(&sessions);
     Ok(())
 }
 
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
+    info!(target: "ah::manager", key_count = %keys.len(), "Starting remove_sessions");
     let Some(result) = session::remove_sessions(keys)? else {
         print_info("No sessions found.");
         return Ok(());
@@ -66,6 +71,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 }
 
 pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
+    info!(target: "ah::manager", "Starting restore_session");
     match key {
         Some(k) => {
             let session = session::find_session_by_key(k)?;
@@ -85,6 +91,7 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
                         && idx <= sessions.len()
                     {
                         let session = &sessions[idx - 1];
+                        debug!(target: "ah::manager", session_id = %session.id, "User selected session from history");
                         print_session_found(
                             &session.id,
                             &session.provider.to_string(),
@@ -104,11 +111,13 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
 }
 
 pub fn show_provider(provider: ProviderType) -> Result<()> {
+    info!(target: "ah::manager", provider = ?provider, "Starting show_provider");
     print_provider_show(&[provider]);
     Ok(())
 }
 
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
+    info!(target: "ah::manager", "Starting update_session");
     let session = match key {
         Some(k) => session::find_session_by_key(k)?,
         None => {
@@ -146,6 +155,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 }
 
 pub fn use_languages(provider: Option<ProviderType>, languages: Vec<Language>) -> Result<()> {
+    info!(target: "ah::manager", provider = ?provider, languages = ?languages, "Starting use_languages");
     let provider = provider.unwrap_or(crate::config::get().provider);
     match session::find_session(provider, &languages)? {
         Some(session) => {

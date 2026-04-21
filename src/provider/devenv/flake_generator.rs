@@ -1,3 +1,6 @@
+use tracing_attributes::instrument;
+
+#[instrument(skip_all, fields(provider = "devenv", languages = ?languages))]
 pub fn generate_devenv_flake(languages: &[String]) -> String {
     let languages_enable_str = languages
         .iter()
