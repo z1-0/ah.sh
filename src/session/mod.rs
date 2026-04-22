@@ -21,7 +21,6 @@ pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Op
     match &result {
         Ok(Some(session)) => {
             info!(
-                target: "ah::session",
                 session_id = %session.id,
                 provider = %session.provider,
                 languages = ?session.languages,
@@ -30,7 +29,6 @@ pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Op
         }
         Ok(None) => {
             info!(
-                target: "ah::session",
                 provider = %provider,
                 languages = ?supported_languages,
                 "No session found, will create"

@@ -45,7 +45,7 @@ pub fn list_sessions() -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
-    info!(target: "ah::manager", key_count = %keys.len(), "Starting remove_sessions");
+    info!(key_count = %keys.len(), "Starting remove_sessions");
     let Some(result) = session::remove_sessions(keys)? else {
         print_bold("No sessions found.");
         return Ok(());
@@ -73,7 +73,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
-    info!(target: "ah::manager", "Starting restore_session");
+    info!("Starting restore_session");
     match key {
         Some(k) => {
             let session = session::find_session_by_key(k)?;
@@ -93,7 +93,7 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
                         && idx <= sessions.len()
                     {
                         let session = &sessions[idx - 1];
-                        debug!(target: "ah::manager", session_id = %session.id, "User selected session from history");
+                        debug!(session_id = %session.id, "User selected session from history");
                         print_bold("Restoring develop shell...");
                         return nix_develop_of_session(session.clone());
                     }
@@ -109,14 +109,14 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn show_provider(provider: ProviderType) -> Result<()> {
-    info!(target: "ah::manager", provider = ?provider, "Starting show_provider");
+    info!(provider = ?provider, "Starting show_provider");
     print_provider_show(&[provider]);
     Ok(())
 }
 
 #[instrument(skip_all)]
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
-    info!(target: "ah::manager", "Starting update_session");
+    info!("Starting update_session");
     let session = match key {
         Some(k) => session::find_session_by_key(k)?,
         None => {
@@ -155,7 +155,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn use_languages(provider: Option<ProviderType>, languages: Vec<Language>) -> Result<()> {
-    info!(target: "ah::manager", provider = ?provider, languages = ?languages, "Starting use_languages");
+    info!(provider = ?provider, languages = ?languages, "Starting use_languages");
     let provider = provider.unwrap_or(crate::config::get().provider);
     match session::find_session(provider, &languages)? {
         Some(session) => {

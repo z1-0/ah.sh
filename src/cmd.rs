@@ -9,7 +9,7 @@ use tracing::{error, info};
 fn check_nix_available() -> Result<()> {
     match Command::new("nix").arg("--version").output() {
         Ok(output) if output.status.success() => {
-            info!(target: "ah::cmd", nix_version = %String::from_utf8_lossy(&output.stdout));
+            info!(nix_version = %String::from_utf8_lossy(&output.stdout));
             Ok(())
         }
         _ => {
@@ -32,7 +32,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 
     let cwd = path::get_cwd()?;
     if let Err(e) = crate::session::update_history(&session, &cwd) {
-        error!(target: "ah::cmd", session_id = %session.id, error = %e, "Failed to update session history");
+        error!(session_id = %session.id, error = %e, "Failed to update session history");
     }
 
     let mut cmd = Command::new("nix");
@@ -53,7 +53,6 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     }
 
     info!(
-        target: "ah::cmd",
         session_id = %session.id,
         provider = %session.provider,
         "Starting nix develop"
@@ -63,7 +62,6 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 
     let err = cmd.exec();
     error!(
-        target: "ah::cmd",
         session_id = %session.id,
         exit_code = 1,
         error = %err,
@@ -75,7 +73,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
     check_nix_available()?;
 
-    info!(target: "ah::cmd", session_id = %session.id, "Starting nix flake update");
+    info!(session_id = %session.id, "Starting nix flake update");
 
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
@@ -84,11 +82,11 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
 
     let output = cmd.output().context("failed to run nix flake update")?;
     if !output.status.success() {
-        error!(target: "ah::cmd", session_id = %session.id, "nix flake update failed");
+        error!(session_id = %session.id, "nix flake update failed");
         anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
     }
 
-    info!(target: "ah::cmd", session_id = %session.id, "nix flake update completed");
+    info!(session_id = %session.id, "nix flake update completed");
 
     String::from_utf8(output.stdout).context("failed to decode nix output")
 }
@@ -96,7 +94,7 @@ pub fn nix_flake_update_of_session(session: &Session) -> Result<String> {
 pub fn prefetch_dev_templates() -> Result<String> {
     check_nix_available()?;
 
-    info!(target: "ah::cmd", "Starting dev-templates prefetch");
+    info!("Starting dev-templates prefetch");
 
     let mut cmd = Command::new("nix");
     cmd.arg("flake")
@@ -106,11 +104,11 @@ pub fn prefetch_dev_templates() -> Result<String> {
 
     let output = cmd.output().context("failed to run nix flake prefetch")?;
     if !output.status.success() {
-        error!(target: "ah::cmd", "dev-templates prefetch failed");
+        error!("dev-templates prefetch failed");
         anyhow::bail!("{}", String::from_utf8_lossy(&output.stderr).trim());
     }
 
-    info!(target: "ah::cmd", "dev-templates prefetch completed");
+    info!("dev-templates prefetch completed");
 
     String::from_utf8(output.stdout).context("failed to decode nix output")
 }
