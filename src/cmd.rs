@@ -2,27 +2,23 @@ use crate::provider::ProviderType;
 use crate::session::Session;
 use crate::{log, path};
 use anyhow::{Context, Result};
-use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 fn check_nix_available() -> Result<()> {
     match Command::new("nix").arg("--version").output() {
         Ok(output) if output.status.success() => {
-            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            debug!(target: "ah::cmd", nix_version = %version, "Nix available");
+            info!(target: "ah::cmd", nix_version = %String::from_utf8_lossy(&output.stdout));
             Ok(())
         }
-        Ok(_) => Ok(()),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+        _ => {
             anyhow::bail!(
-                "Nix is not installed.\n\n  \
-                 Install with the Determinate Nix Installer:\n\
+                "Nix not found.\n\n\
+                 To install, use the Determinate Nix Installer:\n  \
                  curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
             );
         }
-        Err(e) => Err(anyhow::Error::from(e).context("failed to check Nix availability")),
     }
 }
 
