@@ -4,7 +4,12 @@ use tracing_appender::{
     non_blocking::WorkerGuard,
     rolling::{RollingFileAppender, Rotation},
 };
-use tracing_subscriber::{EnvFilter, Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{
+    EnvFilter, Layer,
+    fmt::{self, format::FmtSpan},
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+};
 
 static LOG_GUARD: Mutex<Option<WorkerGuard>> = Mutex::new(None);
 
@@ -15,7 +20,10 @@ pub fn initialize() {
     let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    let file_layer = fmt::layer().json().with_writer(non_blocking);
+    let file_layer = fmt::layer()
+        .json()
+        .with_writer(non_blocking)
+        .with_span_events(FmtSpan::ACTIVE);
 
     let console_layer = fmt::layer()
         .with_timer(fmt::time::uptime())

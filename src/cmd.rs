@@ -4,7 +4,7 @@ use crate::{log, path};
 use anyhow::{Context, Result};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 fn check_nix_available() -> Result<()> {
     match Command::new("nix").arg("--version").output() {
@@ -32,7 +32,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 
     let cwd = path::get_cwd()?;
     if let Err(e) = crate::session::update_history(&session, &cwd) {
-        warn!(target: "ah::cmd", session_id = %session.id, error = %e, "Failed to update session history");
+        error!(target: "ah::cmd", session_id = %session.id, error = %e, "Failed to update session history");
     }
 
     let mut cmd = Command::new("nix");

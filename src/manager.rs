@@ -7,12 +7,12 @@ use crate::{output::*, session};
 use strum::IntoEnumIterator;
 
 use anyhow::Result;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, instrument};
 
+#[instrument(skip_all)]
 pub fn clear_sessions() -> Result<()> {
     if is_interactive() && !ask_confirmation("This will remove all sessions. Continue? [y/N]: ") {
-        print_info("Cancelled.");
-        info!(target: "ah::manager", "Session clear cancelled by user");
+        print_bold("Cancelled.");
         return Ok(());
     }
 
@@ -20,33 +20,34 @@ pub fn clear_sessions() -> Result<()> {
     if removed > 0 {
         clear_current_session();
     }
-    warn!(target: "ah::manager", count = %removed, "All sessions cleared");
     print_success(format!("Cleared {} session(s).", removed));
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub fn list_provider() -> Result<()> {
     let providers = ProviderType::iter().collect::<Vec<_>>();
     print_provider_list(&providers);
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub fn list_sessions() -> Result<()> {
     let sessions = session::list_sessions()?;
     if sessions.is_empty() {
-        print_info("No sessions found.");
+        print_bold("No sessions found.");
         return Ok(());
     }
 
-    info!(target: "ah::manager", count = %sessions.len(), "Listed sessions");
     print_sessions_list(&sessions);
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
     info!(target: "ah::manager", key_count = %keys.len(), "Starting remove_sessions");
     let Some(result) = session::remove_sessions(keys)? else {
-        print_info("No sessions found.");
+        print_bold("No sessions found.");
         return Ok(());
     };
 
@@ -70,6 +71,7 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
     info!(target: "ah::manager", "Starting restore_session");
     match key {
@@ -92,30 +94,27 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
                     {
                         let session = &sessions[idx - 1];
                         debug!(target: "ah::manager", session_id = %session.id, "User selected session from history");
-                        print_session_found(
-                            &session.id,
-                            &session.provider.to_string(),
-                            &session.languages,
-                        );
                         print_bold("Restoring develop shell...");
                         return nix_develop_of_session(session.clone());
                     }
                 }
                 println!();
             } else {
-                print_info("No session history found for current directory.");
+                println!("No session history found for current directory.");
             }
             Ok(())
         }
     }
 }
 
+#[instrument(skip_all)]
 pub fn show_provider(provider: ProviderType) -> Result<()> {
     info!(target: "ah::manager", provider = ?provider, "Starting show_provider");
     print_provider_show(&[provider]);
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
     info!(target: "ah::manager", "Starting update_session");
     let session = match key {
@@ -148,27 +147,22 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
         print_bold("Entering develop shell...");
         nix_develop_of_session(session)?
     } else {
-        print_info("Dependencies are already up to date.");
+        println!("Dependencies are already up to date.");
     }
 
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub fn use_languages(provider: Option<ProviderType>, languages: Vec<Language>) -> Result<()> {
     info!(target: "ah::manager", provider = ?provider, languages = ?languages, "Starting use_languages");
     let provider = provider.unwrap_or(crate::config::get().provider);
     match session::find_session(provider, &languages)? {
         Some(session) => {
-            print_session_found(
-                &session.id,
-                &session.provider.to_string(),
-                &session.languages,
-            );
             print_bold("Restoring develop shell...");
             nix_develop_of_session(session)
         }
         None => {
-            print_no_session(&provider.to_string(), &languages);
             print_bold("Creating develop shell...");
             let session = session::create_session(provider, languages)?;
             nix_develop_of_session(session)

@@ -19,11 +19,7 @@ pub fn print_success<S: ToString>(msg: S) {
 }
 
 pub fn print_error<S: ToString>(msg: S) {
-    eprintln!("{}", msg.to_string().red());
-}
-
-pub fn print_info<S: ToString>(msg: S) {
-    println!("{}", msg.to_string());
+    println!("{}", msg.to_string().red());
 }
 
 pub fn print_bold<S: ToString>(msg: S) {
@@ -44,21 +40,6 @@ pub fn ask_confirmation(prompt: &str) -> bool {
         return false;
     }
     matches!(input.trim().to_ascii_lowercase().as_str(), "y" | "yes")
-}
-
-pub fn print_session_found(id: &str, provider: &str, languages: &[String]) {
-    print_success("Session found");
-    println!("  ID:       {}", id);
-    println!("  Provider: {}", provider);
-    println!("  Languages: {}", languages.join(", "));
-    println!();
-}
-
-pub fn print_no_session(provider: &str, languages: &[String]) {
-    print_info("No existing session");
-    println!("  Provider: {}", provider);
-    println!("  Languages: {}", languages.join(", "));
-    println!();
 }
 
 pub fn print_sessions_list(sessions: &[Session]) {

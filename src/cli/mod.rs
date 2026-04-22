@@ -2,10 +2,8 @@ mod types;
 use crate::manager;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
-use tracing_attributes::instrument;
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
-#[instrument(skip_all)]
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
