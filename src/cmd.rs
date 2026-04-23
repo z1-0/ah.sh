@@ -11,7 +11,7 @@ use tracing_attributes::instrument;
 fn check_nix_available() -> Result<()> {
     match Command::new("nix").arg("--version").output() {
         Ok(output) if output.status.success() => {
-            debug!(nix_version = %String::from_utf8_lossy(&output.stdout));
+            debug!(nix_version = %String::from_utf8_lossy(&output.stdout).trim());
             Ok(())
         }
         _ => {

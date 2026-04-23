@@ -154,7 +154,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 
     let content = serde_json::to_string_pretty(&history)?;
     fs::write(&history_path, content)
-        .with_context(|| format!("failed to update history file: {:?}", history_path))?;
+        .with_context(|| format!("failed to write history file: {:?}", history_path))?;
 
     Ok(())
 }
