@@ -7,7 +7,7 @@ use crate::{output::*, session};
 use strum::IntoEnumIterator;
 
 use anyhow::Result;
-use tracing::{debug, info, instrument};
+use tracing::{debug, instrument};
 
 #[instrument(skip_all)]
 pub fn clear_sessions() -> Result<()> {
@@ -45,7 +45,6 @@ pub fn list_sessions() -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
-    info!(key_count = %keys.len(), "Starting remove_sessions");
     let Some(result) = session::remove_sessions(keys)? else {
         print_bold("No sessions found.");
         return Ok(());
@@ -73,7 +72,6 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
-    info!("Starting restore_session");
     match key {
         Some(k) => {
             let session = session::find_session_by_key(k)?;
@@ -109,14 +107,12 @@ pub fn restore_session(key: Option<&SessionKey>) -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn show_provider(provider: ProviderType) -> Result<()> {
-    info!(provider = ?provider, "Starting show_provider");
     print_provider_show(&[provider]);
     Ok(())
 }
 
 #[instrument(skip_all)]
 pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
-    info!("Starting update_session");
     let session = match key {
         Some(k) => session::find_session_by_key(k)?,
         None => {
@@ -155,7 +151,6 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 
 #[instrument(skip_all)]
 pub fn use_languages(provider: Option<ProviderType>, languages: Vec<Language>) -> Result<()> {
-    info!(provider = ?provider, languages = ?languages, "Starting use_languages");
     let provider = provider.unwrap_or(crate::config::get().provider);
     match session::find_session(provider, &languages)? {
         Some(session) => {

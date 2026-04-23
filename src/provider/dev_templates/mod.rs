@@ -8,11 +8,11 @@ use anyhow::{Context, Result};
 use rayon::prelude::*;
 use std::collections::HashSet;
 use std::fs;
-use tracing::{debug, error, info};
 use tracing_attributes::instrument;
 
 const EMPTY_LANGUAGE: &str = "empty";
 
+#[instrument(skip_all, err)]
 pub fn get_flake_contents(languages: &[String]) -> Result<String> {
     let mut seen = HashSet::new();
     let deduped_languages: Vec<String> = languages
@@ -22,19 +22,13 @@ pub fn get_flake_contents(languages: &[String]) -> Result<String> {
         .cloned()
         .collect();
 
-    info!("Starting dev-templates prefetch");
-    let prefetch_raw = cmd::prefetch_dev_templates().map_err(|e| {
-        error!(error = %e, "dev-templates prefetch failed");
-        e
-    })?;
+    let prefetch_raw = cmd::prefetch_dev_templates()?;
     let nix_store_path = get_nix_store_path(prefetch_raw)?;
-    info!(store_path = %nix_store_path, "Prefetched dev-templates");
 
     let parsed_attrs: Vec<ShellAttrs> = deduped_languages
         .par_iter()
         .map(|lang| parse_flake(&nix_store_path, lang))
         .collect::<Result<Vec<_>>>()?;
-    debug!(language_count = %parsed_attrs.len(), "Parsed flake shells");
 
     let flake_content = generate_dev_templates_flake(&deduped_languages, &parsed_attrs);
 

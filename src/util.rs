@@ -1,5 +1,8 @@
 use std::{env, ffi::CStr, mem, ptr};
 
+use tracing::instrument;
+
+#[instrument(ret)]
 pub fn get_shell() -> Option<String> {
     let cfg_shell = crate::config::get().shell.clone();
     cfg_shell.or_else(|| {
