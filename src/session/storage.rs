@@ -8,43 +8,44 @@ use std::path::Path;
 use std::time::SystemTime;
 use tracing_attributes::instrument;
 
+use crate::util::atomic_write;
+
 fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     let history_path = session_dir.join(HISTORY_FILE);
-    if !history_path.exists() {
-        return Ok(Vec::new());
+    match fs::read_to_string(&history_path) {
+        Ok(content) => {
+            let history: Vec<String> = serde_json::from_str(&content)
+                .with_context(|| format!("failed to parse history file: {:?}", history_path))?;
+            Ok(history)
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(e.into()),
     }
-    let content = fs::read_to_string(&history_path)
-        .with_context(|| format!("failed to read history file: {:?}", history_path))?;
-    let history: Vec<String> = serde_json::from_str(&content)
-        .with_context(|| format!("failed to parse history file: {:?}", history_path))?;
-    Ok(history)
 }
 
 fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
     let session_dir = crate::path::cache::sessions::get_dir();
-
-    if !session_dir.exists() {
-        return Ok(Vec::new());
-    }
-    let sessions: Vec<(Session, SystemTime)> = fs::read_dir(session_dir)?
+    let entries = match fs::read_dir(&session_dir) {
+        Ok(e) => e,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
+    };
+    let sessions: Vec<(Session, SystemTime)> = entries
         .flatten()
         .filter_map(|entry: std::fs::DirEntry| {
             let path = entry.path();
             if !path.is_dir() {
                 return None;
             }
-
             let session_id = entry.file_name().to_string_lossy().into_owned();
             let session = try_session_by_id(&session_id).ok().flatten()?;
             let mtime = path
                 .metadata()
                 .and_then(|m| m.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH);
-
             Some((session, mtime))
         })
         .collect();
-
     Ok(sessions)
 }
 
@@ -84,19 +85,17 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
 #[instrument(skip_all, fields(session_id = %session.id))]
 pub fn save_session(session: &Session) -> Result<()> {
     let session_dir = session.get_dir();
-    if !session_dir.exists() {
-        std::fs::create_dir_all(&session_dir)
-            .with_context(|| format!("failed to create session directory: {:?}", session_dir))?;
-    }
+    fs::create_dir_all(&session_dir)
+        .with_context(|| format!("failed to create session directory: {:?}", session_dir))?;
 
     let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
     let flake_path = session_dir.join(FLAKE_FILE);
-    std::fs::write(&flake_path, flake_contents)
+    atomic_write(&flake_path, &flake_contents)
         .with_context(|| format!("failed to write flake.nix: {:?}", flake_path))?;
 
     let meta_path = session_dir.join(METADATA_FILE);
     let content = serde_json::to_string_pretty(&session)?;
-    std::fs::write(&meta_path, content)
+    atomic_write(&meta_path, &content)
         .with_context(|| format!("failed to write metadata file: {:?}", meta_path))?;
     Ok(())
 }
@@ -104,25 +103,27 @@ pub fn save_session(session: &Session) -> Result<()> {
 #[instrument(skip_all, fields(session_id = %session_id))]
 pub fn remove_session(session_id: &str) -> Result<bool> {
     let session_path = crate::path::cache::sessions::get_dir().join(session_id);
-    if !session_path.exists() {
-        return Ok(false);
+    match fs::remove_dir_all(&session_path) {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(e).context(format!(
+            "failed to remove session directory: {:?}",
+            session_path
+        )),
     }
-    fs::remove_dir_all(&session_path)
-        .with_context(|| format!("failed to remove session directory: {:?}", session_path))?;
-    Ok(true)
 }
 
 #[instrument(skip_all)]
 pub fn clear_sessions() -> Result<usize> {
     let session_dir = crate::path::cache::sessions::get_dir();
 
-    if !session_dir.exists() {
-        return Ok(0);
-    }
-
     let mut removed = 0usize;
-
-    for entry in fs::read_dir(session_dir)? {
+    let entries = match fs::read_dir(&session_dir) {
+        Ok(e) => e,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => return Err(e.into()),
+    };
+    for entry in entries {
         let entry = entry?;
         let path = entry.path();
         if path.is_dir() {
@@ -139,12 +140,10 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let session_dir = session.get_dir();
     let history_path = session_dir.join(HISTORY_FILE);
 
-    let mut history: Vec<String> = if history_path.exists() {
-        let content = fs::read_to_string(&history_path)
-            .with_context(|| format!("failed to read history file: {:?}", history_path))?;
-        serde_json::from_str(&content).unwrap_or_default()
-    } else {
-        Vec::new()
+    let mut history: Vec<String> = match fs::read_to_string(&history_path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        Err(e) => return Err(e.into()),
     };
 
     let cwd_str = cwd.to_string_lossy().into_owned();
@@ -153,7 +152,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     history.truncate(HISTORY_LIMIT);
 
     let content = serde_json::to_string_pretty(&history)?;
-    fs::write(&history_path, content)
+    atomic_write(&history_path, &content)
         .with_context(|| format!("failed to write history file: {:?}", history_path))?;
 
     Ok(())
@@ -163,14 +162,15 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
     let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
-    if !meta_path.exists() {
-        return Ok(None);
+    match fs::read_to_string(&meta_path) {
+        Ok(content) => {
+            let session = serde_json::from_str(&content)
+                .with_context(|| format!("failed to parse session metadata: {:?}", meta_path))?;
+            Ok(Some(session))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e).context(format!("failed to read session metadata: {:?}", meta_path)),
     }
-    let content = fs::read_to_string(&meta_path)
-        .with_context(|| format!("failed to read session metadata: {:?}", meta_path))?;
-    let session = serde_json::from_str(&content)
-        .with_context(|| format!("failed to parse session metadata: {:?}", meta_path))?;
-    Ok(Some(session))
 }
 
 #[instrument(skip_all, fields(idx = %idx))]

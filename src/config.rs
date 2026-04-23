@@ -1,3 +1,4 @@
+use std::fs;
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
@@ -22,21 +23,21 @@ pub fn get() -> &'static AppConfig {
 pub fn load_config() -> Result<()> {
     let config_path = crate::path::config::get_config_file();
 
-    if !config_path.exists() {
-        create_default_config(&config_path)?
-    }
+    create_default_config(&config_path)?;
 
     let config_data = ConfigBuilder::builder()
-        .add_source(File::from(config_path.as_path()).format(FileFormat::Toml).required(true))
+        .add_source(
+            File::from(config_path.as_path())
+                .format(FileFormat::Toml)
+                .required(true),
+        )
         .add_source(Environment::with_prefix(crate::APP_NAME))
         .build()
         .map_err(|e| match e {
-            config::ConfigError::FileParse { .. } => {
-                anyhow::Error::from(e).context("Failed to parse config.toml. Please check for TOML syntax errors.")
-            }
-            _ => {
-                anyhow::Error::from(e).context("Failed to build configuration. Please check your environment variables.")
-            }
+            config::ConfigError::FileParse { .. } => anyhow::Error::from(e)
+                .context("Failed to parse config.toml. Please check for TOML syntax errors."),
+            _ => anyhow::Error::from(e)
+                .context("Failed to build configuration. Please check your environment variables."),
         })?
         .try_deserialize::<AppConfig>()
         .context(
@@ -55,13 +56,10 @@ pub fn load_config() -> Result<()> {
 #[instrument(skip_all)]
 fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
     if let Some(parent) = dest_path.parent() {
-        std::fs::create_dir_all(parent).context("Failed to create config directory")?;
+        fs::create_dir_all(parent).context("Failed to create config directory")?;
     }
-
     let default_config = include_str!("assets/default_config.toml");
-    std::fs::write(dest_path, default_config).context("Failed to write default config file")?;
-
-    Ok(())
+    crate::util::atomic_write(dest_path, default_config)
 }
 
 #[test]
@@ -75,6 +73,7 @@ fn ensure_schema_is_up_to_date() {
     schema_path.push("src");
     schema_path.push("assets");
     schema_path.push("config.schema.json");
+
     let existing_schema = std::fs::read_to_string(&schema_path).unwrap_or_default();
 
     if current_schema != existing_schema {

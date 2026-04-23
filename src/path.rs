@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -69,23 +70,23 @@ pub mod cache {
 
     pub fn read_current_session() -> Result<Option<String>> {
         let path = get_current_session();
-        if path.exists() {
-            Ok(Some(std::fs::read_to_string(path)?.trim().to_string()))
-        } else {
-            Ok(None)
+        match fs::read_to_string(&path) {
+            Ok(content) => Ok(Some(content.trim().to_string())),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e.into()),
         }
     }
 
     pub fn save_current_session(session_id: &str) -> Result<()> {
         let path = get_current_session();
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create directory: {:?}", parent))?;
         }
-        std::fs::write(path, session_id)?;
-        Ok(())
+        crate::util::atomic_write(&path, session_id)
     }
 
     pub fn clear_current_session() {
-        let _ = std::fs::remove_file(get_current_session());
+        let _ = fs::remove_file(get_current_session());
     }
 }

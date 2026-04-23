@@ -1,6 +1,28 @@
-use std::{env, ffi::CStr, mem, ptr};
+use anyhow::{Context, Result};
+use std::io::Write;
+use std::{env, ffi::CStr, mem, path::Path, ptr};
+use tempfile::NamedTempFile;
 
 use tracing::instrument;
+
+#[instrument(skip_all, err, fields(path = %path.display()))]
+pub fn atomic_write(path: &Path, contents: &str) -> Result<()> {
+    let parent = path.parent().context("failed to get parent directory")?;
+    let mut tmp = NamedTempFile::new_in(parent)
+        .with_context(|| format!("failed to create temp file in {:?}", parent))?;
+
+    tmp.write_all(contents.as_bytes())
+        .with_context(|| format!("failed to write to temp file for {:?}", path))?;
+
+    tmp.as_file()
+        .sync_all()
+        .with_context(|| format!("failed to sync temp file for {:?}", path))?;
+
+    tmp.persist(path)
+        .with_context(|| format!("failed to persist temp file to {:?}", path))?;
+
+    Ok(())
+}
 
 #[instrument(ret)]
 pub fn get_shell() -> Option<String> {
