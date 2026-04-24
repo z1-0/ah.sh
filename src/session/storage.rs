@@ -39,7 +39,7 @@ fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
             }
             let session_id = entry.file_name().to_string_lossy().into_owned();
             let session = try_session_by_id(&session_id).ok().flatten()?;
-            let mtime = path
+            let mtime = entry
                 .metadata()
                 .and_then(|m| m.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH);
@@ -65,21 +65,31 @@ pub fn list_sessions() -> Result<Vec<Session>> {
 pub fn find_session_by_history() -> Result<Vec<Session>> {
     let cwd = crate::path::get_cwd()?;
     let target_path = cwd.to_string_lossy().into_owned();
-
     let session_base_dir = crate::path::cache::sessions::get_dir();
-    let sessions = get_sessions_with_mtime()?;
 
-    let matching_sessions: Vec<_> = sessions
-        .into_iter()
-        .filter(|(session, _)| {
-            let session_dir = session_base_dir.join(&session.id);
-            read_history(&session_dir)
-                .map(|history| history.iter().any(|entry| entry == &target_path))
-                .unwrap_or(false)
-        })
-        .collect();
+    let entries = match fs::read_dir(&session_base_dir) {
+        Ok(e) => e,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e.into()),
+    };
 
-    Ok(matching_sessions.into_iter().map(|(s, _)| s).collect())
+    let mut matching_ids: Vec<String> = Vec::new();
+    let entries: Vec<_> = entries.flatten().filter(|e| e.path().is_dir()).collect();
+
+    for entry in entries {
+        let history = read_history(&entry.path())?;
+        if history.iter().any(|e| e == &target_path) {
+            matching_ids.push(entry.file_name().to_string_lossy().into_owned());
+        }
+    }
+
+    let mut sessions: Vec<Session> = Vec::new();
+    for id in matching_ids {
+        if let Ok(Some(s)) = try_session_by_id(&id) {
+            sessions.push(s);
+        }
+    }
+    Ok(sessions)
 }
 
 #[instrument(skip_all, fields(session_id = %session.id))]
@@ -141,7 +151,8 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
     let history_path = session_dir.join(HISTORY_FILE);
 
     let mut history: Vec<String> = match fs::read_to_string(&history_path) {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Ok(content) => serde_json::from_str(&content)
+            .with_context(|| format!("failed to parse history file: {:?}", history_path))?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
         Err(e) => return Err(e.into()),
     };
@@ -176,11 +187,10 @@ pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
 #[instrument(skip_all, fields(idx = %idx))]
 pub(crate) fn try_session_by_index(idx: usize) -> Result<Option<Session>> {
     let sessions = list_sessions()?;
-    if idx > 0 && idx <= sessions.len() {
-        Ok(Some(sessions[idx - 1].clone()))
-    } else {
-        Ok(None)
+    if idx == 0 {
+        return Ok(None);
     }
+    Ok(sessions.get(idx - 1).cloned())
 }
 
 #[instrument(skip_all, fields(key = %key))]
