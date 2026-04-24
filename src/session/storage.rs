@@ -38,7 +38,7 @@ fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
                 return None;
             }
             let session_id = entry.file_name().to_string_lossy().into_owned();
-            let session = try_session_by_id(&session_id).ok().flatten()?;
+            let session = try_session_by_id(&session_id).ok()?;
             let mtime = entry
                 .metadata()
                 .and_then(|m| m.modified())
@@ -85,7 +85,7 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
 
     let mut sessions: Vec<Session> = Vec::new();
     for id in matching_ids {
-        if let Ok(Some(s)) = try_session_by_id(&id) {
+        if let Ok(s) = try_session_by_id(&id) {
             sessions.push(s);
         }
     }
@@ -170,31 +170,29 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 }
 
 #[instrument(skip_all, fields(session_id = %session_id))]
-pub(crate) fn try_session_by_id(session_id: &str) -> Result<Option<Session>> {
+pub(crate) fn try_session_by_id(session_id: &str) -> Result<Session> {
     let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
-    match fs::read_to_string(&meta_path) {
-        Ok(content) => {
-            let session = serde_json::from_str(&content)
-                .with_context(|| format!("failed to parse session metadata: {:?}", meta_path))?;
-            Ok(Some(session))
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(e).context(format!("failed to read session metadata: {:?}", meta_path)),
-    }
+    let content = fs::read_to_string(&meta_path)
+        .with_context(|| format!("metadata.json not found in {:?}", session_path))?;
+    serde_json::from_str(&content)
+        .with_context(|| format!("failed to parse metadata.json at {:?}", meta_path))
 }
 
 #[instrument(skip_all, fields(idx = %idx))]
-pub(crate) fn try_session_by_index(idx: usize) -> Result<Option<Session>> {
-    let sessions = list_sessions()?;
+pub(crate) fn try_session_by_index(idx: usize) -> Result<Session> {
     if idx == 0 {
-        return Ok(None);
+        anyhow::bail!("session index starts from 1, not 0");
     }
-    Ok(sessions.get(idx - 1).cloned())
+    let sessions = list_sessions()?;
+    sessions
+        .get(idx - 1)
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("session index {} out of range (1-{})", idx, sessions.len()))
 }
 
-#[instrument(skip_all, fields(key = %key))]
-pub(crate) fn try_session_by_key(key: &SessionKey) -> Result<Option<Session>> {
+#[instrument(skip_all, err, fields(key = %key))]
+pub(crate) fn try_session_by_key(key: &SessionKey) -> Result<Session> {
     match key {
         SessionKey::Id(id) => try_session_by_id(id),
         SessionKey::Index(idx) => try_session_by_index(*idx),
@@ -203,5 +201,5 @@ pub(crate) fn try_session_by_key(key: &SessionKey) -> Result<Option<Session>> {
 
 #[instrument(skip_all, fields(key = %key))]
 pub fn find_session_by_key(key: &SessionKey) -> Result<Session> {
-    try_session_by_key(key)?.ok_or_else(|| anyhow::anyhow!("session '{}' not found", key))
+    try_session_by_key(key)
 }

@@ -17,7 +17,11 @@ pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
     let supported_languages = to_supported_languages(provider, languages)?;
     let session_id = generate_id(provider, &supported_languages);
-    try_session_by_id(&session_id)
+    let session_dir = crate::path::cache::sessions::get_dir().join(&session_id);
+    if !session_dir.is_dir() {
+        return Ok(None);
+    }
+    try_session_by_id(&session_id).map(Some)
 }
 
 pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult>> {
@@ -30,19 +34,20 @@ pub fn remove_sessions(keys: &[SessionKey]) -> Result<Option<SessionRemoveResult
     let mut deduped_session_ids = HashSet::new();
 
     for key in keys {
-        let session = try_session_by_key(key)?;
-
-        if let Some(session) = session {
-            if deduped_session_ids.insert(session.id.clone()) {
-                let session_id = session.id.clone();
-                if remove_session(&session_id)? {
-                    removed_ids.push(session_id);
-                } else {
-                    missing_keys.push(session_id);
+        match try_session_by_key(key) {
+            Ok(session) => {
+                if deduped_session_ids.insert(session.id.clone()) {
+                    let session_id = session.id.clone();
+                    if remove_session(&session_id)? {
+                        removed_ids.push(session_id);
+                    } else {
+                        missing_keys.push(session_id);
+                    }
                 }
             }
-        } else {
-            missing_keys.push(key.to_string());
+            Err(_) => {
+                missing_keys.push(key.to_string());
+            }
         }
     }
 
