@@ -15,7 +15,7 @@ static LOG_GUARD: Mutex<Option<WorkerGuard>> = Mutex::new(None);
 
 pub fn initialize() {
     let log_dir = crate::path::local::get_logs_dir();
-    std::fs::create_dir_all(&log_dir).ok();
+    fs_err::create_dir_all(&log_dir).ok();
 
     let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);

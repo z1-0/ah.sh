@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::fs;
+use fs_err as fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -80,8 +80,7 @@ pub mod cache {
     pub fn save_current_session(session_id: &str) -> Result<()> {
         let path = get_current_session();
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("failed to create directory: {:?}", parent))?;
+            fs::create_dir_all(parent)?;
         }
         crate::util::atomic_write(&path, session_id)
     }

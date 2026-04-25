@@ -4,10 +4,10 @@ pub mod nix_parser;
 use crate::cmd;
 use crate::provider::dev_templates::flake_generator::generate_dev_templates_flake;
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
-use anyhow::{Context, Result};
+use anyhow::Result;
+use fs_err as fs;
 use rayon::prelude::*;
 use std::collections::HashSet;
-use std::fs;
 use tracing_attributes::instrument;
 
 const EMPTY_LANGUAGE: &str = "empty";
@@ -50,8 +50,7 @@ fn get_nix_store_path(prefetch_raw: String) -> Result<String> {
 fn parse_flake(store_path: &str, language: &str) -> Result<ShellAttrs> {
     let flake_path = format!("{store_path}/{language}/flake.nix");
 
-    let flake_contents = fs::read_to_string(&flake_path)
-        .with_context(|| format!("failed to read {} for language '{}'", flake_path, language))?;
+    let flake_contents = fs::read_to_string(flake_path)?;
 
     Ok(nix_parser::parse_flake_shell(&flake_contents))
 }
