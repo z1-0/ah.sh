@@ -2,8 +2,8 @@ use crate::path::cache::sessions::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
 use anyhow::{Context, Result};
+use fs_err as fs;
 use std::cmp::Ordering;
-use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 use tracing_attributes::instrument;
@@ -32,7 +32,7 @@ fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
     };
     let sessions: Vec<(Session, SystemTime)> = entries
         .flatten()
-        .filter_map(|entry: std::fs::DirEntry| {
+        .filter_map(|entry| {
             let path = entry.path();
             if !path.is_dir() {
                 return None;
@@ -95,8 +95,7 @@ pub fn find_session_by_history() -> Result<Vec<Session>> {
 #[instrument(skip_all, fields(session_id = %session.id))]
 pub fn save_session(session: &Session) -> Result<()> {
     let session_dir = session.get_dir();
-    fs::create_dir_all(&session_dir)
-        .with_context(|| format!("failed to create session directory: {:?}", session_dir))?;
+    fs::create_dir_all(&session_dir)?;
 
     let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
     let flake_path = session_dir.join(FLAKE_FILE);
@@ -116,10 +115,7 @@ pub fn remove_session(session_id: &str) -> Result<bool> {
     match fs::remove_dir_all(&session_path) {
         Ok(()) => Ok(true),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(e) => Err(e).context(format!(
-            "failed to remove session directory: {:?}",
-            session_path
-        )),
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -173,8 +169,7 @@ pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Session> {
     let session_path = crate::path::cache::sessions::get_dir().join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
-    let content = fs::read_to_string(&meta_path)
-        .with_context(|| format!("metadata.json not found in {:?}", session_path))?;
+    let content = fs::read_to_string(&meta_path)?;
     serde_json::from_str(&content)
         .with_context(|| format!("failed to parse metadata.json at {:?}", meta_path))
 }
