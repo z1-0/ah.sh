@@ -1,4 +1,4 @@
-use std::fs;
+use fs_err as fs;
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
@@ -56,7 +56,7 @@ pub fn load_config() -> Result<()> {
 #[instrument(skip_all)]
 fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
     if let Some(parent) = dest_path.parent() {
-        fs::create_dir_all(parent).context("Failed to create config directory")?;
+        fs::create_dir_all(parent)?;
     }
     let default_config = include_str!("assets/default_config.toml");
     crate::util::atomic_write(dest_path, default_config)
@@ -74,10 +74,10 @@ fn ensure_schema_is_up_to_date() {
     schema_path.push("assets");
     schema_path.push("config.schema.json");
 
-    let existing_schema = std::fs::read_to_string(&schema_path).unwrap_or_default();
+    let existing_schema = fs::read_to_string(&schema_path).unwrap_or_default();
 
     if current_schema != existing_schema {
-        std::fs::write(&schema_path, current_schema).unwrap();
+        fs::write(&schema_path, current_schema).unwrap();
         panic!("Schema was out of date and has been updated. Please commit the changes.");
     }
 }
