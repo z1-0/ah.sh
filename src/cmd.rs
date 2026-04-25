@@ -33,9 +33,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 
     path::cache::save_current_session(&session.id)?;
 
-    let cwd = path::get_cwd()?;
-
-    crate::session::update_history(&session, &cwd)?;
+    crate::session::update_history(&session)?;
 
     let mut cmd = Command::new("nix");
     cmd.arg("develop");

@@ -74,7 +74,11 @@ fn ensure_schema_is_up_to_date() {
     schema_path.push("assets");
     schema_path.push("config.schema.json");
 
-    let existing_schema = fs::read_to_string(&schema_path).unwrap_or_default();
+    let existing_schema = match fs::read_to_string(&schema_path) {
+        Ok(s) => s,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => panic!("failed to read schema file: {e}"),
+    };
 
     if current_schema != existing_schema {
         fs::write(&schema_path, current_schema).unwrap();

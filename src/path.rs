@@ -2,12 +2,14 @@ use anyhow::{Context, Result};
 use fs_err as fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+use tracing::instrument;
 
 static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
     directories::ProjectDirs::from("", "", crate::APP_NAME)
         .expect("Could not determine project directories")
 });
 
+#[instrument]
 pub fn get_cwd() -> Result<PathBuf> {
     std::env::current_dir().context("failed to get current directory")
 }
@@ -36,7 +38,7 @@ pub mod local {
     }
 
     pub fn get_logs_dir() -> PathBuf {
-        get_dir().join("logs")
+        get_dir().join(LOGS_DIR)
     }
 }
 

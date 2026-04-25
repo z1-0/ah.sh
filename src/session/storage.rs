@@ -1,3 +1,4 @@
+use crate::path;
 use crate::path::cache::sessions::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
@@ -122,8 +123,8 @@ pub fn remove_session(session_id: &str) -> Result<bool> {
 #[instrument(skip_all)]
 pub fn clear_sessions() -> Result<usize> {
     let session_dir = crate::path::cache::sessions::get_dir();
-
     let mut removed = 0usize;
+
     let entries = match fs::read_dir(&session_dir) {
         Ok(e) => e,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
@@ -132,32 +133,28 @@ pub fn clear_sessions() -> Result<usize> {
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.is_dir() {
-            fs::remove_dir_all(path)?;
-            removed += 1;
+        match fs::remove_dir_all(&path) {
+            Ok(()) => removed += 1,
+            Err(e) if e.kind() == std::io::ErrorKind::NotADirectory => continue,
+            Err(e) => return Err(e.into()),
         }
     }
 
     Ok(removed)
 }
 
-#[instrument(skip_all, fields(session_id = %session.id, cwd = %cwd.display()))]
-pub fn update_history(session: &Session, cwd: &Path) -> Result<()> {
+#[instrument(skip_all, fields(session_id = %session.id))]
+pub fn update_history(session: &Session) -> Result<()> {
     let session_dir = session.get_dir();
-    let history_path = session_dir.join(HISTORY_FILE);
+    let mut history = read_history(&session_dir)?;
 
-    let mut history: Vec<String> = match fs::read_to_string(&history_path) {
-        Ok(content) => serde_json::from_str(&content)
-            .with_context(|| format!("failed to parse history file: {:?}", history_path))?,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
-        Err(e) => return Err(e.into()),
-    };
-
+    let cwd = path::get_cwd()?;
     let cwd_str = cwd.to_string_lossy().into_owned();
     history.retain(|entry| *entry != cwd_str);
     history.insert(0, cwd_str);
     history.truncate(HISTORY_LIMIT);
 
+    let history_path = session_dir.join(HISTORY_FILE);
     let content = serde_json::to_string_pretty(&history)?;
     atomic_write(&history_path, &content)
         .with_context(|| format!("failed to write history file: {:?}", history_path))?;
