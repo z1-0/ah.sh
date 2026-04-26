@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,8 @@ pub struct Session {
     pub id: String,
     pub provider: ProviderType,
     pub languages: Vec<String>,
+    pub last_used_at: SystemTime,
+    pub last_updated_at: SystemTime,
 }
 
 impl Session {

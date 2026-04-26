@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use tracing_attributes::instrument;
@@ -71,6 +72,8 @@ pub fn create_session(provider: ProviderType, languages: Vec<Language>) -> Resul
         id: session_id.clone(),
         provider,
         languages: supported_languages,
+        last_used_at: SystemTime::now(),
+        last_updated_at: SystemTime::now(),
     };
 
     save_session(&session)?;

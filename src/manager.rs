@@ -136,6 +136,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
 
     output::print_bold("Updating flake dependencies...");
     nix_flake_update_of_session(&session)?;
+    session::touch_last_updated_at(&session)?;
 
     let mtime_after = lock_path.metadata().and_then(|m| m.modified()).ok();
     let was_updated = match (mtime_before, mtime_after) {
@@ -149,7 +150,7 @@ pub fn update_session(key: Option<&SessionKey>) -> Result<()> {
         output::print_bold("Entering develop shell...");
         nix_develop_of_session(session)?
     } else {
-        println!("Dependencies are already up to date.");
+        output::print_bold("Dependencies are already up to date.");
     }
 
     Ok(())

@@ -26,14 +26,27 @@ fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     }
 }
 
-fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
+fn read_session(meta_path: &Path) -> Result<Session> {
+    let content = fs::read_to_string(meta_path)?;
+    serde_json::from_str(&content)
+        .with_context(|| format!("failed to parse metadata.json at {:?}", meta_path))
+}
+
+fn write_session(session: &Session, meta_path: &Path) -> Result<()> {
+    let content = serde_json::to_string_pretty(&session)?;
+    atomic_write(meta_path, &content)
+        .with_context(|| format!("failed to write metadata file: {:?}", meta_path))
+}
+
+#[instrument(skip_all)]
+pub fn list_sessions() -> Result<Vec<Session>> {
     let session_dir = path::cache::sessions::get_dir();
     let entries = match fs::read_dir(&session_dir) {
         Ok(e) => e,
         Err(e) if e.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => return Err(e.into()),
     };
-    let sessions: Vec<(Session, SystemTime)> = entries
+    let mut sessions: Vec<Session> = entries
         .flatten()
         .filter_map(|entry| {
             let path = entry.path();
@@ -41,27 +54,16 @@ fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
                 return None;
             }
             let session_id = entry.file_name().to_string_lossy().into_owned();
-            let session = try_session_by_id(&session_id).ok()?;
-            let mtime = entry
-                .metadata()
-                .and_then(|m| m.modified())
-                .unwrap_or(SystemTime::UNIX_EPOCH);
-            Some((session, mtime))
+            try_session_by_id(&session_id).ok()
         })
         .collect();
-    Ok(sessions)
-}
 
-#[instrument(skip_all)]
-pub fn list_sessions() -> Result<Vec<Session>> {
-    let mut sessions = get_sessions_with_mtime()?;
-
-    sessions.sort_by(|(a, a_mtime), (b, b_mtime)| match b_mtime.cmp(a_mtime) {
+    sessions.sort_by(|a, b| match b.last_used_at.cmp(&a.last_used_at) {
         Ordering::Equal => a.id.cmp(&b.id),
         other => other,
     });
 
-    Ok(sessions.into_iter().map(|(session, _)| session).collect())
+    Ok(sessions)
 }
 
 #[instrument(skip_all)]
@@ -106,9 +108,8 @@ pub fn save_session(session: &Session) -> Result<()> {
         .with_context(|| format!("failed to write flake.nix: {:?}", flake_path))?;
 
     let meta_path = session_dir.join(METADATA_FILE);
-    let content = serde_json::to_string_pretty(&session)?;
-    atomic_write(&meta_path, &content)
-        .with_context(|| format!("failed to write metadata file: {:?}", meta_path))?;
+    write_session(session, &meta_path)?;
+
     Ok(())
 }
 
@@ -164,13 +165,26 @@ pub fn update_history(session: &Session) -> Result<()> {
     Ok(())
 }
 
+pub fn touch_last_used_at(session: &Session) -> Result<()> {
+    let meta_path = session.get_dir().join(METADATA_FILE);
+    let mut session = read_session(&meta_path)?;
+    session.last_used_at = SystemTime::now();
+    write_session(&session, &meta_path)
+}
+
+pub fn touch_last_updated_at(session: &Session) -> Result<()> {
+    let meta_path = session.get_dir().join(METADATA_FILE);
+    let mut session = read_session(&meta_path)?;
+    session.last_updated_at = SystemTime::now();
+    write_session(&session, &meta_path)
+}
+
 #[instrument(skip_all, fields(session_id = %session_id))]
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Session> {
-    let session_path = path::cache::sessions::get_dir().join(session_id);
-    let meta_path = session_path.join(METADATA_FILE);
-    let content = fs::read_to_string(&meta_path)?;
-    serde_json::from_str(&content)
-        .with_context(|| format!("failed to parse metadata.json at {:?}", meta_path))
+    let meta_path = path::cache::sessions::get_dir()
+        .join(session_id)
+        .join(METADATA_FILE);
+    read_session(&meta_path)
 }
 
 #[instrument(skip_all, fields(idx = %idx))]

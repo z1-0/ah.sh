@@ -37,7 +37,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
     let profile_file = flake_dir.join(path::cache::sessions::NIX_PROFILE_FILE);
 
     path::cache::save_current_session(&session.id)?;
-
+    session::touch_last_used_at(&session)?;
     session::update_history(&session)?;
 
     let mut cmd = Command::new("nix");
