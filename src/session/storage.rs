@@ -7,11 +7,10 @@ use anyhow::{Context, Result};
 use fs_err as fs;
 use tracing_attributes::instrument;
 
-use crate::path;
 use crate::path::cache::sessions::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
-use crate::util::atomic_write;
+use crate::{path, util};
 
 fn read_history(session_dir: &Path) -> Result<Vec<String>> {
     let history_path = session_dir.join(HISTORY_FILE);
@@ -34,7 +33,7 @@ fn read_session(meta_path: &Path) -> Result<Session> {
 
 fn write_session(session: &Session, meta_path: &Path) -> Result<()> {
     let content = serde_json::to_string_pretty(&session)?;
-    atomic_write(meta_path, &content)
+    util::atomic_write(meta_path, &content)
         .with_context(|| format!("failed to write metadata file: {:?}", meta_path))
 }
 
@@ -104,7 +103,7 @@ pub fn save_session(session: &Session) -> Result<()> {
 
     let flake_contents = get_flake_contents(session.provider)(&session.languages)?;
     let flake_path = session_dir.join(FLAKE_FILE);
-    atomic_write(&flake_path, &flake_contents)
+    util::atomic_write(&flake_path, &flake_contents)
         .with_context(|| format!("failed to write flake.nix: {:?}", flake_path))?;
 
     let meta_path = session_dir.join(METADATA_FILE);
@@ -159,12 +158,13 @@ pub fn update_history(session: &Session) -> Result<()> {
 
     let history_path = session_dir.join(HISTORY_FILE);
     let content = serde_json::to_string_pretty(&history)?;
-    atomic_write(&history_path, &content)
+    util::atomic_write(&history_path, &content)
         .with_context(|| format!("failed to write history file: {:?}", history_path))?;
 
     Ok(())
 }
 
+#[instrument(skip_all, fields(session_id = %session.id))]
 pub fn touch_last_used_at(session: &Session) -> Result<()> {
     let meta_path = session.get_dir().join(METADATA_FILE);
     let mut session = read_session(&meta_path)?;
@@ -172,6 +172,7 @@ pub fn touch_last_used_at(session: &Session) -> Result<()> {
     write_session(&session, &meta_path)
 }
 
+#[instrument(skip_all, fields(session_id = %session.id))]
 pub fn touch_last_updated_at(session: &Session) -> Result<()> {
     let meta_path = session.get_dir().join(METADATA_FILE);
     let mut session = read_session(&meta_path)?;

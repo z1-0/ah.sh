@@ -35,32 +35,26 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 
     let flake_dir = session.get_dir();
     let profile_file = flake_dir.join(path::cache::sessions::NIX_PROFILE_FILE);
-
-    path::cache::save_current_session(&session.id)?;
-    session::touch_last_used_at(&session)?;
-    session::update_history(&session)?;
-
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
-
     if profile_file.exists() {
         cmd.arg(&profile_file);
     } else {
         cmd.arg(&flake_dir).arg("--profile").arg(&profile_file);
     }
-
     if session.provider == ProviderType::Devenv {
         cmd.arg("--no-pure-eval");
     }
-
     if let Some(shell) = util::get_shell() {
         cmd.arg("--command").arg(shell);
     }
-
     Span::current().record("cmd", format!("{:?}", cmd));
 
-    log::shutdown();
+    path::cache::save_current_session(&session.id)?;
+    session::touch_last_used_at(&session)?;
+    session::update_history(&session)?;
 
+    log::shutdown();
     let err = cmd.exec();
     anyhow::bail!("failed to execute nix develop: {err}")
 }
