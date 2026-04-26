@@ -1,9 +1,13 @@
-use anyhow::{Context, Result};
+use std::ffi::CStr;
 use std::io::Write;
-use std::{env, ffi::CStr, mem, path::Path, ptr};
-use tempfile::NamedTempFile;
+use std::path::Path;
+use std::{env, mem, ptr};
 
+use anyhow::{Context, Result};
+use tempfile::NamedTempFile;
 use tracing::instrument;
+
+use crate::config;
 
 #[instrument(skip_all, err, fields(path = %path.display()))]
 pub fn atomic_write(path: &Path, contents: &str) -> Result<()> {
@@ -26,7 +30,7 @@ pub fn atomic_write(path: &Path, contents: &str) -> Result<()> {
 
 #[instrument(ret)]
 pub fn get_shell() -> Option<String> {
-    let cfg_shell = crate::config::get().shell.clone();
+    let cfg_shell = config::get().shell.clone();
     cfg_shell.or_else(|| {
         if env::var("IN_NIX_SHELL").ok().is_none() {
             env::var("SHELL").ok()

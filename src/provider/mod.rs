@@ -1,11 +1,13 @@
-pub mod dev_templates;
-pub mod devenv;
-pub mod types;
+use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
 use serde_json::from_str;
-use std::{collections::HashMap, sync::LazyLock};
 use tracing_attributes::instrument;
+
+pub mod dev_templates;
+pub mod devenv;
+pub mod types;
 
 pub use types::*;
 

@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+use std::io::{IsTerminal, Write, stdin, stdout};
+
 use comfy_table::{Attribute, Cell, Color, Table, presets::UTF8_FULL};
 use crossterm::style::Stylize;
-use std::io::{IsTerminal, Write, stdout};
-use std::{collections::HashMap, io::stdin};
 
-use crate::{provider::ProviderType, session::Session};
+use crate::provider::{ProviderType, get_provider};
+use crate::session::Session;
 
 struct LanguageGroup {
     range: String,
@@ -32,11 +34,11 @@ pub fn is_interactive() -> bool {
 
 pub fn ask_confirmation(prompt: &str) -> bool {
     print!("{}", prompt.yellow());
-    if std::io::stdout().flush().is_err() {
+    if stdout().flush().is_err() {
         return false;
     }
     let mut input = String::new();
-    if std::io::stdin().read_line(&mut input).is_err() {
+    if stdin().read_line(&mut input).is_err() {
         return false;
     }
     matches!(input.trim().to_ascii_lowercase().as_str(), "y" | "yes")
@@ -92,7 +94,7 @@ pub fn print_provider_list(providers: &[ProviderType]) {
     let mut provider_info: Vec<(String, usize)> = Vec::with_capacity(providers.len());
 
     for p in providers {
-        let langs = crate::provider::get_provider(*p).get_supported_languages();
+        let langs = get_provider(*p).get_supported_languages();
         provider_info.push((p.to_string(), langs.len()));
     }
     print_provider_table(&provider_info);
@@ -141,11 +143,11 @@ pub fn print_session_history(sessions: &[Session]) {
     print_sessions_list(sessions);
     println!();
     print!("Enter session number to restore, or press Enter to skip: ");
-    let _ = std::io::stdout().flush();
+    let _ = stdout().flush();
 }
 
 fn write_provider_languages(pt: ProviderType) {
-    let provider = crate::provider::get_provider(pt);
+    let provider = get_provider(pt);
     let supported_languages = provider.get_supported_languages();
     let language_to_aliases = provider.get_language_to_aliases();
 

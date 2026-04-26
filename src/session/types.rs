@@ -1,8 +1,11 @@
-use crate::provider::ProviderType;
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+
+use crate::path;
+use crate::provider::ProviderType;
 
 pub const SESSION_ID_LEN: usize = 8;
 pub const HISTORY_LIMIT: usize = 64;
@@ -16,7 +19,7 @@ pub struct Session {
 
 impl Session {
     pub fn get_dir(&self) -> PathBuf {
-        crate::path::cache::sessions::get_dir().join(&self.id)
+        path::cache::sessions::get_dir().join(&self.id)
     }
 }
 

@@ -1,11 +1,16 @@
-use anyhow::{Context, Result};
-use fs_err as fs;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+
+use anyhow::{Context, Result};
+use fs_err as fs;
 use tracing::instrument;
 
+use crate::APP_NAME;
+use crate::util;
+
 static PROJECT_DIRS: LazyLock<directories::ProjectDirs> = LazyLock::new(|| {
-    directories::ProjectDirs::from("", "", crate::APP_NAME)
+    directories::ProjectDirs::from("", "", APP_NAME)
         .expect("Could not determine project directories")
 });
 
@@ -74,7 +79,7 @@ pub mod cache {
         let path = get_current_session();
         match fs::read_to_string(&path) {
             Ok(content) => Ok(Some(content.trim().to_string())),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) if e.kind() == ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e.into()),
         }
     }
@@ -84,7 +89,7 @@ pub mod cache {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        crate::util::atomic_write(&path, session_id)
+        util::atomic_write(&path, session_id)
     }
 
     pub fn clear_current_session() {

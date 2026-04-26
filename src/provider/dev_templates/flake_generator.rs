@@ -1,7 +1,8 @@
-use super::nix_parser::ShellAttrs;
 use std::collections::HashMap;
 use std::fmt::Write;
 use tracing_attributes::instrument;
+
+use super::nix_parser::ShellAttrs;
 
 /// Generates a dev-templates flake.nix that combines multiple language shells.
 ///

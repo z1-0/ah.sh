@@ -1,10 +1,14 @@
+use std::collections::HashSet;
+
+use anyhow::Result;
+use tracing_attributes::instrument;
+
+use crate::path;
+use crate::provider::{Language, ProviderType, to_supported_languages};
+
 mod storage;
 mod types;
-use crate::provider::{Language, ProviderType, to_supported_languages};
-use anyhow::Result;
-use std::collections::HashSet;
 pub use storage::*;
-use tracing_attributes::instrument;
 pub use types::*;
 
 pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
@@ -17,7 +21,7 @@ pub fn generate_id(provider: ProviderType, languages: &[String]) -> String {
 pub fn find_session(provider: ProviderType, languages: &[Language]) -> Result<Option<Session>> {
     let supported_languages = to_supported_languages(provider, languages)?;
     let session_id = generate_id(provider, &supported_languages);
-    let session_dir = crate::path::cache::sessions::get_dir().join(&session_id);
+    let session_dir = path::cache::sessions::get_dir().join(&session_id);
     if !session_dir.is_dir() {
         return Ok(None);
     }

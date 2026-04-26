@@ -1,7 +1,9 @@
-mod types;
-use crate::manager;
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
+
+use crate::manager;
+
+mod types;
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
 pub fn run() -> Result<()> {

@@ -1,14 +1,16 @@
+use std::cmp::Ordering;
+use std::io::ErrorKind;
+use std::path::Path;
+use std::time::SystemTime;
+
+use anyhow::{Context, Result};
+use fs_err as fs;
+use tracing_attributes::instrument;
+
 use crate::path;
 use crate::path::cache::sessions::{FLAKE_FILE, HISTORY_FILE, METADATA_FILE};
 use crate::provider::get_flake_contents;
 use crate::session::types::{HISTORY_LIMIT, Session, SessionKey};
-use anyhow::{Context, Result};
-use fs_err as fs;
-use std::cmp::Ordering;
-use std::path::Path;
-use std::time::SystemTime;
-use tracing_attributes::instrument;
-
 use crate::util::atomic_write;
 
 fn read_history(session_dir: &Path) -> Result<Vec<String>> {
@@ -19,16 +21,16 @@ fn read_history(session_dir: &Path) -> Result<Vec<String>> {
                 .with_context(|| format!("failed to parse history file: {:?}", history_path))?;
             Ok(history)
         }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) if e.kind() == ErrorKind::NotFound => Ok(Vec::new()),
         Err(e) => Err(e.into()),
     }
 }
 
 fn get_sessions_with_mtime() -> Result<Vec<(Session, SystemTime)>> {
-    let session_dir = crate::path::cache::sessions::get_dir();
+    let session_dir = path::cache::sessions::get_dir();
     let entries = match fs::read_dir(&session_dir) {
         Ok(e) => e,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => return Err(e.into()),
     };
     let sessions: Vec<(Session, SystemTime)> = entries
@@ -64,13 +66,13 @@ pub fn list_sessions() -> Result<Vec<Session>> {
 
 #[instrument(skip_all)]
 pub fn find_session_by_history() -> Result<Vec<Session>> {
-    let cwd = crate::path::get_cwd()?;
+    let cwd = path::get_cwd()?;
     let target_path = cwd.to_string_lossy().into_owned();
-    let session_base_dir = crate::path::cache::sessions::get_dir();
+    let session_base_dir = path::cache::sessions::get_dir();
 
     let entries = match fs::read_dir(&session_base_dir) {
         Ok(e) => e,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
         Err(e) => return Err(e.into()),
     };
 
@@ -112,22 +114,22 @@ pub fn save_session(session: &Session) -> Result<()> {
 
 #[instrument(skip_all, fields(session_id = %session_id))]
 pub fn remove_session(session_id: &str) -> Result<bool> {
-    let session_path = crate::path::cache::sessions::get_dir().join(session_id);
+    let session_path = path::cache::sessions::get_dir().join(session_id);
     match fs::remove_dir_all(&session_path) {
         Ok(()) => Ok(true),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(e) if e.kind() == ErrorKind::NotFound => Ok(false),
         Err(e) => Err(e.into()),
     }
 }
 
 #[instrument(skip_all)]
 pub fn clear_sessions() -> Result<usize> {
-    let session_dir = crate::path::cache::sessions::get_dir();
+    let session_dir = path::cache::sessions::get_dir();
     let mut removed = 0usize;
 
     let entries = match fs::read_dir(&session_dir) {
         Ok(e) => e,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(0),
         Err(e) => return Err(e.into()),
     };
     for entry in entries {
@@ -135,7 +137,7 @@ pub fn clear_sessions() -> Result<usize> {
         let path = entry.path();
         match fs::remove_dir_all(&path) {
             Ok(()) => removed += 1,
-            Err(e) if e.kind() == std::io::ErrorKind::NotADirectory => continue,
+            Err(e) if e.kind() == ErrorKind::NotADirectory => continue,
             Err(e) => return Err(e.into()),
         }
     }
@@ -164,7 +166,7 @@ pub fn update_history(session: &Session) -> Result<()> {
 
 #[instrument(skip_all, fields(session_id = %session_id))]
 pub(crate) fn try_session_by_id(session_id: &str) -> Result<Session> {
-    let session_path = crate::path::cache::sessions::get_dir().join(session_id);
+    let session_path = path::cache::sessions::get_dir().join(session_id);
     let meta_path = session_path.join(METADATA_FILE);
     let content = fs::read_to_string(&meta_path)?;
     serde_json::from_str(&content)

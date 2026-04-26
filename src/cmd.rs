@@ -1,12 +1,17 @@
-use crate::provider::ProviderType;
-use crate::session::Session;
-use crate::{log, path};
-use anyhow::{Context, Result};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
+
+use anyhow::{Context, Result};
 use tracing::debug;
 use tracing::span::Span;
 use tracing_attributes::instrument;
+
+use crate::log;
+use crate::path;
+use crate::provider::ProviderType;
+use crate::session;
+use crate::session::Session;
+use crate::util;
 
 fn check_nix_available() -> Result<()> {
     match Command::new("nix").arg("--version").output() {
@@ -17,7 +22,7 @@ fn check_nix_available() -> Result<()> {
         _ => {
             anyhow::bail!(
                 "Nix not found.\n\n\
-                 To install, use the Determinate Nix Installer:\n  \
+                 To install, use the Determinate Nix Installer:\n \
                  curl -fsSL https://install.determinate.systems/nix | sh -s -- install"
             );
         }
@@ -33,7 +38,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
 
     path::cache::save_current_session(&session.id)?;
 
-    crate::session::update_history(&session)?;
+    session::update_history(&session)?;
 
     let mut cmd = Command::new("nix");
     cmd.arg("develop");
@@ -48,7 +53,7 @@ pub fn nix_develop_of_session(session: Session) -> Result<()> {
         cmd.arg("--no-pure-eval");
     }
 
-    if let Some(shell) = crate::util::get_shell() {
+    if let Some(shell) = util::get_shell() {
         cmd.arg("--command").arg(shell);
     }
 

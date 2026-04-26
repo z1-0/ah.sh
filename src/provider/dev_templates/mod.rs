@@ -1,14 +1,16 @@
-pub mod flake_generator;
-pub mod nix_parser;
+use std::collections::HashSet;
+
+use anyhow::Result;
+use fs_err as fs;
+use rayon::prelude::*;
+use tracing_attributes::instrument;
 
 use crate::cmd;
 use crate::provider::dev_templates::flake_generator::generate_dev_templates_flake;
 use crate::provider::dev_templates::nix_parser::ShellAttrs;
-use anyhow::Result;
-use fs_err as fs;
-use rayon::prelude::*;
-use std::collections::HashSet;
-use tracing_attributes::instrument;
+
+pub mod flake_generator;
+pub mod nix_parser;
 
 const EMPTY_LANGUAGE: &str = "empty";
 
