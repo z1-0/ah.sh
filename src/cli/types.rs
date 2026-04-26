@@ -80,6 +80,13 @@ pub enum Commands {
         #[arg(short, long)]
         provider: Option<ProviderType>,
     },
+
+    /// Generate shell completion scripts
+    Completion {
+        /// Shell to generate completions for
+        #[arg(required = true)]
+        shell: clap_complete::Shell,
+    },
 }
 
 #[derive(Subcommand, Debug)]

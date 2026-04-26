@@ -1,3 +1,5 @@
+use std::io;
+
 use anyhow::Result;
 use clap::{CommandFactory, Parser};
 
@@ -31,6 +33,12 @@ pub fn run() -> Result<()> {
             },
             Commands::Restore { key } => manager::restore_session(key.as_ref()),
             Commands::Update { session } => manager::update_session(session.as_ref()),
+            Commands::Completion { shell } => {
+                let mut cmd = Cli::command();
+                let name = cmd.get_name().to_string();
+                clap_complete::generate(shell, &mut cmd, name, &mut io::stdout());
+                Ok(())
+            }
         },
     }
 }

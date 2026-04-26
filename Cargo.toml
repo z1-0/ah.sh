@@ -25,6 +25,7 @@ github-actions = { repository = "z1-0/ah.sh" }
 anyhow = "1.0"
 blake3 = "1.8"
 clap = { version = "4.6", features = ["derive"] }
+clap_complete = "4.6"
 comfy-table = "7.2"
 config = "0.15"
 crossterm = "0.29"
