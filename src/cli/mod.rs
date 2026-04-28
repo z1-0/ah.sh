@@ -7,7 +7,7 @@ use crate::manager;
 mod types;
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 
-pub fn init() {
+pub fn complete_dynamic() {
     CompleteEnv::with_factory(Cli::command).complete();
 }
 
@@ -36,6 +36,11 @@ pub fn run() -> Result<()> {
             },
             Commands::Restore { key } => manager::restore_session(key.as_ref()),
             Commands::Update { session } => manager::update_session(session.as_ref()),
+            Commands::Completion { shell } => {
+                unsafe { std::env::set_var("COMPLETE", shell.to_string()) };
+                complete_dynamic();
+                Ok(())
+            }
         },
     }
 }
