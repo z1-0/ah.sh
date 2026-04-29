@@ -16,6 +16,9 @@ use tracing_subscriber::{
 
 use crate::path;
 
+mod types;
+pub use types::*;
+
 static LOG_GUARD: Mutex<Option<WorkerGuard>> = Mutex::new(None);
 
 pub fn initialize() {
@@ -45,6 +48,7 @@ pub fn initialize() {
     tracing_subscriber::registry()
         .with(file_layer)
         .with(console_layer)
+        .with(EnvFilter::from_env("AH_LOG"))
         .try_init()
         .ok();
 

@@ -3,6 +3,16 @@
   "title": "AppConfig",
   "type": "object",
   "properties": {
+    "log": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LogLevel"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "provider": {
       "$ref": "#/$defs/ProviderType"
     },
@@ -17,6 +27,16 @@
     "provider"
   ],
   "$defs": {
+    "LogLevel": {
+      "type": "string",
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    },
     "ProviderType": {
       "type": "string",
       "enum": [

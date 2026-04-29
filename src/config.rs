@@ -1,17 +1,19 @@
+use std::fmt::Debug;
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
 use config::{Config as ConfigBuilder, Environment, File, FileFormat};
 use fs_err as fs;
-use tracing_attributes::instrument;
 
 use crate::APP_NAME;
+use crate::log::LogLevel;
 use crate::path;
 use crate::provider::ProviderType;
 use crate::util;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
 pub struct AppConfig {
+    pub log: Option<LogLevel>,
     pub provider: ProviderType,
     pub shell: Option<String>,
 }
@@ -22,7 +24,6 @@ pub fn get() -> &'static AppConfig {
     CONFIG.get().unwrap()
 }
 
-#[instrument(skip_all)]
 pub fn load_config() -> Result<()> {
     let config_path = path::config::get_config_file();
 
@@ -56,7 +57,6 @@ pub fn load_config() -> Result<()> {
     Ok(())
 }
 
-#[instrument(skip_all)]
 fn create_default_config(dest_path: &std::path::Path) -> Result<()> {
     if let Some(parent) = dest_path.parent() {
         fs::create_dir_all(parent)?;
