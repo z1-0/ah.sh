@@ -4,6 +4,7 @@ use clap_complete::CompleteEnv;
 
 use crate::manager;
 
+mod completions;
 mod types;
 use types::{Cli, Commands, ProviderCommands, SessionCommands};
 

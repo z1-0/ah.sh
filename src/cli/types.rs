@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::APP_NAME;
+use crate::cli::completions;
 use crate::provider::{Language, ProviderType};
 use crate::session::SessionKey;
 
@@ -50,30 +51,32 @@ pub enum Commands {
         command: ProviderCommands,
     },
 
-    /// Restore a session by index, ID, or show history for current directory
-    #[command(hide = true)]
-    Restore {
-        /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
-        key: Option<SessionKey>,
-    },
-
     /// Manage development sessions
     Session {
         #[command(subcommand)]
         command: SessionCommands,
     },
 
+    /// Restore a session by index, ID, or show history for current directory
+    #[command(hide = true)]
+    Restore {
+        /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
+        #[arg(add = completions::make_session_key_completer())]
+        key: Option<SessionKey>,
+    },
+
     /// Update session dependencies
     #[command(hide = true)]
     Update {
         /// Session index (1, 2, ...) or ID (8 hex chars). Uses current session if not specified
+        #[arg(add = completions::make_session_key_completer())]
         session: Option<SessionKey>,
     },
 
     /// Create and enter a development environment
     Use {
         /// Languages to enable (e.g., rust go nodejs)
-        #[arg(required = true, num_args = 1..)]
+        #[arg(required = true, num_args = 1.., add = completions::make_language_completer())]
         languages: Vec<Language>,
 
         /// Which provider to use
@@ -99,19 +102,21 @@ pub enum SessionCommands {
     /// Delete one or more sessions by index or ID
     Remove {
         /// Session index(es) or ID(s) (8 hex chars)
-        #[arg(required = true, num_args = 1..)]
+        #[arg(required = true, num_args = 1.., add = completions::make_session_key_completer())]
         keys: Vec<SessionKey>,
     },
 
     /// Restore a session by index, ID, or show history for current directory
     Restore {
         /// Session index (1, 2, ...) or ID (8 hex chars). Shows history if not specified
+        #[arg(add = completions::make_session_key_completer())]
         key: Option<SessionKey>,
     },
 
     /// Update session dependencies
     Update {
         /// Session index (1, 2, ...) or ID (8 hex chars). Uses current session if not specified
+        #[arg(add = completions::make_session_key_completer())]
         session: Option<SessionKey>,
     },
 }

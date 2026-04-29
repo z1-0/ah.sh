@@ -3,10 +3,10 @@ use std::process;
 use ah::output::print_error;
 
 fn main() {
+    ah::config::load_config().unwrap();
     ah::cli::complete_dynamic();
 
     ah::log::with_logging(|| {
-        ah::config::load_config()?;
         ah::cli::run()?;
         Ok(())
     })
