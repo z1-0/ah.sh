@@ -14,7 +14,7 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
 };
 
-use crate::path;
+use crate::{config, path};
 
 mod types;
 pub use types::*;
@@ -28,27 +28,34 @@ pub fn initialize() {
     let file_appender = RollingFileAppender::new(Rotation::DAILY, &log_dir, "log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
+    let file_filter = config::get()
+        .log
+        .map(|x| EnvFilter::new(x.to_string()))
+        .unwrap_or_else(|| EnvFilter::new(LogLevel::TRACE.to_string()));
+
+    let console_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        if cfg!(debug_assertions) {
+            LogLevel::TRACE.to_string().into()
+        } else {
+            LogLevel::OFF.to_string().into()
+        }
+    });
+
     let file_layer = fmt::layer()
         .json()
         .with_writer(non_blocking)
-        .with_span_events(FmtSpan::ACTIVE);
+        .with_span_events(FmtSpan::ACTIVE)
+        .with_filter(file_filter);
 
     let console_layer = fmt::layer()
         .with_timer(fmt::time::uptime())
         .with_ansi(stderr().is_terminal())
         .with_writer(stderr)
-        .with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            if cfg!(debug_assertions) {
-                EnvFilter::new("debug")
-            } else {
-                EnvFilter::new("info")
-            }
-        }));
+        .with_filter(console_filter);
 
     tracing_subscriber::registry()
         .with(file_layer)
         .with(console_layer)
-        .with(EnvFilter::from_env("AH_LOG"))
         .try_init()
         .ok();
 

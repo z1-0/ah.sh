@@ -1,11 +1,12 @@
 #[derive(
-    Debug,
     Clone,
+    Copy,
+    Debug,
+    schemars::JsonSchema,
+    serde::Deserialize,
+    serde::Serialize,
     strum::Display,
     strum::EnumString,
-    serde::Serialize,
-    serde::Deserialize,
-    schemars::JsonSchema,
 )]
 #[strum(serialize_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
@@ -15,4 +16,5 @@ pub enum LogLevel {
     INFO,
     WARN,
     ERROR,
+    OFF,
 }

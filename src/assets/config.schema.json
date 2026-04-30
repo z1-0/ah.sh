@@ -34,7 +34,8 @@
         "debug",
         "info",
         "warn",
-        "error"
+        "error",
+        "off"
       ]
     },
     "ProviderType": {
