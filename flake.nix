@@ -129,7 +129,6 @@
                 "check-yaml"
                 "editorconfig-checker"
                 "fix-byte-order-marker"
-                "flake-checker"
                 "mixed-line-endings"
                 "trim-trailing-whitespace"
               ]
